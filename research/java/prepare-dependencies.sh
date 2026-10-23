@@ -2,7 +2,7 @@
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 mkdir -p .work
-task_cache="${SPECMD_JAVA_CACHE:-/tmp/specmd-java-tools}"
+task_cache="${SPECMD_JAVA_CACHE:-.work/tools}"
 mkdir -p "$task_cache"
 maven_version=3.9.9
 if command -v mvn >/dev/null 2>&1; then
@@ -11,9 +11,9 @@ else
   maven_archive="$task_cache/apache-maven-$maven_version-bin.tar.gz"
   maven_base="https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/$maven_version/apache-maven-$maven_version-bin.tar.gz"
   if [[ ! -f "$maven_archive" ]]; then
-    curl --fail --silent --show-error --location --connect-timeout 10 --max-time 90 --output "$maven_archive" "$maven_base"
+    curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location --connect-timeout 10 --max-time 90 --output "$maven_archive" "$maven_base"
   fi
-  curl --fail --silent --show-error --location --connect-timeout 10 --max-time 30 --output "$maven_archive.sha512" "$maven_base.sha512"
+  curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location --connect-timeout 10 --max-time 30 --output "$maven_archive.sha512" "$maven_base.sha512"
   python3 - "$maven_archive" <<'PY'
 import hashlib, pathlib, sys
 p=pathlib.Path(sys.argv[1])

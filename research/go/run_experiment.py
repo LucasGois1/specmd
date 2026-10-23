@@ -27,9 +27,11 @@ def main() -> int:
     args = parser.parse_args()
     env = os.environ.copy()
     env["GOTOOLCHAIN"] = "local"
-    env.setdefault("GOCACHE", "/tmp/specmd-go-build-cache")
-    env.setdefault("GOMODCACHE", "/tmp/specmd-go-mod-cache")
-    env.setdefault("GOPATH", "/tmp/specmd-go-path")
+    # Repository-local caches: shared /tmp names could be pre-created by another user.
+    cache = ROOT / ".cache"
+    env.setdefault("GOCACHE", str(cache / "go-build"))
+    env.setdefault("GOMODCACHE", str(cache / "go-mod"))
+    env.setdefault("GOPATH", str(cache / "go-path"))
     if args.offline:
         env["GOPROXY"] = "off"
         env["GOSUMDB"] = "off"
