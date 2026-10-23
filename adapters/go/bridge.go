@@ -15,6 +15,7 @@ import (
 
 	gherkin "github.com/cucumber/gherkin/go/v42"
 	"github.com/cucumber/godog"
+	messages "github.com/cucumber/messages/go/v34"
 )
 
 type FeatureInput struct {
@@ -158,32 +159,39 @@ func (p *preparation) addBlock(block FeatureInput) (godog.Feature, error) {
 	if dialect == nil {
 		return godog.Feature{}, fmt.Errorf("unknown language: %s", doc.Feature.Language)
 	}
+	if err := p.declareChildren(block, uri, doc.Feature.Children, dialect); err != nil {
+		return godog.Feature{}, err
+	}
+	return godog.Feature{Name: uri, Contents: []byte(padded)}, nil
+}
+
+func (p *preparation) declareChildren(block FeatureInput, uri string, children []*messages.FeatureChild, dialect *gherkin.Dialect) error {
 	p.names[uri] = map[string][]string{}
 	backgroundSteps := 0
-	for _, child := range doc.Feature.Children {
+	for _, child := range children {
 		if child.Background != nil {
 			backgroundSteps += len(child.Background.Steps)
 		}
 	}
-	for _, child := range doc.Feature.Children {
+	for _, child := range children {
 		if child.Rule != nil {
-			return godog.Feature{}, errors.New("unsupported: Rule requires a bridge with rule-aware evidence")
+			return errors.New("unsupported: Rule requires a bridge with rule-aware evidence")
 		}
 		scenario := child.Scenario
 		if scenario == nil {
 			continue
 		}
 		if isOutline(scenario.Keyword, len(scenario.Examples), dialect) {
-			return godog.Feature{}, errors.New("unsupported: Scenario Outline requires concrete instance evidence")
+			return errors.New("unsupported: Scenario Outline requires concrete instance evidence")
 		}
 		if len(scenario.Steps) == 0 {
-			return godog.Feature{}, errors.New("each simple scenario requires at least one step")
+			return errors.New("each simple scenario requires at least one step")
 		}
 		if err := p.declare(block, uri, int(scenario.Location.Line), scenario.Name, backgroundSteps+len(scenario.Steps)); err != nil {
-			return godog.Feature{}, err
+			return err
 		}
 	}
-	return godog.Feature{Name: uri, Contents: []byte(padded)}, nil
+	return nil
 }
 
 // prepare matches parsed scenarios to the expected ones by origin (path,
