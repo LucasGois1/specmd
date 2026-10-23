@@ -1,0 +1,98 @@
+[
+  {
+    "artifact": "cucumber-core-8.0.4.jar",
+    "sha256": "6c7ce8631ddbdd1fcce043d86ab615109e7ffe8fa8ba7987e9c399343c6709da"
+  },
+  {
+    "artifact": "cucumber-gherkin-8.0.4.jar",
+    "sha256": "d53236ef9ece32302d165ce7d44e43642bee05ac372a8ffc147ab1836986d2dc"
+  },
+  {
+    "artifact": "cucumber-gherkin-messages-8.0.4.jar",
+    "sha256": "dd2e33499829922a4dc10e2c852c9c042da3fe909346647d341d8fe05ffe6726"
+  },
+  {
+    "artifact": "gherkin-42.0.1.jar",
+    "sha256": "7339bc0e61e7855b03a206029c1c7b968e6c8f1b70c9d11d0304d18b9d47456d"
+  },
+  {
+    "artifact": "messages-34.2.1.jar",
+    "sha256": "047d8937845af314d8522ec92c2df5b7bd752b90bf6b5c2df5c8c3574a706885"
+  },
+  {
+    "artifact": "messages-ndjson-0.5.2.jar",
+    "sha256": "4703225b5f839d7880d65fc0d54a72c47aa2725cef35c157c853af72ffcd744e"
+  },
+  {
+    "artifact": "pretty-formatter-4.1.0.jar",
+    "sha256": "cc3999fc5f42c170bb3b36c09f2fdfab9e81713f7930fab9bf3f64bf22ad522e"
+  },
+  {
+    "artifact": "query-16.1.1.jar",
+    "sha256": "07c34c4104163790a6dec70ba93bd449c9cf8bcb880c37b36537dd5a2c67dc62"
+  },
+  {
+    "artifact": "teamcity-formatter-0.3.1.jar",
+    "sha256": "41566f0d084535d8c644823ef7eff9ebbfc08120605fbe3f6d1d6778af3e1149"
+  },
+  {
+    "artifact": "testng-xml-formatter-0.9.0.jar",
+    "sha256": "aba17e50fb024901e7d0cc5f01f8acd9dea85e2aa8937a68b064b7438528b83b"
+  },
+  {
+    "artifact": "usage-formatter-0.2.1.jar",
+    "sha256": "cdad2d1750d70e72f13e8046e9a73bc92171528dfc3a370f00702fd658c90caa"
+  },
+  {
+    "artifact": "tag-expressions-11.0.1.jar",
+    "sha256": "11d3432f097e3054481167ce92bf941d3df4e651b664ddd8e6c4cc1a0c6069bf"
+  },
+  {
+    "artifact": "cucumber-expressions-20.1.0.jar",
+    "sha256": "24d071c9699e2a086ff71225aa8cb2949c0a13f8c56fd27309c6af7f4ed9e423"
+  },
+  {
+    "artifact": "cucumber-json-formatter-0.4.2.jar",
+    "sha256": "b75b87e20c424e6f95424293de0e376211d4b193cbffd4cde4862160152364c8"
+  },
+  {
+    "artifact": "datatable-8.0.4.jar",
+    "sha256": "f63bdefc255b1478eec049c472bdac4ee7ef332a8a873ad012f7322c7dfa7db3"
+  },
+  {
+    "artifact": "cucumber-plugin-8.0.4.jar",
+    "sha256": "23116a7c97e9f6b4e41537e052a68e5d834828cec2910b7c42da8502d9253eec"
+  },
+  {
+    "artifact": "docstring-8.0.4.jar",
+    "sha256": "d4cbf60a5eaca9ecb2647dbca0c87a6c6b17b5b7d8063c8999dda47d4f477761"
+  },
+  {
+    "artifact": "html-formatter-24.2.0.jar",
+    "sha256": "62a9f5c000ad620bb16e271d4a0a71549ede8579c2744c3009a8c01d71c96449"
+  },
+  {
+    "artifact": "junit-xml-formatter-0.15.0.jar",
+    "sha256": "ceb7388b0240aca1bc9bb199f80644686820f71180a94b1eacf4e3912a7edf38"
+  },
+  {
+    "artifact": "ci-environment-15.0.0.jar",
+    "sha256": "382ed20765cf28b8c18164e534ad6a6a9fddd6d487312d4c57727506fabb74ff"
+  },
+  {
+    "artifact": "jspecify-1.0.1.jar",
+    "sha256": "070d75f261fe4c5b8202508366715f7f2d4660f88c8ef7e6d3575e48c9683b66"
+  },
+  {
+    "artifact": "apiguardian-api-1.1.2.jar",
+    "sha256": "b509448ac506d607319f182537f0b35d71007582ec741832a1f111e5b5b70b38"
+  },
+  {
+    "artifact": "cucumber-java-8.0.4.jar",
+    "sha256": "67528c511638e7802dbb6c5bfb7f63288c31b653b4ea3c9a7e5239676de50a2a"
+  },
+  {
+    "artifact": "commonmark-0.24.0.jar",
+    "sha256": "679338e0b7fc15c02d275d598654b01a149893bc28a87992e90123c8d06af25b"
+  }
+]

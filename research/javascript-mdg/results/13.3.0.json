@@ -1,0 +1,176 @@
+{
+  "startedAt": "2026-10-23T02:16:07.680Z",
+  "node": "v24.19.0",
+  "requestedCucumberVersion": "13.3.0",
+  "status": "executed",
+  "cases": [
+    {
+      "id": "mdg-explicit-positive",
+      "fixture": "addition.feature.md",
+      "target": "addition.feature.md",
+      "explicit": true,
+      "command": [
+        "node",
+        "<dependency-installation>/node_modules/@cucumber/cucumber/bin/cucumber.js",
+        "features/addition.feature.md",
+        "--require",
+        "support/steps.cjs",
+        "--format",
+        "json:results.json",
+        "--format",
+        "progress"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "stdout": "...\n\n1 scenario (1 passed)\n3 steps (3 passed)\n0m 0.011s (0m 0.000s executing your code)\n",
+      "stderr": "",
+      "scenarioCount": 1,
+      "stepStatuses": {
+        "passed": 3
+      },
+      "failedStepMessages": []
+    },
+    {
+      "id": "mdg-explicit-negative",
+      "fixture": "negative.feature.md",
+      "target": "negative.feature.md",
+      "explicit": true,
+      "command": [
+        "node",
+        "<dependency-installation>/node_modules/@cucumber/cucumber/bin/cucumber.js",
+        "features/negative.feature.md",
+        "--require",
+        "support/steps.cjs",
+        "--format",
+        "json:results.json",
+        "--format",
+        "progress"
+      ],
+      "exitCode": 1,
+      "signal": null,
+      "error": null,
+      "stdout": "..F\n\nFailed scenarios:\n  1) Detect an incorrect expected result # features/negative.feature.md:7\n       Then the result is 6 # support/steps.cjs:16\n           AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n           \n           5 !== 6\n           \n               + expected - actual\n           \n               -5\n               +6\n           \n               at World.<anonymous> (<result-root>/mdg-explicit-negative/support/steps.cjs:17:10)\n\n1 scenario (1 failed)\n3 steps (2 passed, 1 failed)\n0m 0.013s (0m 0.001s executing your code)\n",
+      "stderr": "",
+      "scenarioCount": 1,
+      "stepStatuses": {
+        "passed": 2,
+        "failed": 1
+      },
+      "failedStepMessages": [
+        "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n5 !== 6\n\n    + expected - actual\n\n    -5\n    +6\n\n    at World.<anonymous> (<result-root>/mdg-explicit-negative/support/steps.cjs:17:10)"
+      ]
+    },
+    {
+      "id": "mdg-default-discovery",
+      "fixture": "addition.feature.md",
+      "target": "addition.feature.md",
+      "explicit": false,
+      "command": [
+        "node",
+        "<dependency-installation>/node_modules/@cucumber/cucumber/bin/cucumber.js",
+        "--require",
+        "support/steps.cjs",
+        "--format",
+        "json:results.json",
+        "--format",
+        "progress"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "stdout": "...\n\n1 scenario (1 passed)\n3 steps (3 passed)\n0m 0.010s (0m 0.000s executing your code)\n",
+      "stderr": "",
+      "scenarioCount": 1,
+      "stepStatuses": {
+        "passed": 3
+      },
+      "failedStepMessages": []
+    },
+    {
+      "id": "mdg-ordinary-md-explicit",
+      "fixture": "addition.feature.md",
+      "target": "addition.md",
+      "explicit": true,
+      "command": [
+        "node",
+        "<dependency-installation>/node_modules/@cucumber/cucumber/bin/cucumber.js",
+        "features/addition.md",
+        "--require",
+        "support/steps.cjs",
+        "--format",
+        "json:results.json",
+        "--format",
+        "progress"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "stdout": "...\n\n1 scenario (1 passed)\n3 steps (3 passed)\n0m 0.010s (0m 0.000s executing your code)\n",
+      "stderr": "",
+      "scenarioCount": 1,
+      "stepStatuses": {
+        "passed": 3
+      },
+      "failedStepMessages": []
+    },
+    {
+      "id": "fenced-ordinary-md-explicit",
+      "fixture": "fenced.md",
+      "target": "fenced.md",
+      "explicit": true,
+      "command": [
+        "node",
+        "<dependency-installation>/node_modules/@cucumber/cucumber/bin/cucumber.js",
+        "features/fenced.md",
+        "--require",
+        "support/steps.cjs",
+        "--format",
+        "json:results.json",
+        "--format",
+        "progress"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "stdout": "\n\n0 scenarios\n0 steps\n0m 0.000s (0m 0.000s executing your code)\n",
+      "stderr": "",
+      "scenarioCount": 0,
+      "stepStatuses": {},
+      "failedStepMessages": []
+    }
+  ],
+  "installedCucumberVersion": "13.3.0",
+  "packageEngines": {
+    "node": "22 || 24 || >=26"
+  },
+  "cliVersion": {
+    "command": [
+      "node",
+      "<dependency-installation>/node_modules/@cucumber/cucumber/bin/cucumber.js",
+      "--version"
+    ],
+    "exitCode": 0,
+    "signal": null,
+    "error": null,
+    "stdout": "13.3.0\n",
+    "stderr": ""
+  },
+  "baselineConfirmed": true,
+  "finishedAt": "2026-10-23T02:16:14.986Z",
+  "evidenceNote": "Executed by the root agent. Absolute tool/cache/result paths were replaced with placeholders; scenario counts, statuses, exit codes and assertion messages are preserved.",
+  "scope": "Cucumber.js native MDG runner baseline only; not governance/product support.",
+  "sources": [
+    "https://github.com/cucumber/gherkin/blob/0c50fc12112d9400892a760ee7302b232a466cb8/MARKDOWN_WITH_GHERKIN.md",
+    "https://www.npmjs.com/package/@cucumber/cucumber/v/13.3.0",
+    "https://www.npmjs.com/package/@cucumber/gherkin/v/42.0.1"
+  ],
+  "sourceSha256": {
+    "run.mjs": "2023d2e817b82f06cc74e7b89d277d5925963382f8d26cca60e0878c70fc30fc",
+    "fixtures/addition.feature.md": "ac1562fba8332496ed0e5f2794813feb490519fc56dfd1559dc880dbe40a5815",
+    "fixtures/negative.feature.md": "96fdc54fc7869b4738f771078522682ee0ff9430bf605722c6fc5ecba62c5189",
+    "fixtures/fenced.md": "1ada6a73d63236faf307e7dc13fde63b9e55fab7f89931d05dd73b9d1744910a",
+    "src/math.cjs": "bc9d5f4649dd2ddbb9449799d43e9808901758a6748ffe08b9919e7052e1f4df",
+    "support/steps.cjs": "feb8858733a323504970a2d2a7b0481a271c956583dfcf467a589d9edd0ac7c1"
+  }
+}

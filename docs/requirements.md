@@ -8,7 +8,9 @@ Os IDs `SMD-REQ-*` e `SMD-SCN-*` são estáveis. Uma alteração de conteúdo ma
 
 ## SMD-REQ-001 — Markdown canônico e execução sem `.feature`
 
-**Origem confirmada.** Requisitos e cenários devem residir nos Markdown canônicos. A execução deve consumir os blocos Gherkin por parser/AST e adaptação em memória, sem exigir arquivos `.feature` no projeto, em diretórios temporários ou como entrada necessária do executor.
+**Origem confirmada.** Requisitos e cenários devem residir nos Markdown canônicos, sem exigir arquivos `.feature` no projeto, em diretórios temporários ou como entrada necessária do executor.
+
+**Desenho proposto:** consumir os blocos Gherkin por parser/AST e adaptação em memória. A convenção de cercas de código é uma hipótese; a compatibilidade com Markdown with Gherkin oficial deve ser avaliada antes de estabilizar o formato. A restrição de fonte canônica não exclui `.feature.md`, que continua sendo Markdown.
 
 **Critérios de aceite:** editar o cenário em um `.md` altera a próxima entrada de execução; não há uma cópia canônica concorrente; a ausência de `.feature` não impede descoberta nem execução. A escolha de parser, AST e runner é um desenho pendente de spike; não se afirma suporte nativo de Cucumber.
 

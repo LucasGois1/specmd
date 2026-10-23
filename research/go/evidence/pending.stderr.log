@@ -1,0 +1,11 @@
+Funcionalidade: Soma de inteiros
+
+  Cenário: Demonstrar uma integração pendente # contract.md#gherkin-1:33
+    Dado uma integração ainda pendente        # main.go:156 -> main.run.initialize.func2.9
+      TODO: write pending definition
+    Quando eu somar os números                # main.go:141 -> main.run.initialize.func2.4
+    Então o resultado deve ser 5              # main.go:142 -> main.run.initialize.func2.5
+
+1 scenarios (1 pending)
+3 steps (1 pending, 2 skipped)
+332.709µs

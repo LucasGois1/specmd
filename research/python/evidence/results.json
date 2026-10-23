@@ -1,0 +1,191 @@
+{
+  "status": "executed",
+  "observed_at_utc": "2026-10-23T02:25:42.803290+00:00",
+  "versions": {
+    "python": "3.12.14",
+    "behave": "1.3.3",
+    "markdown_it_py": "4.0.0"
+  },
+  "fixture_sha256": "1d652279f5d362aa7af6b0723d1499c07166376a4d62acb1a6493b346cfb382c",
+  "source_sha256": {
+    "probe_markdown.py": "580334725dda8ad8bc70c797e7094a6172c1df313c8ca0d2af2cd37bafea1b58",
+    "probe_minimal.py": "322ad6a5686f4057fd3825083e6cad5f52d451547073512be928421d8bd7fc81"
+  },
+  "feature_files_found": [],
+  "cases": [
+    {
+      "case": "two_blocks_pass",
+      "engine_failed": false,
+      "origins": [
+        {
+          "uri": "addition.md#block-1",
+          "first_content_line": 6
+        },
+        {
+          "uri": "addition.md#block-2",
+          "first_content_line": 18
+        }
+      ],
+      "required_scenario_ids": [
+        "SMD-PY-SCN-001",
+        "SMD-PY-SCN-002"
+      ],
+      "observed_scenarios": [
+        {
+          "id": "SMD-PY-SCN-001",
+          "status": "passed",
+          "uri": "addition.md#block-1",
+          "line": 9,
+          "source_line_matches": true,
+          "steps": [
+            "passed",
+            "passed",
+            "passed"
+          ]
+        },
+        {
+          "id": "SMD-PY-SCN-002",
+          "status": "passed",
+          "uri": "addition.md#block-2",
+          "line": 21,
+          "source_line_matches": true,
+          "steps": [
+            "passed",
+            "passed",
+            "passed"
+          ]
+        }
+      ],
+      "application_calls": [
+        [
+          2,
+          3
+        ],
+        [
+          4,
+          5
+        ]
+      ],
+      "gate_allowed": true,
+      "expected_gate_allowed": true,
+      "expectation_met": true
+    },
+    {
+      "case": "assertion_failure",
+      "engine_failed": true,
+      "origins": [
+        {
+          "uri": "addition.md#block-3",
+          "first_content_line": 30
+        }
+      ],
+      "required_scenario_ids": [
+        "SMD-PY-SCN-003"
+      ],
+      "observed_scenarios": [
+        {
+          "id": "SMD-PY-SCN-003",
+          "status": "failed",
+          "uri": "addition.md#block-3",
+          "line": 33,
+          "source_line_matches": true,
+          "steps": [
+            "passed",
+            "passed",
+            "failed"
+          ]
+        }
+      ],
+      "application_calls": [
+        [
+          2,
+          3
+        ]
+      ],
+      "gate_allowed": false,
+      "expected_gate_allowed": false,
+      "expectation_met": true
+    },
+    {
+      "case": "undefined_step",
+      "engine_failed": true,
+      "origins": [
+        {
+          "uri": "addition.md#block-4",
+          "first_content_line": 40
+        }
+      ],
+      "required_scenario_ids": [
+        "SMD-PY-SCN-004"
+      ],
+      "observed_scenarios": [
+        {
+          "id": "SMD-PY-SCN-004",
+          "status": "error",
+          "uri": "addition.md#block-4",
+          "line": 43,
+          "source_line_matches": true,
+          "steps": [
+            "passed",
+            "undefined",
+            "skipped"
+          ]
+        }
+      ],
+      "application_calls": [],
+      "gate_allowed": false,
+      "expected_gate_allowed": false,
+      "expectation_met": true
+    },
+    {
+      "case": "all_filtered",
+      "engine_failed": false,
+      "origins": [
+        {
+          "uri": "addition.md#block-1",
+          "first_content_line": 6
+        },
+        {
+          "uri": "addition.md#block-2",
+          "first_content_line": 18
+        }
+      ],
+      "required_scenario_ids": [
+        "SMD-PY-SCN-001",
+        "SMD-PY-SCN-002"
+      ],
+      "observed_scenarios": [
+        {
+          "id": "SMD-PY-SCN-001",
+          "status": "skipped",
+          "uri": "addition.md#block-1",
+          "line": 9,
+          "source_line_matches": true,
+          "steps": [
+            "skipped",
+            "skipped",
+            "skipped"
+          ]
+        },
+        {
+          "id": "SMD-PY-SCN-002",
+          "status": "skipped",
+          "uri": "addition.md#block-2",
+          "line": 21,
+          "source_line_matches": true,
+          "steps": [
+            "skipped",
+            "skipped",
+            "skipped"
+          ]
+        }
+      ],
+      "application_calls": [],
+      "gate_allowed": false,
+      "expected_gate_allowed": false,
+      "expectation_met": true
+    }
+  ],
+  "harness_passed": true,
+  "scope": "Research only: no human approval authority or protected production gate implemented."
+}

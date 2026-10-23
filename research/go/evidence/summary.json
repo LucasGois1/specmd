@@ -1,0 +1,107 @@
+{
+  "observed_at_utc": "2026-10-23T02:29:28.420864+00:00",
+  "go": "go version go1.25.0 linux/amd64",
+  "godog": "v0.16.0",
+  "goldmark": "v1.7.13",
+  "platform": "Linux/x86_64",
+  "source_sha256": "7d74c95c9645d78cb5acd90a5eaf8680c275e714b296fddc04fd5773a9f5051e",
+  "cases": [
+    {
+      "case": "pass",
+      "adapter_exit": 0,
+      "runner_exit": 0,
+      "gate_allowed": true,
+      "observed": 2,
+      "matches_expected": true
+    },
+    {
+      "case": "failure",
+      "adapter_exit": 1,
+      "runner_exit": 1,
+      "gate_allowed": false,
+      "observed": 1,
+      "matches_expected": true
+    },
+    {
+      "case": "undefined",
+      "adapter_exit": 1,
+      "runner_exit": 1,
+      "gate_allowed": false,
+      "observed": 1,
+      "matches_expected": true
+    },
+    {
+      "case": "pending",
+      "adapter_exit": 1,
+      "runner_exit": 1,
+      "gate_allowed": false,
+      "observed": 1,
+      "matches_expected": true
+    },
+    {
+      "case": "filtered",
+      "adapter_exit": 1,
+      "runner_exit": 0,
+      "gate_allowed": false,
+      "observed": 0,
+      "matches_expected": true
+    },
+    {
+      "case": "partial",
+      "adapter_exit": 1,
+      "runner_exit": 0,
+      "gate_allowed": false,
+      "observed": 1,
+      "matches_expected": true
+    },
+    {
+      "case": "zero",
+      "adapter_exit": 1,
+      "runner_exit": 0,
+      "gate_allowed": false,
+      "observed": 0,
+      "matches_expected": true
+    },
+    {
+      "case": "no-gherkin",
+      "adapter_exit": 1,
+      "runner_exit": null,
+      "gate_allowed": false,
+      "observed": 0,
+      "matches_expected": true
+    }
+  ],
+  "transport_cases": [
+    {
+      "transport": "vfs",
+      "runner_exit": 0,
+      "adapter_exit": 0,
+      "gate_allowed": true,
+      "observed": 2,
+      "matches_expected": true
+    },
+    {
+      "transport": "vfs-dir",
+      "runner_exit": 0,
+      "adapter_exit": 1,
+      "gate_allowed": false,
+      "observed": 0,
+      "matches_expected": true
+    }
+  ],
+  "adapter_stdin_passed": true,
+  "feature_files_found": [],
+  "harness_passed": true,
+  "problems": [],
+  "source_files_sha256": {
+    "main.go": "77fb729126a5d63003903a0c192900f1e3c3c7d1cfce68b2587ef363bf30df24",
+    "system.go": "571d211044613185837353e7f66d5b15b6ad35116fb842aba552f6733c94ff66",
+    "contract.md": "7d74c95c9645d78cb5acd90a5eaf8680c275e714b296fddc04fd5773a9f5051e",
+    "empty.md": "2659416c939e1fa2932d95e4beea851b7796c85a6909ea3eecb1ad26d9cea5d2",
+    "reference.md": "00b9eb5901fde08301d0382ffb0d54705411c220924004fc3842425dabafe4bb",
+    "go.mod": "4b780dac902456ea3bb03a29da3336f16aab75be8db2523e82d837034ab1fb7d",
+    "go.sum": "d47866988e24cd62064288aa170ace1d045b5925b7fe03108c0e3663b896d03c",
+    "run_experiment.py": "4fece5589136e04aef9a31d2816e6e7f6283a49253e5a1b9f5619b6863dd4381"
+  },
+  "scope": "Experimento técnico; não implementa aceite humano, proteção CI ou prova de completude de requisitos."
+}

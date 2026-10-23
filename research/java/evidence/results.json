@@ -1,0 +1,323 @@
+{
+  "status": "executed",
+  "observed_at_utc": "2026-10-23T02:18:43.748128430Z",
+  "versions": {
+    "commonmark": "0.24.0",
+    "java": "21.0.12.1",
+    "cucumber_jvm": "8.0.4"
+  },
+  "reproduction_command": "bash run.sh",
+  "fixture_sha256": {
+    "fixtures/passing.md": "d43f25fc10351bf9295b562381f16003fe0804c36ec1c8b2884a54b12f937a53",
+    "fixtures/failing.md": "a0e1ec7fafc10791be0e5cb8e921678c0dac6f82468792166f523d81b2b51db7",
+    "fixtures/undefined.md": "f58f0e4d2e2c7a3cb280233780052d2786e9764c0a6a7f8c7a4bbf78804972d2"
+  },
+  "feature_files_before": 0,
+  "feature_files_after": 0,
+  "api_cases": [
+    {
+      "case": "passing_two_blocks_pt",
+      "fixture": "fixtures/passing.md",
+      "blocks": [
+        {
+          "scenario_count": 1,
+          "opening_fence_line": 8,
+          "first_content_line": 9,
+          "uri": "specmd:///fixtures/passing.md#block-1"
+        },
+        {
+          "scenario_count": 1,
+          "opening_fence_line": 23,
+          "first_content_line": 24,
+          "uri": "specmd:///fixtures/passing.md#block-2"
+        }
+      ],
+      "required_scenario_ids": [
+        "@SMD-SCN-JAVA-PASS1",
+        "@SMD-SCN-JAVA-PASS2"
+      ],
+      "native_runner_exit_code": 0,
+      "finished_scenarios": 2,
+      "application_function_calls": 2,
+      "dry_run": false,
+      "tag_filter": null,
+      "scenario_results": [
+        {
+          "scenario_ids": [
+            "@SMD-SCN-JAVA-PASS1"
+          ],
+          "name": "Somar dois e três",
+          "uri": "specmd:///fixtures/passing.md#block-1",
+          "line": 13,
+          "status": "PASSED",
+          "step_statuses": [
+            "PASSED",
+            "PASSED",
+            "PASSED"
+          ]
+        },
+        {
+          "scenario_ids": [
+            "@SMD-SCN-JAVA-PASS2"
+          ],
+          "name": "Somar menos dois e cinco",
+          "uri": "specmd:///fixtures/passing.md#block-2",
+          "line": 28,
+          "status": "PASSED",
+          "step_statuses": [
+            "PASSED",
+            "PASSED",
+            "PASSED"
+          ]
+        }
+      ],
+      "source_locations_checked": 2,
+      "source_locations_consistent": true,
+      "research_gate_eligible": true,
+      "expected_gate_eligible": true,
+      "harness_expectations_met": true
+    },
+    {
+      "case": "assertion_failure",
+      "fixture": "fixtures/failing.md",
+      "blocks": [
+        {
+          "scenario_count": 1,
+          "opening_fence_line": 3,
+          "first_content_line": 4,
+          "uri": "specmd:///fixtures/failing.md#block-1"
+        }
+      ],
+      "required_scenario_ids": [
+        "@SMD-SCN-JAVA-FAIL"
+      ],
+      "native_runner_exit_code": 1,
+      "finished_scenarios": 1,
+      "application_function_calls": 1,
+      "dry_run": false,
+      "tag_filter": null,
+      "scenario_results": [
+        {
+          "scenario_ids": [
+            "@SMD-SCN-JAVA-FAIL"
+          ],
+          "name": "Uma expectativa errada precisa falhar",
+          "uri": "specmd:///fixtures/failing.md#block-1",
+          "line": 8,
+          "status": "FAILED",
+          "step_statuses": [
+            "PASSED",
+            "PASSED",
+            "FAILED"
+          ],
+          "error": "AssertionError: Expected 6 but application returned 5"
+        }
+      ],
+      "source_locations_checked": 1,
+      "source_locations_consistent": true,
+      "research_gate_eligible": false,
+      "expected_gate_eligible": false,
+      "harness_expectations_met": true
+    },
+    {
+      "case": "undefined_step",
+      "fixture": "fixtures/undefined.md",
+      "blocks": [
+        {
+          "scenario_count": 1,
+          "opening_fence_line": 3,
+          "first_content_line": 4,
+          "uri": "specmd:///fixtures/undefined.md#block-1"
+        }
+      ],
+      "required_scenario_ids": [
+        "@SMD-SCN-JAVA-UNDEFINED"
+      ],
+      "native_runner_exit_code": 1,
+      "finished_scenarios": 1,
+      "application_function_calls": 0,
+      "dry_run": false,
+      "tag_filter": null,
+      "scenario_results": [
+        {
+          "scenario_ids": [
+            "@SMD-SCN-JAVA-UNDEFINED"
+          ],
+          "name": "Uma ação inexistente não é um teste satisfeito",
+          "uri": "specmd:///fixtures/undefined.md#block-1",
+          "line": 8,
+          "status": "UNDEFINED",
+          "step_statuses": [
+            "PASSED",
+            "UNDEFINED",
+            "SKIPPED"
+          ]
+        }
+      ],
+      "source_locations_checked": 1,
+      "source_locations_consistent": true,
+      "research_gate_eligible": false,
+      "expected_gate_eligible": false,
+      "harness_expectations_met": true
+    },
+    {
+      "case": "all_required_scenarios_filtered",
+      "fixture": "fixtures/passing.md",
+      "blocks": [
+        {
+          "scenario_count": 1,
+          "opening_fence_line": 8,
+          "first_content_line": 9,
+          "uri": "specmd:///fixtures/passing.md#block-1"
+        },
+        {
+          "scenario_count": 1,
+          "opening_fence_line": 23,
+          "first_content_line": 24,
+          "uri": "specmd:///fixtures/passing.md#block-2"
+        }
+      ],
+      "required_scenario_ids": [
+        "@SMD-SCN-JAVA-PASS1",
+        "@SMD-SCN-JAVA-PASS2"
+      ],
+      "native_runner_exit_code": 0,
+      "finished_scenarios": 0,
+      "application_function_calls": 0,
+      "dry_run": false,
+      "tag_filter": "@does_not_exist",
+      "scenario_results": [],
+      "source_locations_checked": 0,
+      "source_locations_consistent": true,
+      "research_gate_eligible": false,
+      "expected_gate_eligible": false,
+      "harness_expectations_met": true
+    },
+    {
+      "case": "dry_run_without_application_execution",
+      "fixture": "fixtures/passing.md",
+      "blocks": [
+        {
+          "scenario_count": 1,
+          "opening_fence_line": 8,
+          "first_content_line": 9,
+          "uri": "specmd:///fixtures/passing.md#block-1"
+        },
+        {
+          "scenario_count": 1,
+          "opening_fence_line": 23,
+          "first_content_line": 24,
+          "uri": "specmd:///fixtures/passing.md#block-2"
+        }
+      ],
+      "required_scenario_ids": [
+        "@SMD-SCN-JAVA-PASS1",
+        "@SMD-SCN-JAVA-PASS2"
+      ],
+      "native_runner_exit_code": 0,
+      "finished_scenarios": 2,
+      "application_function_calls": 0,
+      "dry_run": true,
+      "tag_filter": null,
+      "scenario_results": [
+        {
+          "scenario_ids": [
+            "@SMD-SCN-JAVA-PASS1"
+          ],
+          "name": "Somar dois e três",
+          "uri": "specmd:///fixtures/passing.md#block-1",
+          "line": 13,
+          "status": "PASSED",
+          "step_statuses": [
+            "PASSED",
+            "PASSED",
+            "PASSED"
+          ]
+        },
+        {
+          "scenario_ids": [
+            "@SMD-SCN-JAVA-PASS2"
+          ],
+          "name": "Somar menos dois e cinco",
+          "uri": "specmd:///fixtures/passing.md#block-2",
+          "line": 28,
+          "status": "PASSED",
+          "step_statuses": [
+            "PASSED",
+            "PASSED",
+            "PASSED"
+          ]
+        }
+      ],
+      "source_locations_checked": 2,
+      "source_locations_consistent": true,
+      "research_gate_eligible": false,
+      "expected_gate_eligible": false,
+      "harness_expectations_met": true
+    }
+  ],
+  "cli_cases": [
+    {
+      "case": "text_argument",
+      "actually_executed": true,
+      "main_class": "io.cucumber.core.cli.Main",
+      "tail_arguments": [
+        "# language: pt\nFuncionalidade: CLI texto\n  Cenário: Soma\n    Dado os números 2 e 3\n    Quando a aplicação somar os números\n    Então o resultado deve ser 5\n"
+      ],
+      "stdin_supplied": false,
+      "native_cli_exit_code": 1,
+      "timed_out": false,
+      "finished_scenarios": null,
+      "application_function_calls": null,
+      "output": "java.lang.IllegalArgumentException: path must exist: [PROJECT]/# language: pt\nFuncionalidade: CLI texto\n  Cenário: Soma\n    Dado os números 2 e 3\n    Quando a aplicação somar os números\n    Então o resultado deve ser 5\n\tat io.cucumber.core.resource.PathScanner.findResourcesForPath(PathScanner.java:55)\n\tat io.cucumber.core.resource.PathScanner.findResourcesForUri(PathScanner.java:37)\n\tat io.cucumber.core.resource.ResourceScanner.findResourcesForUri(ResourceScanner.java:60)\n\tat io.cucumber.core.resource.ResourceScanner.scanForResourcesUri(ResourceScanner.java:133)\n\tat io.cucumber.core.runtime.FeaturePathFeatureSupplier.loadFeatures(FeaturePathFeatureSupplier.java:62)\n\tat io.cucumber.core.runtime.FeaturePathFeatureSupplier.get(FeaturePathFeatureSupplier.java:45)\n\tat io.cucumber.core.runtime.Runtime.run(Runtime.java:82)\n\tat io.cucumber.core.cli.Main.run(Main.java:96)\n\tat io.cucumber.core.cli.Main.main(Main.java:35)\n",
+      "harness_expectations_met": true
+    },
+    {
+      "case": "stdin_dash",
+      "actually_executed": true,
+      "main_class": "io.cucumber.core.cli.Main",
+      "tail_arguments": [
+        "-"
+      ],
+      "stdin_supplied": true,
+      "native_cli_exit_code": 1,
+      "timed_out": false,
+      "finished_scenarios": null,
+      "application_function_calls": null,
+      "output": "Unknown option: -\nUsage: java io.cucumber.core.cli.Main [options] [ PATH[.feature[:LINE]*] | URI[.feature[:LINE]*] | @PATH ]+\n\nOptions:\n\n      --threads COUNT                      Number of threads to run tests under.\n                                           Defaults to 1.\n\n  -g, --glue PATH                          Package to load glue code (step\n                                           definitions, hooks and plugins) from\n                                           e.g: com.example.app.\n                                           When neither glue, nor glue classes\n                                           are  provided Cucumber will search\n                                           the classpath.\n\n  --glue-class FQCN                        A fully qualified glue class name\n                                           e.g: com.example.app.StepDefinitions.\n                                           When neither glue, nor glue classes\n                                           are  provided Cucumber will search\n                                           the classpath.\n\n   --glue-[included|excluded]-class-name-pattern PATTERN\n                                            A pattern for to include or classes\n                                            from classpath scanning. e.g:\n                                            .*StepDefinitions?|.*Hooks?\n\n  -p, --plugin PLUGIN[:[PATH|[URI [OPTIONS]]]\n                                           Register a plugin.\n                                           Built-in PLUGIN types:\n                                           html, json, junit, message, pretty,\n                                           progress, rerun, summary, teamcity,\n                                           testng, timeline, usage, unused\n\n                                           PLUGIN can also be a fully\n                                           qualified class name, allowing\n                                           registration of 3rd party plugins.\n\n                                           If a http:// or https:// URI is used,\n                                           the output will be sent as a PUT\n                                           request. This can be overridden by\n                                           providing additional options.\n\n                                           OPTIONS supports cUrls -X and -H\n                                           commands.\n\n  -t, --tags TAG_EXPRESSION                Only run scenarios tagged with tags\n                                           matching TAG_EXPRESSION.\n\n  -n, --name REGEXP                        Only run scenarios whose names match\n                                           REGEXP.\n\n  -d, --[no-]dry-run                       Skip execution of glue code.\n\n  -m, --[no-]monochrome                    Don't colour terminal output.\n\n      --snippets [underscore|camelcase]    Naming convention for generated\n                                           snippets. Defaults to underscore.\n\n  -v, --version                            Print version.\n\n  -h, --help                               You're looking at it.\n      --i18n-languages                     List all languages with a Gherkin\n                                           localization\n      --i18n-keywords LANG                 List keywords for in a particular\n                                           Gherkin localization\n\n  -w, --wip                                Fail if there are any passing\n                                           scenarios.\n\n\n      --order                              Run the scenarios in a different\n                                           order. The options are 'reverse' and\n                                           'random'. In case of 'random' order\n                                           an optional seed parameter can be\n                                           added 'random:<seed>'.\n\n      --count                              Number of scenarios to be executed.\n                                           If not specified all scenarios are\n                                           run.\n\n      --object-factory CLASSNAME           Uses the class specified by CLASSNAME\n                                           as object factory. Be aware that the\n                                           class is loaded through a service\n                                           loader and therefore also needs to\n                                           be specified in:\n                                           META-INF/services/io.cucumber.core.backend.ObjectFactory\n\n      --uuid-generator CLASSNAME           Uses the class specified by CLASSNAME\n                                           as UUID generator. Be aware that the\n                                           class is loaded through a service\n                                           loader and therefore also needs to\n                                           be specified in:\n                                           META-INF/services/io.cucumber.core.eventbus.UuidGenerator\n\nFeature path examples:\n                                           When no feature path is provided\n                                           cucumber will scan the classpath root\n                                           and its sub directories.\n\n  <path>                                   Load the files with the extension\n                                           \".feature\" for the directory <path>\n                                           and its sub directories.\n\n  <path>/<name>.feature                    Load the feature file\n                                           <path>/<name>.feature from the file\n                                           system.\n\n  classpath:<path>/<name>.feature          Load the feature file\n                                           <path>/<name>.feature from the\n                                           classpath.\n\n  <path>/<name>.feature:3:9                Load the scenarios on line 3 and line\n                                           9 in the file <path>/<name>.feature.\n\n  @<path>                                  Load all files in the <path> from the\n                                           file system and parse feature paths\n                                           generated by the rerun formatter.\n\n  @<path>/<file>                           Load <path>/<file> from the file\n                                           system and parse feature paths\n                                           generated by the rerun formatter.\n\n\nProperties, Environment variables and System properties:\n\nCucumber will in order of precedence parse properties from system properties,\nenvironment variables and the `cucumber.properties` file.\n\nNote that options provided by `@CucumberOptions` takes precedence over the\nproperties file and CLI arguments take precedence over all.\n\nSupported properties are:\n\n```\ncucumber.ansi-colors.disabled=              # true or false. default: false\n\ncucumber.execution.dry-run=                 # true or false. default: false\n\ncucumber.execution.limit=                   # number of scenarios to execute (CLI only).\n\ncucumber.execution.order=                   # lexical, reverse, random or random:[seed] (CLI only). default: lexical\n\ncucumber.execution.wip=                     # true or false. default: false.\n                                            # Fails if there any passing scenarios\n                                            # CLI only.\n\ncucumber.execution.threads=                 # number of threads used to execute scenarios (CLI only).\n\ncucumber.features=                          # comma separated list of feature paths.\n                                            # format: [ PATH[.feature[:LINE]*] | URI[.feature[:LINE]*] | @PATH ]\n                                            # example: path/to/features, classpath:com/example/features, path/to/example.feature:42, @path/to/rerun.txt\n\ncucumber.filter.name=  \n[truncated]",
+      "harness_expectations_met": true
+    },
+    {
+      "case": "stdin_without_path",
+      "actually_executed": true,
+      "main_class": "io.cucumber.core.cli.Main",
+      "tail_arguments": [],
+      "stdin_supplied": true,
+      "native_cli_exit_code": 0,
+      "timed_out": false,
+      "finished_scenarios": 0,
+      "application_function_calls": 0,
+      "output": "Oct 23, 2026 2:18:43 AM io.cucumber.core.runtime.FeaturePathFeatureSupplier get\nWARNING: No features found at classpath:/\nSPECMD_CLI_COUNTS finished=0 application_calls=0\n",
+      "harness_expectations_met": true
+    },
+    {
+      "case": "markdown_path",
+      "actually_executed": true,
+      "main_class": "io.cucumber.core.cli.Main",
+      "tail_arguments": [
+        "fixtures/passing.md"
+      ],
+      "stdin_supplied": false,
+      "native_cli_exit_code": 0,
+      "timed_out": false,
+      "finished_scenarios": 0,
+      "application_function_calls": 0,
+      "output": "Oct 23, 2026 2:18:43 AM io.cucumber.core.runtime.FeaturePathFeatureSupplier get\nWARNING: No features found at file://[PROJECT]/fixtures/passing.md\nSPECMD_CLI_COUNTS finished=0 application_calls=0\n",
+      "harness_expectations_met": true
+    }
+  ],
+  "harness_expectations_met": true,
+  "harness_exit_code": 0,
+  "human_approval_implemented": false,
+  "production_gate_implemented": false
+}

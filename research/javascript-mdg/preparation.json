@@ -1,0 +1,31 @@
+{
+  "status": "prepared_without_cucumber_execution",
+  "dateReference": "2026-10-22 America/Sao_Paulo",
+  "node": "v24.19.0",
+  "npm": "11.9.0",
+  "cucumberVersion": null,
+  "dependencyInstalledByThisAgent": false,
+  "remoteAttempt": "Dependency/source requests were interrupted while pending and returned no output; no package version was resolved by this agent.",
+  "localChecks": [
+    {
+      "command": "node --check research/javascript-mdg/run.mjs",
+      "exitCode": 0
+    },
+    {
+      "command": "node --check research/javascript-mdg/support/steps.cjs",
+      "exitCode": 0
+    },
+    {
+      "command": "node research/javascript-mdg/run.mjs --help",
+      "exitCode": 0
+    },
+    {
+      "check": "node:assert/strict verified add(2, 3) === 5",
+      "exitCode": 0
+    }
+  ],
+  "mdgRunnerSupportConfirmed": false,
+  "note": "A passing JavaScript syntax check is not a Cucumber execution. Root will run package resolution and the baseline separately.",
+  "scope": "Initial offline preparation only; see subsequent runner evidence.",
+  "subsequentRunnerEvidence": "results/13.3.0.json"
+}

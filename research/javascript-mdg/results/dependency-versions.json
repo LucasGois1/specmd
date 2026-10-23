@@ -1,0 +1,29 @@
+{
+  "runtime": {
+    "node": "v24.19.0",
+    "npm": "11.9.0"
+  },
+  "directDependency": {
+    "@cucumber/cucumber": "13.3.0"
+  },
+  "observedPackages": {
+    "@cucumber/cucumber": {
+      "version": "13.3.0",
+      "integrity": "sha512-6OSoj/SQogJwEjoNrPZ5gtyTDwbmtCDuzJ/hc81nOVhwEBAO6ypgdWd+qCScOdyZxgtQvUWG534LBWb5h9/Y8Q==",
+      "engines": {
+        "node": "22 || 24 || >=26"
+      }
+    },
+    "@cucumber/gherkin": {
+      "version": "42.0.1",
+      "integrity": "sha512-Kqg0ULhWqbXp/a1c04ND4sS4KTlIL831tQ0NhZLXWdEhT6LiNsZ5LFRzy/lBy7QQpcKhroKp/i3C2WdEnRBKNg=="
+    },
+    "@cucumber/messages": {
+      "version": "34.2.1",
+      "integrity": "sha512-aj2iCAG9ZOpMVcMxcgShifv5fbR96b7SMgdWcPXXh2QbFp7OEcAnQ5MC5YfWUDSDasmw7FU5NJEsOrXdTQOU1A=="
+    }
+  },
+  "packageLockSha256": "c55387f01f9806e1b1638b79ac84292726a4a8c1e717a9de5a73f840ce8a4299",
+  "packageLockBytes": 35793,
+  "note": "Only key resolved versions are included here. The full generated lockfile is retained in the local execution output and is exported by run.mjs on reproduction."
+}

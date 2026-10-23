@@ -1,0 +1,10 @@
+CASE passing_two_blocks_pt native=0 finished=2 app_calls=2 gate=true expectations=true
+CASE assertion_failure native=1 finished=1 app_calls=1 gate=false expectations=true
+CASE undefined_step native=1 finished=1 app_calls=0 gate=false expectations=true
+CASE all_required_scenarios_filtered native=0 finished=0 app_calls=0 gate=false expectations=true
+CASE dry_run_without_application_execution native=0 finished=2 app_calls=0 gate=false expectations=true
+CLI text_argument native=1 finished=null expectations=true
+CLI stdin_dash native=1 finished=null expectations=true
+CLI stdin_without_path native=0 finished=0 expectations=true
+CLI markdown_path native=0 finished=0 expectations=true
+HARNESS expectations=true feature_files=0->0

@@ -1,0 +1,68 @@
+{
+  "case": "pass",
+  "go_version": "go1.25.0",
+  "godog_version": "v0.16.0",
+  "markdown": "contract.md",
+  "markdown_sha256": "7d74c95c9645d78cb5acd90a5eaf8680c275e714b296fddc04fd5773a9f5051e",
+  "gherkin_blocks": 2,
+  "scenario_origins": {
+    "SG-GO-SCN-001": {
+      "document": "contract.md",
+      "block": 1,
+      "line": 14
+    },
+    "SG-GO-SCN-002": {
+      "document": "contract.md",
+      "block": 2,
+      "line": 48
+    },
+    "SG-GO-SCN-003": {
+      "document": "contract.md",
+      "block": 1,
+      "line": 20
+    },
+    "SG-GO-SCN-004": {
+      "document": "contract.md",
+      "block": 1,
+      "line": 26
+    },
+    "SG-GO-SCN-005": {
+      "document": "contract.md",
+      "block": 1,
+      "line": 32
+    }
+  },
+  "expected_scenarios": [
+    "SG-GO-SCN-001",
+    "SG-GO-SCN-002"
+  ],
+  "observed_scenarios": [
+    {
+      "id": "SG-GO-SCN-001",
+      "runner_uri": "contract.md#gherkin-1",
+      "origin": {
+        "document": "contract.md",
+        "block": 1,
+        "line": 14
+      },
+      "status": "passed"
+    },
+    {
+      "id": "SG-GO-SCN-002",
+      "runner_uri": "contract.md#gherkin-2",
+      "origin": {
+        "document": "contract.md",
+        "block": 2,
+        "line": 48
+      },
+      "status": "passed"
+    }
+  ],
+  "runner_exit": 0,
+  "gate_allowed": true,
+  "gate_reasons": [],
+  "feature_files_required": [],
+  "input_mode": "file",
+  "runner_transport": "vfs",
+  "filesystem_opens_memory_mode": 0
+}

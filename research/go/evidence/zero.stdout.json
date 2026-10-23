@@ -1,0 +1,25 @@
+{
+  "case": "zero",
+  "go_version": "go1.25.0",
+  "godog_version": "v0.16.0",
+  "markdown": "empty.md",
+  "markdown_sha256": "2659416c939e1fa2932d95e4beea851b7796c85a6909ea3eecb1ad26d9cea5d2",
+  "gherkin_blocks": 1,
+  "scenario_origins": {},
+  "expected_scenarios": [
+    "SG-GO-SCN-001",
+    "SG-GO-SCN-002"
+  ],
+  "observed_scenarios": [],
+  "runner_exit": 0,
+  "gate_allowed": false,
+  "gate_reasons": [
+    "SG-GO-SCN-001 executado 0 vez(es); exigido 1",
+    "SG-GO-SCN-002 executado 0 vez(es); exigido 1",
+    "zero cenários executados não autoriza conclusão"
+  ],
+  "feature_files_required": [],
+  "input_mode": "file",
+  "runner_transport": "bytes",
+  "filesystem_opens_memory_mode": 0
+}

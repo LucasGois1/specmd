@@ -2,7 +2,7 @@
 
 Documentação canônica em Markdown, aceite humano versionado e evidências de execução para desenvolvimento com agentes de IA.
 
-> **Estado do projeto:** concepção e planejamento. Este repositório documenta o produto a implementar. Ainda não há CLI, plugin, serviço de aceite ou executor funcional. A publicação destes documentos não constitui aceite contratual das versões aqui descritas.
+> **Estado do projeto:** concepção e pesquisa técnica. O núcleo, os plugins e o serviço de aceite ainda não estão implementados. Os experimentos em `research/` investigam integração com runners e não constituem suporte produtivo. A publicação destes documentos não constitui aceite contratual das versões aqui descritas.
 
 ## O problema
 
@@ -22,6 +22,10 @@ O projeto propõe tornar explícita a relação entre **intenção reconhecida, 
 - Manter um inventário incremental para evitar análises repetidas sem ignorar mudanças relevantes.
 
 Gherkin é a linguagem dos cenários; Cucumber é um possível mecanismo de execução. **Não se presume suporte nativo de Cucumber a Markdown.** O primeiro experimento técnico precisa demonstrar a integração por parsing e adaptação em memória, preservando a origem dos cenários no `.md`.
+
+O suporte inicial deve contemplar pelo menos Java, Python e Go. Os mecanismos de entrada e execução são pesquisados individualmente; não se presume um parâmetro de CLI comum às três linguagens.
+
+Documentação executável e vários mecanismos de rastreabilidade e gates já têm antecedentes. A [pesquisa de posicionamento](docs/positioning.md) registra a sobreposição e recomenda comparar integrações existentes antes de construir novos subsistemas. O possível benefício do SpecMD é uma hipótese a validar, sem alegação de novidade ou exclusividade.
 
 ## Fluxo pretendido
 
@@ -48,6 +52,9 @@ Documentos informativos podem receber dispensa de Gherkin, mas essa classificaç
 | [Integrações](docs/integrations.md) | Núcleo CLI e adaptadores propostos para agentes e CI. |
 | [Plano de implementação](docs/roadmap.md) | Marcos, dependências e entregas verificáveis. |
 | [Plano de validação](docs/validation-plan.md) | Experimentos, casos negativos e métricas. |
+| [Pesquisa dos runners](research/README.md) | Hipóteses, protótipos e evidências por linguagem. |
+| [Resultados de viabilidade](docs/runner-feasibility.md) | Execuções reais em Java, Python, Go e baseline MDG em JavaScript. |
+| [Posicionamento e antecedentes](docs/positioning.md) | MDG, rastreabilidade, gates existentes e critérios para reduzir ou integrar a solução. |
 | [Decisões e pendências](docs/decisions.md) | Diretrizes da discussão e escolhas ainda abertas. |
 
 Exemplos de formato: [contrato comportamental](examples/cancellation.contract.md) e [documento informativo](examples/editor-setup.reference.md). São ilustrações sem aceite autenticado ou execução implementada.
@@ -63,6 +70,6 @@ Exemplos de formato: [contrato comportamental](examples/cancellation.contract.md
 
 ## Como começar a implementação
 
-Leia o [plano de implementação](docs/roadmap.md). O primeiro marco é provar a execução de um cenário definido em Markdown sem exigir `.feature`, antes de assumir uma integração específica de runner. Stack, primeiro adaptador, mecanismo de aprovação e licença permanecem em aberto.
+Leia o [plano de implementação](docs/roadmap.md) e a [pesquisa](research/README.md). O primeiro marco é provar a execução de cenários definidos em Markdown sem exigir `.feature` em Java, Python e Go, antes de estabilizar os adaptadores de runner. Stack do núcleo, primeiro adaptador de agente, mecanismo de aprovação e licença permanecem em aberto.
 
-Não há comandos de instalação ou execução disponíveis nesta etapa.
+Não há comandos de instalação ou execução do produto nesta etapa. Comandos de experimentos, quando disponíveis, pertencem aos respectivos relatórios de pesquisa.

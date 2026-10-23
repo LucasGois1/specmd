@@ -1,0 +1,18 @@
+Funcionalidade: Soma de inteiros
+
+  Cenário: Demonstrar uma asserção incorreta # contract.md#gherkin-1:21
+    Dado os números 2 e 3                    # main.go:140 -> main.run.initialize.func2.3
+    Quando eu somar os números               # main.go:141 -> main.run.initialize.func2.4
+    Então o resultado deve ser 99            # main.go:142 -> main.run.initialize.func2.5
+    Add(2, 3) = 5; esperado 99
+
+--- Failed steps:
+
+  Cenário: Demonstrar uma asserção incorreta # contract.md#gherkin-1:21
+    Então o resultado deve ser 99 # contract.md#gherkin-1:24
+      Error: Add(2, 3) = 5; esperado 99
+
+
+1 scenarios (1 failed)
+3 steps (2 passed, 1 failed)
+351.104µs

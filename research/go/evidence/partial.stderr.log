@@ -1,0 +1,10 @@
+Funcionalidade: Soma de inteiros
+
+  Cenário: Somar dois números    # contract.md#gherkin-1:15
+    Dado os números 2 e 3        # main.go:140 -> main.run.initialize.func2.3
+    Quando eu somar os números   # main.go:141 -> main.run.initialize.func2.4
+    Então o resultado deve ser 5 # main.go:142 -> main.run.initialize.func2.5
+
+1 scenarios (1 passed)
+3 steps (3 passed)
+288.446µs

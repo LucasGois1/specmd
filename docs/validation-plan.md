@@ -1,6 +1,6 @@
 # Plano de validação
 
-> Proposta de validação, ainda não executada. Os casos abaixo não representam resultados obtidos, testes existentes ou aceites emitidos.
+> Plano de validação do produto ainda não concluído. Protótipos de viabilidade de runners já foram executados e estão registrados no [estudo técnico](runner-feasibility.md). Os demais casos abaixo continuam planejados; não representam aceites emitidos nem testes de produto já aprovados.
 
 O plano avalia duas questões diferentes: se o mecanismo aplica corretamente as regras declaradas e se seu uso melhora o desenvolvimento com agentes. Um gate tecnicamente correto pode produzir pouca utilidade ou interrupções excessivas; uma boa experiência não substitui a integridade do aceite.
 
@@ -112,6 +112,8 @@ O registro comprova que houve uma ação autenticada de concordância, não que 
 ## Experimento de utilidade do produto
 
 Comparar tarefas representativas executadas com o processo atual da equipe e com o mecanismo proposto. Manter objetivos, contexto disponível e ambiente comparáveis; registrar versões dos agentes/modelos e recursos de execução. Variar a ordem ou usar tarefas equivalentes para reduzir o efeito de aprendizado.
+
+Incluir um baseline forte com ferramentas existentes bem configuradas: executor documental, revisão autenticada e CI; quando pertinente, composição com SDD, rastreabilidade e gates já disponíveis. A [pesquisa de posicionamento](positioning.md) identifica candidatos e sobreposições. Não tornar o baseline artificialmente complexo instalando todos os candidatos, nem comparar apenas contra ausência de documentação e controles. O experimento precisa poder concluir que uma integração pequena ou a adoção de uma solução existente atende melhor ao trabalho.
 
 Uma pessoa independente do agente executor deve avaliar os critérios de aceitação e as mudanças de comportamento. O conjunto precisa incluir tarefas normais e casos com desafios conhecidos: omissão de requisito, regra extra, documento informativo, alteração de contrato legítima e falha de ambiente. Casos artificiais devem ser identificados como tal.
 

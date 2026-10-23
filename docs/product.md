@@ -73,7 +73,8 @@ Hooks não são considerados equivalentes entre hosts e não garantem, por si, c
 - Inventário, hashes, classificação humana e diff entre versão aceita e proposta.
 - Um mecanismo autenticado de aceite fora da autoridade do agente, escolhido depois de validar a fronteira de confiança.
 - Uma CLI com resultados estruturados, um adaptador de agente inicial e um gate de integração protegido.
-- Um executor cuja integração em memória seja comprovada por um spike antes de anunciar suporte.
+- Adaptadores de execução cuja integração em memória seja comprovada por um spike antes de anunciar suporte.
+- Suporte inicial a Java, Python e Go, com pesquisa e execução reais por linguagem antes de estabilizar os adaptadores. Uma engine não implica compatibilidade universal entre runtimes.
 - Evidências ligadas ao snapshot, aos cenários e à versão do verificador.
 
 Essa lista é proposta de implementação, não um compromisso de compatibilidade já demonstrada. A composição técnica está em [architecture.md](architecture.md), o inventário em [indexing.md](indexing.md) e a sequência de entrega em [roadmap.md](roadmap.md).
@@ -85,6 +86,8 @@ Não se pretende no MVP converter automaticamente toda documentação legada, co
 As mesmas relações entre requisitos, snapshots e evidências podem sustentar revisão de PR por obrigação, continuidade entre sessões e agentes, análise de impacto e prontidão de release. Essas expansões devem ser avaliadas depois do núcleo. A primeira adjacência sugerida é um relatório de revisão que mostre mudanças de contrato e evidências por requisito.
 
 A hipótese comercial ainda está aberta. Será preciso verificar frequência e custo das divergências, redução de revisão manual, precisão dos alertas e custo dos bloqueios indevidos. O desenho experimental está em [validation-plan.md](validation-plan.md).
+
+A [pesquisa de antecedentes](positioning.md) encontrou sobreposição com documentação executável, rastreabilidade e gates existentes. O projeto deve comparar reutilização e integração antes de construir um formato, índice ou mecanismo de aprovação próprio. O ganho de experiência e qualidade ainda precisa ser demonstrado contra um baseline bem configurado.
 
 ## Questões ainda abertas
 

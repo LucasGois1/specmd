@@ -2,7 +2,7 @@
 
 ## Estado do repositório
 
-Este projeto está na etapa de documentação e planejamento. Não existe implementação funcional anunciada. Preserve a distinção entre diretrizes da conversa, desenho técnico proposto, decisões pendentes e evidências realmente produzidas.
+Este projeto está na etapa de documentação e pesquisa técnica. O núcleo e os plugins não estão implementados. Protótipos em `research/` não constituem suporte produtivo. Preserve a distinção entre diretrizes da conversa, desenho técnico proposto, decisões pendentes e evidências realmente produzidas.
 
 A autorização para criar ou editar documentação não deve ser apresentada como um recibo de aceite contratual. Nunca fabrique aprovação, assinatura, execução de testes ou suporte de integração.
 

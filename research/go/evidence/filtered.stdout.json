@@ -1,0 +1,51 @@
+{
+  "case": "filtered",
+  "go_version": "go1.25.0",
+  "godog_version": "v0.16.0",
+  "markdown": "contract.md",
+  "markdown_sha256": "7d74c95c9645d78cb5acd90a5eaf8680c275e714b296fddc04fd5773a9f5051e",
+  "gherkin_blocks": 2,
+  "scenario_origins": {
+    "SG-GO-SCN-001": {
+      "document": "contract.md",
+      "block": 1,
+      "line": 14
+    },
+    "SG-GO-SCN-002": {
+      "document": "contract.md",
+      "block": 2,
+      "line": 48
+    },
+    "SG-GO-SCN-003": {
+      "document": "contract.md",
+      "block": 1,
+      "line": 20
+    },
+    "SG-GO-SCN-004": {
+      "document": "contract.md",
+      "block": 1,
+      "line": 26
+    },
+    "SG-GO-SCN-005": {
+      "document": "contract.md",
+      "block": 1,
+      "line": 32
+    }
+  },
+  "expected_scenarios": [
+    "SG-GO-SCN-001",
+    "SG-GO-SCN-002"
+  ],
+  "observed_scenarios": [],
+  "runner_exit": 0,
+  "gate_allowed": false,
+  "gate_reasons": [
+    "SG-GO-SCN-001 executado 0 vez(es); exigido 1",
+    "SG-GO-SCN-002 executado 0 vez(es); exigido 1",
+    "zero cenários executados não autoriza conclusão"
+  ],
+  "feature_files_required": [],
+  "input_mode": "file",
+  "runner_transport": "bytes",
+  "filesystem_opens_memory_mode": 0
+}

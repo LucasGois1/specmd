@@ -1,0 +1,32 @@
+{
+  "generated_at_utc": "2026-10-23T02:26:54.297116+00:00",
+  "engine": "behave",
+  "engine_version": "1.3.3",
+  "python_version": "3.12.14",
+  "script_sha256": "322ad6a5686f4057fd3825083e6cad5f52d451547073512be928421d8bd7fc81",
+  "harness_process_exit_status": 0,
+  "results": [
+    {
+      "case": "positive",
+      "engine_failed": false,
+      "scenarios": [
+        {
+          "name": "positive",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "case": "assertion_failure",
+      "engine_failed": true,
+      "scenarios": [
+        {
+          "name": "assertion_failure",
+          "status": "failed"
+        }
+      ]
+    }
+  ],
+  "scope": "Gherkin string parsed and executed in memory; no Markdown extraction in this minimal probe",
+  "feature_files_in_research_tree": []
+}

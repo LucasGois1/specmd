@@ -16,8 +16,9 @@ O agente pode propor contratos, cenários e dispensas. A autoridade de aceite pe
 
 | Marco | Objetivo | Dependências | Saída verificável |
 | --- | --- | --- | --- |
+| R0 — Reaproveitamento e posicionamento | Mapear o que MDG, ferramentas de SDD, rastreabilidade, reviews e gates existentes já resolvem. | [Pesquisa de antecedentes](positioning.md) e configuração comparável do problema. | Mapa de sobreposição e hipótese de lacuna; nenhum subsistema próprio é presumido necessário. |
 | M0 — Viabilidade de execução | Demonstrar cenários reais vindos de Markdown em Java, Python e Go, sem arquivos `.feature` obrigatórios. | Seleção de candidatos a parser e runner por linguagem. | Em cada linguagem: cenário que passa, outro que falha, passo indefinido e origem corretamente reportada; ausência de cenários não recebe OK. |
-| M1 — Decisões técnicas mínimas | Escolher a stack inicial, o runner e o primeiro ambiente de agentes. | Resultados de M0 e verificação das capacidades das plataformas. | Decisões registradas, versões fixadas para o protótipo e limitações documentadas. |
+| M1 — Decisões técnicas mínimas | Escolher a stack do núcleo, os runners e o primeiro ambiente de agentes, priorizando reutilização. | R0, resultados de M0 e verificação das capacidades das plataformas. | Decisões registradas, versões fixadas para o protótipo, componentes reaproveitados e limitações documentadas. |
 | M2 — Núcleo e inventário | Produzir um inventário e manifesto determinísticos dos documentos no escopo. | M1 e política inicial de descoberta. | Mesma revisão gera o mesmo manifesto; adições, alterações, exclusões e renomeações são identificadas. |
 | M3 — Classificação e revisão | Representar documentos comportamentais, informativos, mistos e pendentes. | M2 e proposta de formato. | Novo documento e documento alterado geram pendência; uma dispensa depende de aceite válido da versão. |
 | M4 — Aceite autenticado | Vincular uma decisão humana ao conteúdo e escopo revisados. | M2, M3 e definição da autoridade confiável. | O agente não consegue emitir um aceite válido com suas próprias permissões; conteúdo alterado não herda o aceite anterior. |

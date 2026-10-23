@@ -1,0 +1,17 @@
+Funcionalidade: Soma de inteiros
+
+  Cenário: Somar dois números    # contract.md#gherkin-1:15
+    Dado os números 2 e 3        # main.go:140 -> main.run.initialize.func2.3
+    Quando eu somar os números   # main.go:141 -> main.run.initialize.func2.4
+    Então o resultado deve ser 5 # main.go:142 -> main.run.initialize.func2.5
+
+Funcionalidade: Cobrança depois do cancelamento
+
+  Cenário: Reprocessar cobrança de um pedido cancelado # contract.md#gherkin-2:49
+    Dado um pedido cancelado sem cobranças             # main.go:148 -> main.run.initialize.func2.6
+    Quando o evento de cobrança for reprocessado       # main.go:149 -> main.run.initialize.func2.7
+    Então nenhuma cobrança deve ser criada             # main.go:150 -> main.run.initialize.func2.8
+
+2 scenarios (2 passed)
+6 steps (6 passed)
+564.329µs

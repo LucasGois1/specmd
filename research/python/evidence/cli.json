@@ -1,0 +1,53 @@
+{
+  "generated_at_utc": "2026-10-23T02:26:53.816352+00:00",
+  "engine": "behave",
+  "engine_version": "1.3.3",
+  "scope": "stock CLI, empty working directory, literal argument and stdin",
+  "sanitization": "temporary directory replaced with <TMPDIR>",
+  "observations": [
+    {
+      "case": "literal_argument",
+      "command": [
+        "python3",
+        "-m",
+        "behave",
+        "# language: pt\nFuncionalidade: Entrada textual\n  Cenário: Exemplo\n    Dado algo\n"
+      ],
+      "stdin_supplied": false,
+      "engine_cli_exit_status": 1,
+      "stdout": "USING RUNNER: behave.runner:Runner\nConfigError: No steps directory in '<TMPDIR>/# language: pt\\nFuncionalidade: Entrada textual\\n  Cenário: Exemplo\\n    Dado algo\\n'\n",
+      "stderr": "",
+      "feature_files_after": []
+    },
+    {
+      "case": "stdin_default",
+      "command": [
+        "python3",
+        "-m",
+        "behave"
+      ],
+      "stdin_supplied": true,
+      "engine_cli_exit_status": 1,
+      "stdout": "USING RUNNER: behave.runner:Runner\nConfigError: No steps directory in '<TMPDIR>/features'\n",
+      "stderr": "",
+      "feature_files_after": []
+    },
+    {
+      "case": "stdin_dash",
+      "command": [
+        "python3",
+        "-m",
+        "behave",
+        "-"
+      ],
+      "stdin_supplied": true,
+      "engine_cli_exit_status": 1,
+      "stdout": "USING RUNNER: behave.runner:Runner\nConfigError: No steps directory in '<TMPDIR>/-'\n",
+      "stderr": "",
+      "feature_files_after": []
+    }
+  ],
+  "harness_expectations_met": true,
+  "harness_exit_status": 0,
+  "limitation": "These failures do not exhaust custom-runner configurations or prove that no CLI extension can accept text. They record these exact attempts."
+}
