@@ -165,9 +165,9 @@ Funcionalidade: Estado local
     Então a análise funciona como em um projeto sem estado
 ```
 
-## SMD-REQ-026 — Instalação por repositório (proposta)
+## SMD-REQ-026 — Instalação por repositório
 
-O plugin deve carregar sozinho quando alguém abre o agente no repositório. Um comando de início prepara o projeto, incluindo a configuração do agente que declara o marketplace do SpecMD e habilita o plugin; cada pessoa só precisa aceitar a confiança da pasta.
+O plugin carrega sozinho quando alguém abre o agente no repositório. `specmd init` (ou `/specmd:init`) prepara o projeto, incluindo a configuração do agente que declara o marketplace do SpecMD e habilita o plugin; cada pessoa só precisa aceitar a confiança da pasta. As dependências vêm com o plugin; a máquina precisa de Python 3.11 ou superior.
 
 ```gherkin
 # language: pt

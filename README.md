@@ -15,6 +15,19 @@ make status   # estado do demo; make run executa os cenários
 
 No `make agent`, peça uma mudança de regra ao agente, por exemplo "adicione desconto de 10% para totais acima de 1000 centavos". Ele escreve a regra e os cenários no Markdown, pede sua confirmação, implementa, e o SpecMD executa os cenários ao final.
 
+## Usar no seu repositório
+
+Prepare o repositório uma vez e faça commit dos arquivos gerados (`specmd.toml`, `.specmdignore` e `.claude/settings.json`):
+
+```bash
+make init REPO=/caminho/do/seu/repo
+# ou, sem clonar o SpecMD, dentro do Claude Code no seu repositório:
+#   claude plugin install specmd --marketplace LucasGois1/specmd --scope project
+#   /specmd:init
+```
+
+Depois disso, quem abrir o Claude Code no repositório e confiar na pasta recebe o plugin automaticamente. O plugin precisa de Python 3.11 ou superior na máquina; as dependências vêm junto.
+
 ## O problema
 
 Agentes esquecem condições, interpretam regras de outro jeito ou inventam regras que ninguém pediu, e escrevem testes que as protegem. Com testes em arquivos `.feature` separados, a documentação e os testes ainda podem divergir entre si.
