@@ -17,16 +17,16 @@ No `make agent`, peça uma mudança de regra ao agente, por exemplo "adicione de
 
 ## Usar no seu repositório
 
-Prepare o repositório uma vez e faça commit dos arquivos gerados (`specmd.toml`, `.specmdignore` e `.claude/settings.json`):
+Dentro do Claude Code, no seu repositório:
 
-```bash
-make init REPO=/caminho/do/seu/repo
-# ou, sem clonar o SpecMD, dentro do Claude Code no seu repositório:
-#   claude plugin install specmd --marketplace LucasGois1/specmd --scope project
-#   /specmd:init
+```
+/plugin marketplace add LucasGois1/specmd
+/plugin install specmd@specmd        → escolha o escopo do projeto ou local
 ```
 
-Depois disso, quem abrir o Claude Code no repositório e confiar na pasta recebe o plugin automaticamente. O plugin precisa de Python 3.11 ou superior na máquina; as dependências vêm junto.
+Pronto: o SpecMD já está ativo nesse repositório, com os padrões. Para o time receber o plugin automaticamente, rode `/specmd:init` (ou `make init REPO=…` a partir deste clone) e faça commit do `.claude/settings.json`; quem abrir o Claude Code no repositório e confiar na pasta recebe o plugin.
+
+`specmd.toml` e `.specmdignore` são opcionais, para ajustar o comportamento (veja o [formato](docs/format.md)). O plugin precisa de Python 3.11 ou superior na máquina; as dependências vêm junto.
 
 ## O problema
 
