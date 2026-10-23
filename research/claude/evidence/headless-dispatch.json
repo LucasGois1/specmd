@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "observed_at_utc": "2026-10-23T17:04:10.578599+00:00",
+  "observed_at_utc": "2026-10-23T17:19:30.988983+00:00",
   "claude_version": "2.1.309 (Claude Code)",
   "plugin_dir": "<repo>/dist/codex-plugin",
   "flags": "-p --model haiku --setting-sources project,local --strict-mcp-config --permission-mode acceptEdits",
@@ -15,7 +15,7 @@
       "hooks": {
         "SessionStart": 1,
         "UserPromptSubmit": 1,
-        "PostToolUse": 5,
+        "PostToolUse": 3,
         "Stop": 1
       },
       "hook_failures": [],
@@ -46,14 +46,6 @@
         },
         {
           "tool": "Read",
-          "target": "<tmp>/documentation_gap/app.py"
-        },
-        {
-          "tool": "Read",
-          "target": "<tmp>/documentation_gap/specmd.toml"
-        },
-        {
-          "tool": "Read",
           "target": "<tmp>/documentation_gap/docs/cart.md"
         },
         {
@@ -65,9 +57,9 @@
       "model": "claude-haiku-5-5",
       "specmd_plugin_loaded": true,
       "other_plugins": 10,
-      "turns": 8,
+      "turns": 6,
       "is_error": false,
-      "cost_usd": 0.003936630000000001,
+      "cost_usd": 0.00321804,
       "expectations": {
         "specmd_plugin_loaded": true,
         "lifecycle_events_dispatched": true,
@@ -93,7 +85,7 @@
         {
           "hook": "Stop",
           "decision": "block",
-          "text": "SpecMD: 2 de 2 cenários da documentação não passaram.\n- docs/cart.md:26 SMD-DEMO-SCN-001 \"Somar dois itens\" (failed)\n    Então o total deve ser 500 centavos (linha 29): failed\n      ASSERT FAILED: Total observado 501; esperado 500\n- docs/cart.md:32 SMD-DEMO-SCN-002 \"Consultar um carrinho vazio\" (failed)\n    Então o total deve ser 0 centavos (linha 35): failed\n      ASSERT FAILED: Total observado 1"
+          "text": "SpecMD: 2 de 2 cenários da documentação não passaram.\n- docs/cart.md:14 docs/cart.md::Somar dois itens \"Somar dois itens\" (failed)\n    Então o total deve ser 500 centavos (linha 17): failed\n      ASSERT FAILED: Total observado 501; esperado 500\n- docs/cart.md:28 docs/cart.md::Consultar um carrinho vazio \"Consultar um carrinho vazio\" (failed)\n    Então o total deve ser 0 centavos (linha 31): failed"
         },
         {
           "hook": "Stop",
@@ -107,16 +99,8 @@
           "target": ""
         },
         {
-          "tool": "Bash",
-          "target": ""
-        },
-        {
           "tool": "Edit",
           "target": "<tmp>/code_breaks_scenario/app.py"
-        },
-        {
-          "tool": "Bash",
-          "target": ""
         },
         {
           "tool": "Bash",
@@ -127,9 +111,9 @@
       "model": "claude-haiku-5-5",
       "specmd_plugin_loaded": true,
       "other_plugins": 10,
-      "turns": 7,
+      "turns": 5,
       "is_error": false,
-      "cost_usd": 0.0037479949999999996,
+      "cost_usd": 0.002953325,
       "expectations": {
         "specmd_plugin_loaded": true,
         "lifecycle_events_dispatched": true,
@@ -147,7 +131,7 @@
       "hooks": {
         "SessionStart": 1,
         "UserPromptSubmit": 1,
-        "PostToolUse": 5,
+        "PostToolUse": 6,
         "Stop": 1
       },
       "hook_failures": [],
@@ -169,11 +153,11 @@
         },
         {
           "tool": "Read",
-          "target": "<tmp>/implement_confirmed/tests/steps/cart_steps.py"
+          "target": "<tmp>/implement_confirmed/app.py"
         },
         {
           "tool": "Read",
-          "target": "<tmp>/implement_confirmed/docs/cart.md"
+          "target": "<tmp>/implement_confirmed/tests/steps/cart_steps.py"
         },
         {
           "tool": "Edit",
@@ -194,15 +178,23 @@
         {
           "tool": "Bash",
           "target": ""
+        },
+        {
+          "tool": "Write",
+          "target": "/tmp/specmd_verify_scripts/extract.py"
+        },
+        {
+          "tool": "Bash",
+          "target": ""
         }
       ],
       "claude_code_version": "2.1.309",
       "model": "claude-haiku-5-5",
       "specmd_plugin_loaded": true,
       "other_plugins": 10,
-      "turns": 10,
+      "turns": 12,
       "is_error": false,
-      "cost_usd": 0.004911115,
+      "cost_usd": 0.006288065000000001,
       "expectations": {
         "specmd_plugin_loaded": true,
         "lifecycle_events_dispatched": true,
@@ -221,15 +213,15 @@
     ".claude-plugin/plugin.json": "d7bee5cd03faf757f33dbd85b480dd7b9c570e2c8b8727b882d132ce07bf5368",
     "src/specmd/__init__.py": "93bccd229b7e8f6f1742883e2017abdbcb81c996be8452c452a7297793fb73ec",
     "src/specmd/__main__.py": "935a1c1166b0c1ea35a82256345000bf2c73ded718d77773bc27a71ecce28f7d",
-    "src/specmd/behave_worker.py": "5b67c92a8f0301f1fd411b7e5aae02c2f1b60b0c22272dcacfb5b94fa790f04a",
+    "src/specmd/behave_worker.py": "1567f057c5806b79cf762412b8be937192929c23e69203f40859bfc0fd9a3c7a",
     "src/specmd/claude.py": "33332344030314ce10bd4ea10c37fb441ee6287e33ccfc19a2e6296e1919f537",
-    "src/specmd/cli.py": "aa09b6b44b6d0d8e928079a2275b4cdb434d7992179839c4bfb81ce9e3b0f5c7",
+    "src/specmd/cli.py": "720dd6fd51362766a13dce1a60fe74638a83b48ddf149735a1ac1b64a9daec97",
     "src/specmd/codex.py": "7cba9663eb3ba96755df6f22eb261945c52c5787c714649392533d36d3e7333f",
-    "src/specmd/config.py": "4230358dd95c02a4314165f3aa30ba9d5ee4194ba188885de768dfd5e2f074ad",
-    "src/specmd/core.py": "6ea63ba5b1e2d5f2def414266cd093d0218bca7476b9caa3c6715c651cc73e98",
-    "src/specmd/demo.py": "66b1f27d4e5333df17c85a34854432b52a2128e77adfab4328b2b6b8509743f8",
-    "src/specmd/hooks.py": "b17d0ed878ffd8c5f0b16f921d057069235f3d7bf1a455eac3a155a0133baf80",
-    "src/specmd/runner.py": "7f92fd11c6e24f7946115eb6caa2f6912a571f78b4ff8c8bde2d458fc896e92b",
+    "src/specmd/config.py": "6805ad9a6257ddac8912f2cafd160e9947ef989dd783e3efa209bfd9c8c993ce",
+    "src/specmd/core.py": "3757bacfa9fbb92782083e88b0b0b7961b62ccaf5500df89cba02e655ceec1d6",
+    "src/specmd/demo.py": "d19b453fbc8179424e3549e2ac916c7b855728dbf8d21a08952f05b05a65140b",
+    "src/specmd/hooks.py": "7fc9f3f2732bbd90bd3631314da2a05df677c8bd86e5293a7dd12be1ad737f1a",
+    "src/specmd/runner.py": "96e51a4dca44013ed31fcbacf627c88e7e133de7bc57e2c2e809b0c8531f1671",
     "src/specmd/state.py": "765a75fd599344ef74b952c22401ed09041541b54a61594692ea33e5141d975c",
     "src/specmd/workflow.py": "6da4eb8ad1c634ef2f32a84831e76ff040b397b84888a1e61c5d7f40169f0b70"
   }
