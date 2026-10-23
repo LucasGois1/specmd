@@ -2,6 +2,8 @@
 
 ## Estado do repositório
 
+Para continuar o trabalho sem a conversa original, leia [HANDOFF.md](HANDOFF.md). Ele consolida contexto de produto, decisões, evidências, limites e cenários de validação com o agente local. Não constitui aceite dos contratos.
+
 Este projeto implementa um ciclo experimental em Python: inventário Markdown, revisão local, decisões Ed25519 versionadas, execução de cenários, evidência e adaptadores de agentes. Schema1 permanece preflight sem conclusão; schema2 pode produzir demo_passed em demonstração e passed em execução atual sob confiança externa configurada como protegida. O modo local não autentica a identidade humana nem isola a chave do agente. Verificador, configuração e autoridade precisam de uma fronteira de permissões externa para produção. Consulte docs/implementation-status.md. Protótipos em research/ não constituem suporte produtivo. Preserve a distinção entre código, propostas e evidências realmente produzidas.
 
 A autorização para criar ou editar documentação não deve ser apresentada como um recibo de aceite contratual. Nunca fabrique aprovação, assinatura, execução de testes ou suporte de integração.

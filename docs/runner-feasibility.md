@@ -1,6 +1,6 @@
 # Viabilidade de executar contratos Markdown
 
-**Estado:** pesquisa e protótipos locais executados em 22/10/2026, no contexto America/Sao_Paulo. As evidências preservam timestamps UTC. Não existe ainda núcleo produtivo, plugin de agente, autoridade de aceite ou gate protegido implementado.
+**Estado:** relatório histórico da pesquisa e dos protótipos locais executados em 22/10/2026, no contexto America/Sao_Paulo. As evidências preservam timestamps UTC. A implementação experimental posterior inclui núcleo, plugins, decisões assinadas e execução integrada; veja o [estado atual](implementation-status.md) e o [handoff](../HANDOFF.md). Este estudo isolado não demonstra autoridade humana autenticada nem implantação de gate protegido.
 
 ## Resultado principal
 

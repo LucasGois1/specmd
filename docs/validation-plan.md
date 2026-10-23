@@ -1,6 +1,6 @@
 # Plano de validação
 
-> Plano de validação do produto ainda não concluído. Protótipos de viabilidade de runners já foram executados e estão registrados no [estudo técnico](runner-feasibility.md). Os demais casos abaixo continuam planejados; não representam aceites emitidos nem testes de produto já aprovados.
+> Plano de validação do produto ainda não concluído. Há protótipos de runners e testes automatizados do ciclo experimental, registrados no [estudo técnico](runner-feasibility.md), no [estado atual](implementation-status.md) e no [handoff](../HANDOFF.md). Parte dos casos determinísticos já é exercitada em fixtures; a sessão humana com agente real e o piloto comparativo continuam necessários. Esses resultados não representam aceites dos contratos reais nem validação de utilidade do produto.
 
 O plano avalia duas questões diferentes: se o mecanismo aplica corretamente as regras declaradas e se seu uso melhora o desenvolvimento com agentes. Um gate tecnicamente correto pode produzir pouca utilidade ou interrupções excessivas; uma boa experiência não substitui a integridade do aceite.
 

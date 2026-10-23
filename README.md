@@ -7,7 +7,7 @@ Documentação canônica em Markdown, aceite humano versionado e evidências de 
 ```bash
 git clone https://github.com/LucasGois1/specmd.git
 cd specmd
-git switch feat/codex-preflight
+git switch main
 python3 -m venv .venv
 . .venv/bin/activate
 pip install -e .
@@ -57,6 +57,7 @@ Documentos informativos podem receber dispensa de Gherkin, mas essa classificaç
 
 | Documento | Conteúdo |
 | --- | --- |
+| [Handoff para o agente local](HANDOFF.md) | Contexto completo da conversa, decisões, implementação, lacunas e roteiro de validação com Lucas. |
 | [Guia rápido](docs/quickstart.md) | Demonstração, revisão, execução e instalação local. |
 | [Estado da implementação](docs/implementation-status.md) | Recursos implementados e limites de confiança/validação. |
 | [Produto](docs/product.md) | Problema, público, proposta, limites e oportunidades. |

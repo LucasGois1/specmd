@@ -1,6 +1,6 @@
 # SpecMD — proposta de produto
 
-**Estado:** rascunho para revisão humana. O produto não está implementado e estes documentos não constituem um contrato aprovado. O nome SpecMD foi escolhido pelo usuário.
+**Estado:** concepção de produto para revisão humana, preservando o contexto das decisões. Já existe uma implementação experimental 0.2.0; o [estado atual](implementation-status.md) e o [handoff](../HANDOFF.md) distinguem código, evidências e lacunas. Estes documentos não constituem contrato aprovado. O nome SpecMD foi escolhido pelo usuário.
 
 Este documento registra o entendimento desenvolvido na conversa de descoberta. “Confirmado na conversa” significa que uma direção foi solicitada ou explicitamente adotada durante a discussão; não significa que o usuário aprovou esta redação, os cenários ou uma futura implementação.
 
@@ -43,7 +43,7 @@ Os requisitos detalhados e seus cenários estão em [requirements.md](requiremen
 
 ## Fluxo proposto
 
-O fluxo abaixo é uma escolha de desenho para validar; os nomes dos comandos e a maioria dos estados ainda não estão definidos.
+O fluxo abaixo registra a intenção de produto. A versão experimental já possui comandos e estados, descritos no [guia rápido](quickstart.md); adequação da experiência e implantação protegida ainda precisam de validação.
 
 1. O sistema reconcilia o inventário de Markdown com o snapshot do projeto e identifica arquivos novos, modificados, removidos ou renomeados.
 2. O agente sugere classificação e, quando há obrigações, redige ou atualiza cenários no próprio Markdown. Inferências são apresentadas como propostas, com sua origem e suas dúvidas.

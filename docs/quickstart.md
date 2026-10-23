@@ -12,12 +12,12 @@ Este roteiro cria um projeto descartável com contrato Markdown, implementação
 
 ## Instalar
 
-Use Python 3.11 ou superior. Enquanto o PR experimental não estiver integrado, obtenha a branch de implementação:
+Use Python 3.11 ou superior. A implementação experimental foi integrada à `main` pelo PR #1; o [handoff](../HANDOFF.md) transfere o contexto para a sessão local. Obtenha o código:
 
 ```sh
 git clone https://github.com/LucasGois1/specmd.git
 cd specmd
-git switch feat/codex-preflight
+git switch main
 ```
 
 A partir dessa revisão:
