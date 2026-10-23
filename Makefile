@@ -16,7 +16,7 @@ DEMO = $(DEMO_BASE)/cart
 SPECMD_ENV = SPECMD_PYTHON="$(PY)"
 
 .DEFAULT_GOAL := help
-.PHONY: help setup bundle test demo agent status run require-demo
+.PHONY: help setup bundle test demo agent status run init require-demo
 
 help:
 	@echo "Uso: make <alvo>"
@@ -26,6 +26,7 @@ help:
 	@echo "  agent   Abre o Claude Code no demo com o plugin SpecMD"
 	@echo "  status  Mostra o estado do demo"
 	@echo "  run     Executa os cenários do demo"
+	@echo "  init    Prepara um repositório seu: make init REPO=/caminho/do/repo"
 
 $(STAMP): pyproject.toml
 	$(PYTHON) -m venv "$(VENV)"
@@ -60,6 +61,10 @@ status: $(STAMP) require-demo
 
 run: $(STAMP) require-demo
 	@$(SPECMD_ENV) "$(PY)" -m specmd run --root "$(DEMO)" | "$(PY)" scripts/summarize_result.py
+
+init: $(STAMP)
+	@if [ -z "$(REPO)" ]; then echo "Use: make init REPO=/caminho/do/repo"; exit 1; fi
+	@"$(PY)" -m specmd init --root "$(REPO)"
 
 require-demo:
 	@if [ -z "$(DEMO_BASE)" ] || [ ! -d "$(DEMO)" ]; then echo "Nenhum demo encontrado. Rode make demo primeiro."; exit 1; fi

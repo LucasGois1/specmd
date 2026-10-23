@@ -28,6 +28,8 @@ jobs:
           enable-cache: false
       - name: Install locked dependencies
         run: 'uv pip install --system --require-hashes --only-binary :all: -r pylock.toml'
+      - name: Vendored dependencies match the lock
+        run: python scripts/vendor_deps.py --check
       - name: Unit tests
         run: python -m unittest discover -s tests -v
 

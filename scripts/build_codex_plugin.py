@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a small local Codex plugin from canonical sources, without caches.
+"""Build the local plugin bundle (Codex and Claude Code) from canonical sources.
 
 Codex 0.163.0 recursively copies plugin sources without honoring .gitignore.
 The generated digest manifest is a build inventory, not human approval or trust.
@@ -20,10 +20,15 @@ REPOSITORY = Path(__file__).resolve().parent.parent
 FIXED_FILES = (
     ".codex-plugin/plugin.json",
     ".claude-plugin/plugin.json",
+    ".claude-plugin/marketplace.json",
     "hooks/hooks.json",
     "scripts/specmd_hook.py",
+    "scripts/specmd_cli.py",
+    "scripts/specmd_bootstrap.py",
     "pyproject.toml",
+    "pylock.toml",
 )
+TREES = ("commands", "skills", "vendor")
 MANIFEST = "bundle-manifest.json"
 
 
@@ -37,6 +42,9 @@ def build() -> dict[str, object]:
     if package.is_symlink() or not (package / "core.py").is_file():
         raise ValueError("O núcleo canônico src/specmd/core.py precisa existir antes do build")
     files.extend(str(path.relative_to(REPOSITORY)) for path in sorted(package.glob("*.py")))
+    for tree in TREES:
+        files.extend(str(path.relative_to(REPOSITORY)) for path in sorted((REPOSITORY / tree).rglob("*"))
+                     if path.is_file() and "__pycache__" not in path.parts)
     payloads: dict[str, bytes] = {}
     for relative in sorted(files):
         source = REPOSITORY / relative

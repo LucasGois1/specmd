@@ -141,9 +141,21 @@ def _validate_report(report: Any, expected: list[dict], mode: str) -> list[dict]
     return scenarios
 
 
+_VENDOR = Path(__file__).resolve().parents[2] / "vendor"
+
+
+def _worker_environment(command: list[str]) -> dict | None:
+    """The plugin's own interpreter finds behave in the vendored dependencies."""
+    if command[0] != sys.executable or not _VENDOR.is_dir():
+        return None
+    existing = os.environ.get("PYTHONPATH")
+    return {**os.environ, "PYTHONPATH": str(_VENDOR) + (os.pathsep + existing if existing else "")}
+
+
 def _invoke(command: list[str], root: Path, payload: dict, timeout: float):
     process = subprocess.Popen(command, cwd=root, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE, text=True, shell=False, start_new_session=os.name == "posix")
+                               stderr=subprocess.PIPE, text=True, shell=False, start_new_session=os.name == "posix",
+                               env=_worker_environment(command))
     try:
         stdout, _stderr = process.communicate(json.dumps(payload, ensure_ascii=False), timeout=timeout)
         return process.returncode, stdout
