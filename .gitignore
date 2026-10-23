@@ -1,0 +1,22 @@
+# Artefatos locais e cache; os caminhos definitivos da ferramenta ainda serão escolhidos.
+.DS_Store
+.specmd/cache/
+.specmd/tmp/
+.specmd/local/
+
+# Credenciais locais nunca são parte da documentação do projeto.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Dependências e artefatos dos experimentos locais.
+**/.venv/
+**/node_modules/
+**/target/
+**/__pycache__/
+**/.pytest_cache/
+**/.tools/
+**/.cache/
+**/*.class
