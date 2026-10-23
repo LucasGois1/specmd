@@ -29,4 +29,4 @@ Depois de aceita, essa classificação permite reutilizar a análise enquanto o 
 
 Se alguém acrescentar aqui uma regra de negócio, o hash mudará e a classificação deverá ser reavaliada. O agente poderá propor transformar o documento em misto ou mover a regra para um contrato apropriado; não poderá manter uma dispensa antiga para o conteúdo novo.
 
-Consulte o [formato proposto](../docs/format.md), o [índice incremental](../docs/indexing.md) e o [mecanismo de aceite](../docs/approval-and-trust.md).
+Consulte o [formato proposto](../docs/format.md), o [índice incremental](../docs/indexing.md) e o mecanismo de aceite (removido por [D-021](../docs/decisions.md)).

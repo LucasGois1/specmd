@@ -8,6 +8,8 @@ specmd:
 
 # Integrações com agentes e CI
 
+> **Histórico, anterior à [D-021](decisions.md).** Este documento descreve o desenho com aceite assinado, autoridade, trust e bloqueio de implementação, removido em 23/10/2026. Para o produto atual, veja [produto](product.md) e [estado da implementação](implementation-status.md).
+
 O núcleo experimental compartilha inventário, revisão, execução e decisão entre CLI e adaptadores. Comece pelo [quickstart](quickstart.md) e consulte o [estado de implementação](implementation-status.md).
 
 | Componente | Responsabilidade |
@@ -74,4 +76,4 @@ O workflow de exemplo chama `specmd verify --require-real` para projetos ativado
 
 O comando não constitui uma implantação segura por si só. O agente ou a mudança revisada não pode controlar o verificador confiável, a chave, o trust store ou as regras que tornam o check obrigatório. A proteção de branches e a separação operacional precisam de revisão na plataforma escolhida.
 
-Veja [Arquitetura](architecture.md), [Aceite e confiança](approval-and-trust.md), [Requisitos](requirements.md) e [Plano de validação](validation-plan.md).
+Veja [Arquitetura](architecture.md), Aceite e confiança (removido por [D-021](decisions.md)), [Requisitos](requirements.md) e [Plano de validação](validation-plan.md).

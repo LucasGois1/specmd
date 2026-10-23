@@ -2,33 +2,28 @@
 
 ## Estado do repositório
 
-Para continuar o trabalho sem a conversa original, leia [HANDOFF.md](HANDOFF.md). Ele consolida contexto de produto, decisões, evidências, limites e cenários de validação com o agente local. Não constitui aceite dos contratos.
+SpecMD é um plugin assistente para agentes de programação (Claude Code e Codex). Ele mantém a documentação Markdown canônica, com cenários Gherkin embutidos, alinhada ao software. Quem define as regras é o desenvolvedor, conversando com o agente. O plugin faz checagens determinísticas em momentos-chave e devolve feedback ao agente: documentação sem cenários, cenários novos que o dev ainda não viu, cenários sem implementação ou falhando.
 
-Este projeto implementa um ciclo experimental em Python: inventário Markdown, revisão local, decisões Ed25519 versionadas, execução de cenários, evidência e adaptadores de agentes. Schema1 permanece preflight sem conclusão; schema2 pode produzir demo_passed em demonstração e passed em execução atual sob confiança externa configurada como protegida. O modo local não autentica a identidade humana nem isola a chave do agente. Verificador, configuração e autoridade precisam de uma fronteira de permissões externa para produção. Consulte docs/implementation-status.md. Protótipos em research/ não constituem suporte produtivo. Preserve a distinção entre código, propostas e evidências realmente produzidas.
+A direção mudou em 23/10/2026 ([D-021](docs/decisions.md)): o ciclo de aceite assinado, a autoridade, o trust e o bloqueio de implementação foram removidos. Consulte [docs/implementation-status.md](docs/implementation-status.md) para o que existe hoje. O [HANDOFF.md](HANDOFF.md) preserva o contexto anterior e está parcialmente superado. Protótipos em `research/` não constituem suporte produtivo.
 
-A autorização para criar ou editar documentação não deve ser apresentada como um recibo de aceite contratual. Nunca fabrique aprovação, assinatura, execução de testes ou suporte de integração.
+Ao relatar verificações, informe somente o que foi efetivamente executado e seu alcance. Nunca fabrique execução de testes ou suporte de integração.
 
 ## Regras centrais do desenho
 
-- O Markdown é a fonte canônica de requisitos e cenários.
-- A solução não deve exigir arquivos `.feature`, nem sua geração como etapa obrigatória de execução. Integração por parser/adaptador em memória exige validação técnica.
-- Alterações de comportamento relevantes precisam de uma origem identificável; escrever um teste ou documentar depois não autoriza uma nova regra de produto.
-- Aceite humano, classificação documental e dispensa devem estar vinculados ao conteúdo revisado e a uma autoridade fora do alcance do agente.
-- Mudança de contrato exige revisão do aceite; mudança de código exige renovar as evidências pertinentes.
-- Cache e inventário são reconstruíveis e não constituem autoridade de aprovação.
-- Aguardar decisão humana é diferente de declarar uma tarefa concluída.
-- Hooks disponíveis e capacidade de bloqueio devem ser verificados por plataforma e versão. Não invente nomes de eventos ou APIs como se estivessem confirmados.
-- O opt-in `specmd.toml` e `.specmd/local/status.json` são configuração e observação locais, não aceites. A classificação, a configuração e os vínculos fazem parte do hash revisado. Não transforme estrutura válida em autorização de conclusão.
-- Não crie decisões em nome do usuário. Assinaturas e decisões sintéticas em testes devem permanecer em fixtures descartáveis, identificadas como simulação; jamais aplique seus recibos ao produto real.
-- Instalação do plugin e trust humano são etapas distintas. Oriente a revisão normal pela UX do host e não fabrique uma ação humana. Em testes já autorizados, uma configuração de confiança restrita à sessão e aos handlers concretos deve ter sua origem documentada; ela não comprova uso da UX nem constitui aceite de requisitos. Não use mecanismos de bypass de trust.
-- Gere o pacote por `scripts/build_codex_plugin.py` antes da instalação local. O marketplace aponta para o artefato por allowlist; não empacote o clone inteiro com `.venv`, `.git` ou dados locais.
+- O Markdown é a fonte canônica das regras de negócio. Requisitos e seus cenários ficam no mesmo documento.
+- A solução não deve exigir arquivos `.feature`, nem sua geração como etapa de execução. Os cenários são lidos do Markdown e executados em memória.
+- O plugin ajuda e não engessa: devolve feedback objetivo ao agente e nunca encerra a sessão. Um feedback repetido sem mudança deixa o agente parar.
+- A confirmação do dev é uma resposta normal na conversa. Cenários novos ou alterados devem ser mostrados ao dev antes da implementação.
+- Mudança de código renova a execução dos cenários. Estado local (`.specmd/local/`) é reconstruível e pode ser apagado.
+- Hooks disponíveis devem ser verificados por plataforma e versão. Não invente nomes de eventos ou APIs como se estivessem confirmados.
+- Os dois hosts usam um único `hooks/hooks.json`; o Claude Code o carrega por padrão na raiz do plugin. Não declare um segundo arquivo de hooks.
+- Gere o pacote por `scripts/build_codex_plugin.py` antes de instalar localmente; não empacote o clone inteiro com `.venv`, `.git` ou dados locais.
 
 ## Trabalho nos documentos
 
 - Escreva em português; preserve identificadores estáveis e links relativos.
 - Mantenha requisitos e seus cenários no mesmo Markdown.
 - Use Gherkin em português com a declaração `# language: pt` nos exemplos.
-- Registre mudanças normativas e decisões pendentes de forma visível.
+- Registre mudanças normativas e decisões de forma visível em [docs/decisions.md](docs/decisions.md).
 - Identifique comandos, schemas e fluxos ainda não implementados como propostas.
-- Não adicione licenças, assinaturas, regras de proteção remota ou políticas de aprovação como se já tivessem sido escolhidas ou instaladas.
-- Ao relatar verificações, informe somente o que foi efetivamente executado e seu alcance.
+- Não adicione licenças ou políticas como se já tivessem sido escolhidas.

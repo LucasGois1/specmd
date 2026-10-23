@@ -26,6 +26,21 @@ Este registro consolida a discussão que originou o projeto. As diretrizes abaix
 | D-018 | O suporte inicial precisa contemplar pelo menos Java, Python e Go. | Pesquisar e testar adaptadores reais por linguagem antes de estabilizar a arquitetura; não presumir um parâmetro universal de Cucumber. |
 | D-019 | O usuário solicitou investigar sobreposição com Markdown with Gherkin antes de avançar. | A pesquisa encontrou antecedentes adicionais; comparar reutilização e a menor integração necessária, sem presumir novidade ou vantagem de um produto independente. |
 | D-020 | O usuário quer testar o SpecMD localmente no Codex com um agente real. | Preparar instalação e ensaios em uma instância de teste do Codex; a presença do CLI não equivale à instalação do adaptador SpecMD nem à validação de seus bloqueios. |
+| D-021 | Em 23/10/2026, o usuário redefiniu o produto: o SpecMD é um assistente, não uma auditoria. | Substitui D-005 e D-008 e o aceite assinado de D-006/D-009. A confirmação do dev é uma resposta na conversa; o plugin faz checagens determinísticas e devolve feedback sem encerrar a sessão. Autoridade, trust, assinaturas, revisão no navegador, `verify` protegido e bloqueio de implementação foram removidos. Ver a seção abaixo. |
+
+## D-021 — Assistente, não auditoria (23/10/2026)
+
+O usuário descreveu o uso esperado com um exemplo: um sistema de pagamentos desenvolvido com agentes. O agente escreve a documentação do projeto; uma checagem confere se ela tem cenários de uso; se não tiver, o agente recebe esse feedback e conversa com o dev para confirmar os requisitos e escrever os cenários no próprio documento. O agente pergunta se está tudo certo, o dev confirma e o agente implementa. Ao final, uma análise confere se os cenários existem e passam; o que faltar volta para o agente.
+
+Consequências:
+
+- A documentação com cenários embutidos é a fonte canônica das regras de negócio; não há `.feature` paralelo para divergir.
+- Não há fase de documentação: qualquer trabalho em Markdown dispara a análise. Nem todo Markdown descreve comportamento do sistema; esses ficam fora da análise e o agente pergunta ao dev quando houver dúvida.
+- Cenários novos ou alterados desde a última mensagem do dev não são cobrados até que ele os veja; a execução é cobrada quando o código muda.
+- O feedback é determinístico e limitado: o mesmo feedback repetido, ou o limite de repetições, deixa o agente parar. Erros internos viram aviso.
+- O plugin deve carregar sozinho quando alguém abre o agente no repositório (entrega planejada).
+
+As linhas D-005, D-006, D-008 e D-009 da tabela acima, as escolhas técnicas sobre aceites autenticados e as decisões abertas sobre interface, granularidade e reaproveitamento de aceites ficam como histórico.
 
 ## Escolhas técnicas propostas
 

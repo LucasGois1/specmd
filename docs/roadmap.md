@@ -1,5 +1,7 @@
 # Plano de implementação
 
+> **Histórico, anterior à [D-021](decisions.md).** Este documento descreve o desenho com aceite assinado, autoridade, trust e bloqueio de implementação, removido em 23/10/2026. Para o produto atual, veja [produto](product.md) e [estado da implementação](implementation-status.md).
+
 > Planejamento de referência. O [estado da implementação](implementation-status.md) descreve a versão experimental atual; critérios de produção não ficam atendidos apenas pela existência de código ou de testes simulados.
 
 Este plano transforma a [proposta de produto](product.md) e os [requisitos](requirements.md) em entregas verificáveis. Alterações de comportamento descobertas durante a implementação devem voltar ao contrato para revisão; o backlog não deve se tornar uma segunda fonte de requisitos.
@@ -143,7 +145,7 @@ Cada expansão deve justificar o problema observado, reutilizar os vínculos exi
 
 - [Requisitos e cenários](requirements.md)
 - [Arquitetura](architecture.md)
-- [Aceite e fronteiras de confiança](approval-and-trust.md)
+- Aceite e fronteiras de confiança (removido por [D-021](decisions.md))
 - [Formato documental](format.md)
 - [Índice e processamento incremental](indexing.md)
 - [Integrações com agentes](integrations.md)

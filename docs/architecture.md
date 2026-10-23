@@ -1,10 +1,12 @@
 # Arquitetura experimental e desenho do produto
 
+> **Histórico, anterior à [D-021](decisions.md).** Este documento descreve o desenho com aceite assinado, autoridade, trust e bloqueio de implementação, removido em 23/10/2026. Para o produto atual, veja [produto](product.md) e [estado da implementação](implementation-status.md).
+
 O projeto já implementa inventário, parsing de contratos, propostas de revisão, decisões Ed25519, execução de cenários e avaliação de evidências em um ciclo experimental Python. Há adaptadores de agentes e [pesquisas de runners](runner-feasibility.md). O [estado da implementação](implementation-status.md) distingue essas capacidades das provas de instalação e das pendências; o [primeiro preflight Codex](experimental-codex.md) documenta o incremento anterior.
 
 O ciclo local não autentica a identidade humana nem estabelece isolamento de autoridade. Não há serviço produtivo de aprovação ou autenticação GitHub/OAuth. O comando de verificação implementa condições para execução protegida, mas um gate de integração confiável depende de pacote, workflow, política e permissões provisionados fora do controle do agente. Publicar esta documentação não constitui aceite contratual do conteúdo.
 
-Leia também [produto](product.md), [requisitos](requirements.md), [formato](format.md), [aceite e confiança](approval-and-trust.md), [indexação](indexing.md), [integrações](integrations.md), [roadmap](roadmap.md) e [plano de validação](validation-plan.md).
+Leia também [produto](product.md), [requisitos](requirements.md), [formato](format.md), aceite e confiança (removido por [D-021](decisions.md)), [indexação](indexing.md), [integrações](integrations.md), [roadmap](roadmap.md) e [plano de validação](validation-plan.md).
 
 ## Restrição central: Markdown é a fonte canônica
 

@@ -1,5 +1,7 @@
 # Inventário e análise incremental
 
+> **Histórico, anterior à [D-021](decisions.md).** Este documento descreve o desenho com aceite assinado, autoridade, trust e bloqueio de implementação, removido em 23/10/2026. Para o produto atual, veja [produto](product.md) e [estado da implementação](implementation-status.md).
+
 > Estado: inventário determinístico e snapshots locais implementados experimentalmente. O cache é consultivo e a fonte sempre é reanalisada. Reutilização confiável de parsing, análise semântica incremental e ganhos de desempenho ainda não foram demonstrados. Consulte o [estado de implementação](implementation-status.md).
 
 O SpecMD descobre os documentos do projeto e produz um inventário de caminhos, conteúdo e relações declaradas. A evolução pretendida é evitar reinterpretações desnecessárias; o incremento atual prioriza reconstrução e conferência da fonte antes de qualquer decisão.
@@ -16,7 +18,7 @@ O objetivo é economizar leitura, parsing, chamadas a modelos e execução de ve
 
 Um documento analisado pode continuar sem aprovação. Um documento aprovado pode precisar de nova análise porque uma dependência ou política mudou. Apagar ou editar o índice local não pode transformar uma pendência em aprovação.
 
-Os contratos de confiança são detalhados em [Aceite e confiança](approval-and-trust.md); a composição geral está em [Arquitetura](architecture.md).
+Os contratos de confiança são detalhados em Aceite e confiança (removido por [D-021](decisions.md)); a composição geral está em [Arquitetura](architecture.md).
 
 ## Descoberta e escopo
 
@@ -80,7 +82,7 @@ Referências a aceites são resolvidas no mecanismo confiável; um campo local c
 
 ## Identidade do conteúdo
 
-A identidade contratual segue a regra descrita em [Aceite e confiança](approval-and-trust.md). A implementação calcula SHA-256 dos bytes efetivamente lidos do checkout, sem normalizar finais de linha ou reinterpretar o significado do Markdown. O manifesto do scanner tem `schema: 1`, `config_sha256` e a lista ordenada de pares `path`/`sha256`, serializada como JSON UTF-8 com chaves ordenadas e separadores compactos.
+A identidade contratual segue a regra descrita em Aceite e confiança (removido por [D-021](decisions.md)). A implementação calcula SHA-256 dos bytes efetivamente lidos do checkout, sem normalizar finais de linha ou reinterpretar o significado do Markdown. O manifesto do scanner tem `schema: 1`, `config_sha256` e a lista ordenada de pares `path`/`sha256`, serializada como JSON UTF-8 com chaves ordenadas e separadores compactos.
 
 No schema 2, o workflow inclui ainda `traceability_sha256`, vinculado ao mapa por padrão em `.specmd/traceability.json`. A pasta `.specmd` fica fora da descoberta de Markdown, mas esse mapa é lido explicitamente pelo lifecycle: sua alteração muda a versão contratual e invalida as evidências correspondentes. O caminho pode ser definido em `traceability.map`; a política estrita exige vínculos de código/testes com requisitos e cenários conhecidos.
 

@@ -7,9 +7,11 @@ specmd:
 
 # Integração experimental com Codex
 
+> **Histórico, anterior à [D-021](decisions.md).** Este documento descreve o desenho com aceite assinado, autoridade, trust e bloqueio de implementação, removido em 23/10/2026. Para o produto atual, veja [produto](product.md) e [estado da implementação](implementation-status.md).
+
 O adaptador apresenta ao agente o estado do fluxo SpecMD: documentação, revisão de uma versão, rastreabilidade e evidências de execução. O [quickstart](quickstart.md) permite experimentar esse ciclo primeiro pela CLI e pelo navegador.
 
-O projeto continua experimental. `demo_passed` representa uma demonstração local, sem provar uma autoridade humana isolada. O caminho `passed` exige execução real fresca, confiança externa provisionada como protegida e política estrita. A implantação dessa separação depende do operador e do ambiente; veja [Aceite e confiança](approval-and-trust.md).
+O projeto continua experimental. `demo_passed` representa uma demonstração local, sem provar uma autoridade humana isolada. O caminho `passed` exige execução real fresca, confiança externa provisionada como protegida e política estrita. A implantação dessa separação depende do operador e do ambiente; veja Aceite e confiança (removido por [D-021](decisions.md)).
 
 ## Evidência de integração
 
