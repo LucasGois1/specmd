@@ -119,8 +119,11 @@ def parse_config(data: bytes) -> dict[str, Any]:
 
 
 def load_config(root: Path) -> dict[str, Any]:
-    """Load root/specmd.toml, raising ConfigError on failure."""
+    """Load root/specmd.toml; without the file every option takes its default."""
+    path = Path(root) / "specmd.toml"
+    if not path.exists() and not path.is_symlink():
+        return {}
     try:
-        return parse_config(read_regular_file(Path(root) / "specmd.toml"))
+        return parse_config(read_regular_file(path))
     except OSError as exc:
         raise ConfigError(f"Não foi possível ler specmd.toml: {exc}") from exc

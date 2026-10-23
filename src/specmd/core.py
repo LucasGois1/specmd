@@ -31,6 +31,12 @@ _PRUNED_DIRECTORIES = frozenset({
 })
 _MARKDOWN_SUFFIXES = frozenset({".md", ".markdown"})
 IGNORE_FILE = ".specmdignore"
+# Markdown that rarely describes system behaviour; a `!` line in .specmdignore
+# brings any of them back into the analysis.
+DEFAULT_IGNORE = (
+    "README.md", "CHANGELOG.md", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md", "SECURITY.md", "SUPPORT.md",
+    "LICENSE*", "NOTICE*", "AUTHORS*", "CLAUDE.md", "AGENTS.md", "GEMINI.md", ".github/", ".claude/", ".codex/",
+)
 _ID_TAIL = r"[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*"
 _REQUIREMENT_ID = re.compile(r"(?:[A-Za-z0-9]+-)*REQ-" + _ID_TAIL)
 _SCENARIO_ID = re.compile(r"(?:[A-Za-z0-9]+-)*SCN-" + _ID_TAIL)
@@ -327,17 +333,18 @@ def _validate_links(documents: list[dict[str, Any]], findings: list[dict[str, An
 
 
 def inspect_project(root: Path) -> dict[str, Any]:
-    """Inspect an opted-in project (specmd.toml) without changing any file."""
+    """Inspect the project's documentation without changing any file.
+
+    specmd.toml is optional: without it every option takes its default.
+    """
     root = Path(root).absolute()
     config_path = root / "specmd.toml"
     if config_path.is_symlink():
         return _result("error", [_finding(
             "config_symlink", "specmd.toml não pode ser um link simbólico.", "specmd.toml",
         )])
-    if not config_path.exists():
-        return _result("inactive")
     try:
-        config_bytes = _read_regular_file(config_path)
+        config_bytes = _read_regular_file(config_path) if config_path.exists() else b""
         config = parse_config(config_bytes)
         ignore_path = root / IGNORE_FILE
         ignore_bytes = _read_regular_file(ignore_path) if ignore_path.exists() else b""
@@ -347,7 +354,7 @@ def inspect_project(root: Path) -> dict[str, Any]:
     findings: list[dict[str, Any]] = []
     documents: list[dict[str, Any]] = []
     complete_snapshot = True
-    rules = compile_ignore(ignore_bytes.decode("utf-8", "replace").splitlines())
+    rules = compile_ignore([*DEFAULT_IGNORE, *ignore_bytes.decode("utf-8", "replace").splitlines()])
     for relative in _discover(root, findings):
         if is_ignored(relative, rules):
             continue

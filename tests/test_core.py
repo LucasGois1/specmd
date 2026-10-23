@@ -41,11 +41,19 @@ class InspectProjectTests(unittest.TestCase):
     def scenarios(self, report, path="docs/regras.md"):
         return next(item for item in report["documents"] if item["path"] == path)["scenarios"]
 
-    def test_without_configuration_the_project_is_inactive(self):
+    def test_without_configuration_the_defaults_apply(self):
         (self.root / "specmd.toml").unlink()
         self.write("docs/a.md", "# Sem cenários\n")
         report = self.report()
-        self.assertEqual((report["status"], report["documents"], report["findings"]), ("inactive", [], []))
+        self.assertEqual(report["status"], "needs_scenarios")
+        self.assertEqual([item["path"] for item in report["documents"]], ["docs/a.md"])
+
+    def test_common_project_files_are_ignored_by_default(self):
+        for name in ("README.md", "CHANGELOG.md", "AGENTS.md", "CLAUDE.md", "LICENSE.md", ".github/PULL_REQUEST_TEMPLATE.md"):
+            self.write(name, "# Arquivo do projeto\n")
+        self.assertEqual(self.report()["status"], "ready")
+        self.write(".specmdignore", "!README.md\n")
+        self.assertEqual([item["path"] for item in self.report()["documents"]], ["README.md"])
 
     def test_invalid_or_symlinked_configuration_is_an_error(self):
         for content in ("schema = 7\n", "x = [\n", "desconhecida = 1\n"):

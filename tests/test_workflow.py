@@ -87,6 +87,15 @@ class WorkflowTests(unittest.TestCase):
                     pass
             self.assertLess(time.monotonic() - start, 2)
 
+    def test_local_state_never_shows_up_in_git_status(self):
+        (self.root / ".gitignore").write_text("__pycache__/\n")
+        subprocess.run(["git", "-C", str(self.root), "add", "-A"], check=True)
+        subprocess.run(["git", "-C", str(self.root), "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "x"], check=True)
+        workflow.run_project(self.root)
+        status = subprocess.run(["git", "-C", str(self.root), "status", "--porcelain", "--ignored=no"],
+                                capture_output=True, text=True, check=True).stdout
+        self.assertNotIn(".specmd", status)
+
     def test_corrupt_state_is_ignored(self):
         self.touch(".specmd/local/state.json", "{not json")
         self.assertEqual(hook_state.load(self.root), {})

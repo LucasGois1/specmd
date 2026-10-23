@@ -26,6 +26,10 @@ def _local_directory(root: Path) -> Path:
         if directory.is_symlink():
             raise ValueError("O estado local não pode atravessar links simbólicos.")
         directory.mkdir(exist_ok=True)
+    ignore = directory / ".gitignore"
+    if not ignore.exists() and not ignore.is_symlink():
+        # The state ignores itself, so activating the plugin never dirties `git status`.
+        ignore.write_text("*\n", encoding="utf-8")
     return directory
 
 

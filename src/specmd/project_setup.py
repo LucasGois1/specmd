@@ -1,6 +1,8 @@
-"""Prepare a repository so the SpecMD plugin loads for everyone who opens it.
+"""Enable the SpecMD plugin for everyone who opens the repository in Claude Code.
 
-Safe to run again: existing files are kept and only missing entries are added.
+Installing the plugin with project scope already activates it; this adds the
+marketplace declaration so collaborators receive it after trusting the folder.
+specmd.toml and .specmdignore stay optional. Safe to run again.
 """
 from __future__ import annotations
 
@@ -8,27 +10,23 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .core import IGNORE_FILE
-from .demo import DEFAULT_IGNORE, initial_config
-
 MARKETPLACE = {"source": {"source": "github", "repo": "LucasGois1/specmd"}, "autoUpdate": True}
 PLUGIN_ID = "specmd@specmd"
-CONFIG_FILE = "specmd.toml"
-LOCAL_STATE = ".specmd/local/"
+SETTINGS = ".claude/settings.json"
 
 
 def _merge_claude_settings(root: Path) -> bool:
-    path = root / ".claude" / "settings.json"
+    path = root / SETTINGS
     settings: Any = {}
     if path.exists():
         settings = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(settings, dict):
-            raise ValueError(".claude/settings.json precisa conter um objeto JSON.")
+            raise ValueError(f"{SETTINGS} precisa conter um objeto JSON.")
     before = json.dumps(settings, sort_keys=True)
     marketplaces = settings.setdefault("extraKnownMarketplaces", {})
     plugins = settings.setdefault("enabledPlugins", {})
     if not isinstance(marketplaces, dict) or not isinstance(plugins, dict):
-        raise ValueError("extraKnownMarketplaces e enabledPlugins precisam ser objetos em .claude/settings.json.")
+        raise ValueError(f"extraKnownMarketplaces e enabledPlugins precisam ser objetos em {SETTINGS}.")
     marketplaces.setdefault("specmd", MARKETPLACE)
     plugins.setdefault(PLUGIN_ID, True)
     if json.dumps(settings, sort_keys=True) == before:
@@ -38,30 +36,11 @@ def _merge_claude_settings(root: Path) -> bool:
     return True
 
 
-def _ensure_gitignore(root: Path) -> bool:
-    path = root / ".gitignore"
-    text = path.read_text(encoding="utf-8") if path.exists() else ""
-    if any(line.strip() in {LOCAL_STATE, LOCAL_STATE.rstrip("/"), ".specmd/", ".specmd"} for line in text.splitlines()):
-        return False
-    path.write_text(text + ("" if not text or text.endswith("\n") else "\n") + LOCAL_STATE + "\n", encoding="utf-8")
-    return True
-
-
 def initialize(root: Path) -> dict[str, Any]:
     root = Path(root).resolve(strict=True)
-    changed = []
-    if not (root / CONFIG_FILE).exists():
-        (root / CONFIG_FILE).write_text(initial_config(), encoding="utf-8")
-        changed.append(CONFIG_FILE)
-    if not (root / IGNORE_FILE).exists():
-        (root / IGNORE_FILE).write_text(DEFAULT_IGNORE, encoding="utf-8")
-        changed.append(IGNORE_FILE)
-    if _merge_claude_settings(root):
-        changed.append(".claude/settings.json")
-    if _ensure_gitignore(root):
-        changed.append(".gitignore")
+    changed = [SETTINGS] if _merge_claude_settings(root) else []
     return {
         "status": "initialized", "root": str(root), "changed": changed,
-        "message": ("SpecMD ativado. Faça commit de specmd.toml, .specmdignore e .claude/settings.json: quem abrir o "
-                    "Claude Code neste repositório e confiar na pasta recebe o plugin automaticamente."),
+        "message": (f"SpecMD habilitado para o time. Faça commit de {SETTINGS}: quem abrir o Claude Code neste "
+                    "repositório e confiar na pasta recebe o plugin. specmd.toml e .specmdignore são opcionais."),
     }

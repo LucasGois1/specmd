@@ -80,6 +80,17 @@ def _features(root: Path, inspection: dict, wip_tags: set[str] = frozenset()) ->
     return features, expected
 
 
+_DEFAULT_STEPS = ("tests/steps", "features/steps", "steps")
+
+
+def default_runners(root: Path) -> list[dict]:
+    """Without [[runners]] in specmd.toml, a Python steps directory implies a Behave runner."""
+    for steps in _DEFAULT_STEPS:
+        if (root / steps).is_dir() and not (root / steps).is_symlink():
+            return [{"id": "python", "language": "python", "steps": steps}]
+    return []
+
+
 def _python_for(root: Path, runner: dict) -> str:
     """The project's interpreter when it can import behave, otherwise the plugin's."""
     candidates = [runner.get("python"), os.environ.get("VIRTUAL_ENV") and str(Path(os.environ["VIRTUAL_ENV"]) / "bin/python"),
@@ -197,9 +208,10 @@ def execute_project(root: Path, inspection: dict, config: dict) -> dict:
                 result["passed"] = True  # Only work-in-progress scenarios: nothing is demanded.
                 return result
             raise ValueError("Nenhum cenário encontrado na documentação.")
-        runners = config.get("runners")
+        runners = config["runners"] if "runners" in config else default_runners(root)
         if not isinstance(runners, list) or not runners:
-            raise ValueError("Configure ao menos um runner em specmd.toml.")
+            raise ValueError("Nenhum runner para executar os cenários: crie os passos Python em tests/steps "
+                             "(ou features/steps) ou configure [[runners]] no specmd.toml; para Java e Go, veja adapters/.")
         normalized, ids = [], set()
         for runner in runners:
             if not isinstance(runner, dict):

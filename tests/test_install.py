@@ -55,27 +55,23 @@ class InitializeTests(unittest.TestCase):
     def settings(self):
         return json.loads((self.root / ".claude/settings.json").read_text())
 
-    def test_new_repository_gets_configuration_ignore_settings_and_gitignore(self):
+    def test_enables_the_plugin_and_declares_the_marketplace_for_the_team(self):
         result = initialize(self.root)
-        self.assertEqual(sorted(result["changed"]), [".claude/settings.json", ".gitignore", ".specmdignore", "specmd.toml"])
+        self.assertEqual(result["changed"], [".claude/settings.json"])
         settings = self.settings()
         self.assertEqual(settings["enabledPlugins"], {PLUGIN_ID: True})
         self.assertEqual(settings["extraKnownMarketplaces"]["specmd"]["source"],
                          {"source": "github", "repo": "LucasGois1/specmd"})
-        self.assertIn(".specmd/local/", (self.root / ".gitignore").read_text())
-        self.assertIn("README.md", (self.root / ".specmdignore").read_text())
+        self.assertFalse((self.root / "specmd.toml").exists())
+        self.assertFalse((self.root / ".specmdignore").exists())
 
     def test_running_again_changes_nothing_and_keeps_existing_settings(self):
         (self.root / ".claude").mkdir()
         (self.root / ".claude/settings.json").write_text(json.dumps({
             "permissions": {"allow": ["Bash(make test)"]}, "enabledPlugins": {"other@team": True}}))
-        (self.root / ".gitignore").write_text("node_modules/")
-        (self.root / "specmd.toml").write_text("# meu\n")
         initialize(self.root)
         self.assertEqual(self.settings()["permissions"], {"allow": ["Bash(make test)"]})
         self.assertEqual(self.settings()["enabledPlugins"], {"other@team": True, PLUGIN_ID: True})
-        self.assertEqual((self.root / "specmd.toml").read_text(), "# meu\n")
-        self.assertEqual((self.root / ".gitignore").read_text(), "node_modules/\n.specmd/local/\n")
         self.assertEqual(initialize(self.root)["changed"], [])
 
     def test_invalid_settings_are_not_overwritten(self):
