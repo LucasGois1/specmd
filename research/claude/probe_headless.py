@@ -74,6 +74,33 @@ def _reply(event: dict) -> dict:
     return reply if isinstance(reply, dict) else {}
 
 
+def _on_init(summary: dict, event: dict) -> None:
+    names = [item.get("name") for item in event.get("plugins", [])]
+    summary.update({"claude_code_version": event.get("claude_code_version"), "model": event.get("model"),
+                    "specmd_plugin_loaded": "specmd" in names,
+                    "other_plugins": len([name for name in names if name != "specmd"])})
+
+
+def _on_hook(summary: dict, event: dict, base: Path) -> None:
+    name = event.get("hook_event")
+    summary["hooks"][name] = summary["hooks"].get(name, 0) + 1
+    if event.get("exit_code") != 0:
+        summary["hook_failures"].append({"hook": event.get("hook_name"), "exit_code": event.get("exit_code"),
+                                         "stderr": _sanitize((event.get("stderr") or "")[:200], base)})
+    reply = _reply(event)
+    text = (reply.get("reason") or reply.get("systemMessage")
+            or reply.get("hookSpecificOutput", {}).get("additionalContext") or "")
+    if text and name != "SessionStart":
+        summary["feedback"].append({"hook": name, "decision": reply.get("decision"), "text": text[:400]})
+
+
+def _on_assistant(summary: dict, event: dict, base: Path) -> None:
+    for item in event.get("message", {}).get("content", []):
+        if item.get("type") == "tool_use":
+            target = (item.get("input") or {}).get("file_path") or ""
+            summary["tool_uses"].append({"tool": item.get("name"), "target": _sanitize(target, base)})
+
+
 def _summarize(stream: Path, base: Path) -> dict:
     summary = {"hooks": {}, "hook_failures": [], "feedback": [], "tool_uses": []}
     for line in stream.read_text(encoding="utf-8").splitlines():
@@ -83,33 +110,18 @@ def _summarize(stream: Path, base: Path) -> dict:
             continue
         kind, subtype = event.get("type"), event.get("subtype")
         if kind == "system" and subtype == "init":
-            names = [item.get("name") for item in event.get("plugins", [])]
-            summary.update({"claude_code_version": event.get("claude_code_version"), "model": event.get("model"),
-                            "specmd_plugin_loaded": "specmd" in names,
-                            "other_plugins": len([name for name in names if name != "specmd"])})
+            _on_init(summary, event)
         elif kind == "system" and subtype == "hook_response":
-            name = event.get("hook_event")
-            summary["hooks"][name] = summary["hooks"].get(name, 0) + 1
-            if event.get("exit_code") != 0:
-                summary["hook_failures"].append({"hook": event.get("hook_name"), "exit_code": event.get("exit_code"),
-                                                 "stderr": _sanitize((event.get("stderr") or "")[:200], base)})
-            reply = _reply(event)
-            text = (reply.get("reason") or reply.get("systemMessage")
-                    or reply.get("hookSpecificOutput", {}).get("additionalContext") or "")
-            if text and name != "SessionStart":
-                summary["feedback"].append({"hook": name, "decision": reply.get("decision"), "text": text[:400]})
+            _on_hook(summary, event, base)
         elif kind == "assistant":
-            for item in event.get("message", {}).get("content", []):
-                if item.get("type") == "tool_use":
-                    target = (item.get("input") or {}).get("file_path") or ""
-                    summary["tool_uses"].append({"tool": item.get("name"), "target": _sanitize(target, base)})
+            _on_assistant(summary, event, base)
         elif kind == "result":
             summary.update({"turns": event.get("num_turns"), "is_error": event.get("is_error"),
                             "cost_usd": event.get("total_cost_usd")})
     return summary
 
 
-def _expectations(name: str, summary: dict, final: dict, state: dict) -> dict:
+def _expectations(name: str, summary: dict, state: dict) -> dict:
     feedback = summary["feedback"]
     common = {
         "specmd_plugin_loaded": summary.get("specmd_plugin_loaded") is True,
@@ -151,7 +163,7 @@ def run_case(name: str, document: str | None, prompt: str, claude: str, plugin_d
     final = json.loads(check.stdout)
     state_path = project / ".specmd/local/state.json"
     state = json.loads(state_path.read_text()) if state_path.exists() else {}
-    expectations = _expectations(name, summary, final, state)
+    expectations = _expectations(name, summary, state)
     return {"case": name, "prompt": prompt, "exit_code": completed.returncode, "final_status": final.get("status"),
             **summary, "expectations": expectations, "expectation_met": all(expectations.values())}
 

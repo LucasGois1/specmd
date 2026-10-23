@@ -47,9 +47,13 @@ GAP_GUIDANCE = (
 )
 
 
-def find_root(payload: dict[str, Any]) -> Path | None:
-    candidates = [os.environ.get("CLAUDE_PROJECT_DIR"), payload.get("cwd")]
-    for raw in candidates:
+def find_root() -> Path | None:
+    """Project root from the host environment, never from paths in the payload.
+
+    Claude Code exports CLAUDE_PROJECT_DIR; otherwise the hook process runs in
+    the session's working directory.
+    """
+    for raw in (os.environ.get("CLAUDE_PROJECT_DIR"), os.getcwd()):
         if not isinstance(raw, str) or not raw or not Path(raw).is_absolute():
             continue
         start = Path(raw).resolve()
@@ -208,9 +212,23 @@ def _post_tool(root: Path) -> dict[str, Any]:
     return {"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": "\n".join(lines)}}
 
 
+def _current_run(root: Path, result: dict[str, Any], state: dict[str, Any]) -> tuple[dict[str, Any] | None, bool]:
+    """Reuse a run that matches the current code and scenarios, or run when code changed."""
+    from .workflow import fingerprint_code, run_project
+
+    code_fp = fingerprint_code(root)
+    last = state.get("last_run") if isinstance(state.get("last_run"), dict) else None
+    if last and last.get("spec_fp") == result["spec_fp"] and code_fp in last.get("code_fps", []):
+        return last, True
+    if code_fp == state.get("code_fp_baseline"):
+        # No code changed in this session: no execution is demanded.
+        return None, False
+    return run_project(root).get("run"), False
+
+
 def _stop(root: Path) -> dict[str, Any]:
     from .core import inspect_project
-    from .workflow import fingerprint_code, run_project, scenario_count
+    from .workflow import scenario_count
 
     result = inspect_project(root)
     if result["status"] == "inactive":
@@ -232,18 +250,9 @@ def _stop(root: Path) -> dict[str, Any]:
                                  + ", ".join(pending[:6]) + "."}
     if not scenario_count(result):
         return {}
-    code_fp = fingerprint_code(root)
-    last = state.get("last_run") if isinstance(state.get("last_run"), dict) else None
-    fresh = bool(last) and last.get("spec_fp") == result["spec_fp"] and code_fp in last.get("code_fps", [])
-    if fresh:
-        run = last
-    elif code_fp == state.get("code_fp_baseline"):
-        # No code changed in this session: no execution is demanded.
+    run, fresh = _current_run(root, result, state)
+    if run is None:
         return {}
-    else:
-        run = run_project(root).get("run")
-        if not run:
-            return {}
     if run.get("passed"):
         return {} if fresh else {"systemMessage": f"SpecMD: {run.get('scenarios')} cenários passando."}
     signature = _digest(["run", [(item.get("id"), item.get("status"), [step.get("error") for step in item.get("steps", [])])
@@ -262,7 +271,7 @@ def handle_hook(payload: dict[str, Any]) -> dict[str, Any]:
                 "PostToolUse": _post_tool, "Stop": _stop}
     if event not in handlers:
         return {}
-    root = find_root(payload)
+    root = find_root()
     if root is None:
         return {}
     return handlers[event](root)

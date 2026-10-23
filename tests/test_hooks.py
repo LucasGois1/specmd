@@ -48,10 +48,9 @@ class HookLifecycleTests(unittest.TestCase):
         self.root = Path(temporary.name).resolve() / "cart"
         create_demo(self.root)
         subprocess.run(["git", "init", "-q", str(self.root)], check=True)
-        environment = patch.dict(os.environ, {}, clear=False)
+        environment = patch.dict(os.environ, {"CLAUDE_PROJECT_DIR": str(self.root)})
         environment.start()
         self.addCleanup(environment.stop)
-        os.environ.pop("CLAUDE_PROJECT_DIR", None)
 
     def hook(self, event, **extra):
         return hooks.handle_hook({"hook_event_name": event, "cwd": str(self.root), **extra})
@@ -145,9 +144,15 @@ class HookLifecycleTests(unittest.TestCase):
         self.hook("UserPromptSubmit")
         self.assertEqual(hooks._block_once(self.root, "sig-new", "motivo", "resumo")["decision"], "block")
 
-    def test_project_root_from_claude_project_dir(self):
-        os.environ["CLAUDE_PROJECT_DIR"] = str(self.root)
-        self.assertEqual(hooks.find_root({"cwd": "/"}), self.root)
+    def test_project_root_from_environment_not_payload(self):
+        self.assertEqual(hooks.find_root(), self.root)
+        os.environ.pop("CLAUDE_PROJECT_DIR")
+        previous = os.getcwd()
+        os.chdir(self.root / "docs")
+        self.addCleanup(os.chdir, previous)
+        self.assertEqual(hooks.find_root(), self.root)
+        os.chdir(previous)
+        self.assertEqual(hooks.handle_hook({"hook_event_name": "SessionStart", "cwd": str(self.root)}), {})
 
     def test_internal_errors_never_stop_the_session(self):
         for event in ("SessionStart", "UserPromptSubmit", "PostToolUse", "Stop"):

@@ -206,7 +206,7 @@ def execute_project(root: Path, inspection: dict, config: dict) -> dict:
             raise ValueError("Existem cenários sem runner atribuído.")
         if any(not items for _, _, _, _, items in normalized):
             raise ValueError("Runner sem cenários atribuídos; execução vazia é recusada.")
-    except (OSError, UnicodeError, ValueError, TypeError) as error:
+    except (OSError, ValueError, TypeError) as error:
         findings.append(_finding("runner_configuration_invalid", str(error)))
         return result
 
