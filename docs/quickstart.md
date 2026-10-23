@@ -46,23 +46,20 @@ Comandos do CLI, todos com `--root` (padrão: diretório atual):
 
 | Comando | Resultado |
 | --- | --- |
-| `specmd init` | Cria `specmd.toml` no projeto. |
+| `specmd init` | Cria `specmd.toml` e um `.specmdignore` com os casos óbvios. |
 | `specmd inventory` | Documentos, requisitos, cenários e pendências da documentação. |
 | `specmd check` | Pendências e o resultado da última execução, se ainda atual. |
 | `specmd run` | Executa os cenários e guarda o resultado para os hooks. |
 
 Códigos de saída: 0 sem pendências, 1 documentação pendente ou cenários falhando, 2 erro ou projeto sem `specmd.toml`.
 
-## Formato atual
+## Formato
 
-Cada documento comportamental tem frontmatter `specmd` (`schema: 1`, `id`, `kind: behavioral|reference|mixed`), requisitos em títulos com ID (`## SMD-PAG-REQ-001 — Estorno`) e cenários em blocos ```gherkin com uma tag de ID (`@SMD-PAG-SCN-001`) e a tag do requisito. Documentos que não descrevem comportamento usam `kind: reference` com `exemption_reason`. A próxima entrega simplifica esse formato (frontmatter opcional, IDs livres, `.specmdignore`).
+Um documento só precisa de cenários em blocos ```gherkin; frontmatter é opcional. Requisitos podem ter ID no título (`## PAG-REQ-001 — Estorno`) e os cenários logo abaixo ficam ligados a eles. Markdown que não descreve comportamento vai para o `.specmdignore`. Detalhes em [formato](format.md).
 
-O `specmd.toml` precisa de um runner para executar cenários:
+O `specmd.toml` pode ser vazio; para executar cenários Python, declare um runner:
 
 ```toml
-schema = 2
-project_id = "meu-projeto"
-
 [[runners]]
 id = "python"
 language = "python"

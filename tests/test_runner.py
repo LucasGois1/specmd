@@ -168,12 +168,6 @@ Funcionalidade: Soma por linhas
         self.assertEqual((self.root / "calls.txt").read_text(), "called\ncalled\n")
         self.assertFalse(list(self.root.rglob("*.feature")))
 
-    def test_new_markdown_since_inventory_blocks_execution(self):
-        inspection = inspect_project(self.root)
-        self.write("new.md", "# Novo requisito ainda não classificado\n")
-        self.assertFalse(self.execute(inspection=inspection)["passed"])
-        self.assertFalse((self.root / "calls.txt").exists())
-
     def test_nonzero_bridge_exit_rejects_claimed_success(self):
         self.assertFalse(self.execute(self.bridge(exit_code=7))["passed"])
 
@@ -215,14 +209,43 @@ Funcionalidade: Soma por linhas
         self.assertFalse(self.execute(inspection=inspection)["passed"])
         self.assertFalse((self.root / "calls.txt").exists())
 
-    def test_paths_must_assign_each_scenario_exactly_once(self):
+    def test_first_matching_runner_takes_each_scenario(self):
         inspection = inspect_project(self.root)
-        for runners in ([{"id": "missing", "language": "python", "paths": ["other.md"]}],
-                        [{"id": "one", "language": "python"}, {"id": "two", "language": "python"}]):
-            with self.subTest(runners=runners):
-                result = execute_project(self.root, inspection, {"schema": 2, "runners": runners})
-                self.assertFalse(result["passed"])
-                self.assertFalse((self.root / "calls.txt").exists())
+        uncovered = execute_project(self.root, inspection, {"runners": [{"id": "x", "language": "python", "paths": ["other.md"]}]})
+        self.assertFalse(uncovered["passed"])
+        self.assertIn("contract.md", uncovered["findings"][0]["message"])
+        self.assertFalse((self.root / "calls.txt").exists())
+        both = execute_project(self.root, inspection, {"runners": [{"id": "one", "language": "python"},
+                                                                    {"id": "two", "language": "python"}]})
+        self.assertTrue(both["passed"], both)
+        self.assertEqual([row["id"] for row in both["runners"]], ["one"])
+        self.assertEqual((self.root / "calls.txt").read_text(), "called\n")
+
+    def test_untagged_scenario_runs_with_its_default_identity(self):
+        self.write("contract.md", CONTRACT.replace("  @SMD-RUN-SCN-001\n", ""))
+        result = self.execute()
+        self.assertTrue(result["passed"], result)
+        self.assertEqual(result["scenarios"][0]["id"], "contract.md::Chamar a aplicação")
+
+    def test_work_in_progress_scenarios_are_not_run(self):
+        self.write("contract.md", CONTRACT.replace("  @SMD-RUN-SCN-001\n", "  @SMD-RUN-SCN-001 @wip\n"))
+        result = self.execute()
+        self.assertTrue(result["passed"], result)
+        self.assertEqual(result["scenarios"], [])
+        self.assertFalse((self.root / "calls.txt").exists())
+
+    def test_environment_hooks_next_to_the_steps_are_loaded(self):
+        self.write("tests/environment.py", "def before_scenario(context, scenario):\n"
+                                           "    open('hook.txt', 'a').write(scenario.name + '\\n')\n")
+        self.assertTrue(self.execute()["passed"])
+        self.assertEqual((self.root / "hook.txt").read_text(), "Chamar a aplicação\n")
+
+    def test_project_interpreter_is_used_only_when_it_has_behave(self):
+        from specmd.runner import _python_for
+        fake = self.write("bin/python", "#!/bin/sh\nexit 1\n")
+        fake.chmod(0o755)
+        self.assertEqual(_python_for(self.root, {"python": "bin/python"}), sys.executable)
+        self.assertEqual(_python_for(self.root, {"python": sys.executable}), sys.executable)
 
     def test_empty_inventory_is_not_success(self):
         result = execute_project(self.root, {"documents": []}, {"runners": [{"id": "p", "language": "python"}]})

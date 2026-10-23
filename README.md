@@ -34,12 +34,13 @@ Agentes esquecem condições, interpretam regras de outro jeito ou inventam regr
 | [Estado da implementação](docs/implementation-status.md) | O que existe, limites e validações. |
 | [Produto](docs/product.md) | Problema, proposta, fluxo e limites. |
 | [Requisitos e cenários](docs/requirements.md) | Obrigações do SpecMD em Gherkin no próprio Markdown. |
+| [Formato](docs/format.md) | Como escrever documentos, requisitos, cenários, `.specmdignore` e `specmd.toml`. |
 | [Decisões](docs/decisions.md) | Diretrizes e a mudança de direção D-021. |
 | [Pesquisa dos runners](research/README.md) | Protótipos e evidências por linguagem. |
 | [Dispatch nativo no Claude Code](research/claude/README.md) | Sessões headless reais exercitando os hooks. |
 | [Posicionamento](docs/positioning.md) | Antecedentes e sobreposição com outras ferramentas. |
 
-Documentos anteriores à D-021 (arquitetura, integrações, formato, indexação, roadmap, plano de validação, Codex experimental e o [HANDOFF](HANDOFF.md)) estão marcados como históricos onde descrevem o aceite assinado.
+Documentos anteriores à D-021 (arquitetura, integrações, indexação, roadmap, plano de validação, Codex experimental e o [HANDOFF](HANDOFF.md)) estão marcados como históricos onde descrevem o aceite assinado.
 
 ## Testes
 

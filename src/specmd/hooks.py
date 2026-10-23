@@ -31,18 +31,19 @@ READ_ONLY_TOOLS = frozenset({
 CONVENTIONS = (
     "Como trabalhar com o SpecMD:\n"
     "1. A documentação Markdown é a fonte canônica das regras de negócio. Todo comportamento do sistema "
-    "fica num documento, com cada requisito num título com ID (ex.: `## SMD-PAG-REQ-001 — Estorno`) e "
-    "cenários Gherkin em bloco ```gherkin no próprio documento. Cada cenário leva uma tag de ID "
-    "(ex.: `@SMD-PAG-SCN-001`) e a tag do requisito que verifica.\n"
+    "fica num documento, com cenários Gherkin em blocos ```gherkin no próprio documento. Um requisito pode "
+    "ter ID no título (ex.: `## PAG-REQ-001 — Estorno`); os cenários logo abaixo dele ficam ligados a ele.\n"
     "2. Ao escrever ou mudar cenários, mostre-os ao dev e peça confirmação antes de implementar. "
     "Em dúvida sobre um requisito, pergunte.\n"
-    "3. Um Markdown que não descreve comportamento do sistema (guia de setup, notas) é classificado como "
-    "referência (`kind: reference`); em dúvida, pergunte ao dev se ele precisa de cenários.\n"
-    "4. Ao concluir uma implementação, o SpecMD executa os cenários e devolve o que falta ou falha."
+    "3. Um Markdown que não descreve comportamento do sistema (README, guia de setup, notas) vai para o "
+    "`.specmdignore` na raiz, com padrões no estilo .gitignore. Se for claramente o caso, adicione você mesmo; "
+    "em dúvida, pergunte ao dev se ele precisa de cenários.\n"
+    "4. Ao concluir uma implementação, o SpecMD executa os cenários e devolve o que falta ou falha. "
+    "Cenários marcados com @wip não são cobrados."
 )
 GAP_GUIDANCE = (
     "Para cada documento: se ele descreve comportamento do sistema, confirme os requisitos com o dev e "
-    "escreva os cenários Gherkin no próprio Markdown; se não descreve, classifique-o como referência; "
+    "escreva os cenários Gherkin no próprio Markdown; se não descreve, adicione-o ao .specmdignore; "
     "em dúvida, pergunte ao dev."
 )
 
@@ -212,6 +213,12 @@ def _post_tool(root: Path) -> dict[str, Any]:
     return {"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": "\n".join(lines)}}
 
 
+def _runs_on_stop(root: Path) -> bool:
+    from .config import load_config
+
+    return load_config(root).get("run", {}).get("on_stop", True)
+
+
 def _current_run(root: Path, result: dict[str, Any], state: dict[str, Any]) -> tuple[dict[str, Any] | None, bool]:
     """Reuse a run that matches the current code and scenarios, or run when code changed."""
     from .workflow import fingerprint_code, run_project
@@ -248,7 +255,7 @@ def _stop(root: Path) -> dict[str, Any]:
         pending = sorted(path for path, digest in current_spec.items() if seen.get(path) != digest)
         return {"systemMessage": "SpecMD: cenários novos ou alterados aguardando sua confirmação em "
                                  + ", ".join(pending[:6]) + "."}
-    if not scenario_count(result):
+    if not scenario_count(result) or not _runs_on_stop(root):
         return {}
     run, fresh = _current_run(root, result, state)
     if run is None:

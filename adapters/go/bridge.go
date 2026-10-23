@@ -10,12 +10,12 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"regexp"
 	"sort"
 	"strings"
 
 	gherkin "github.com/cucumber/gherkin/go/v42"
 	"github.com/cucumber/godog"
+	messages "github.com/cucumber/messages/go/v34"
 )
 
 type FeatureInput struct {
@@ -63,7 +63,11 @@ type Report struct {
 	Errors       []string         `json:"errors,omitempty"`
 }
 
-var scenarioID = regexp.MustCompile(`^SMD-(?:[A-Za-z0-9]+-)*SCN-[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$`)
+// originKey identifies a scenario by its place in the Markdown; IDs are opaque.
+type originKey struct {
+	Path        string
+	Block, Line int
+}
 
 type declaration struct {
 	ExpectedScenario
@@ -81,101 +85,139 @@ func emptyReport() Report {
 	return Report{Schema: 1, Mode: "real", EngineFailed: true, Scenarios: []ScenarioResult{}}
 }
 
-// prepare validates the parsed declarations, independently of expected IDs.
-// Rules and outlines are rejected rather than credited as a template execution.
-func prepare(input Input) ([]godog.Feature, map[string]declaration, error) {
+// expectedByOrigin indexes the expected scenarios by origin; IDs are opaque
+// but must be unique.
+func expectedByOrigin(items []ExpectedScenario) (map[originKey]ExpectedScenario, error) {
+	wanted := map[originKey]ExpectedScenario{}
+	ids := map[string]bool{}
+	for _, item := range items {
+		if item.ID == "" || item.Path == "" || item.Block < 1 || item.Line < 1 {
+			return nil, fmt.Errorf("invalid expected scenario: %q", item.ID)
+		}
+		key := originKey{item.Path, item.Block, item.Line}
+		if _, ok := wanted[key]; ok || ids[item.ID] {
+			return nil, fmt.Errorf("duplicate expected scenario: %s", item.ID)
+		}
+		wanted[key] = item
+		ids[item.ID] = true
+	}
+	return wanted, nil
+}
+
+func isOutline(keyword string, examples int, dialect *gherkin.Dialect) bool {
+	if examples > 0 {
+		return true
+	}
+	for _, outline := range dialect.ScenarioOutlineKeywords() {
+		if keyword == outline {
+			return true
+		}
+	}
+	return false
+}
+
+// preparation accumulates declarations while each Markdown block is parsed.
+// names maps each block URI and scenario name to IDs in file order.
+type preparation struct {
+	wanted   map[originKey]ExpectedScenario
+	declared map[string]declaration
+	names    map[string]map[string][]string
+	blocks   map[string]bool
+	next     int
+}
+
+func (p *preparation) declare(block FeatureInput, uri string, line int, name string, steps int) error {
+	expected, ok := p.wanted[originKey{block.Path, block.Block, line}]
+	if !ok {
+		return fmt.Errorf("unexpected scenario at %s:%d", block.Path, line)
+	}
+	p.declared[expected.ID] = declaration{ExpectedScenario: expected, URI: uri, Steps: steps}
+	p.names[uri][name] = append(p.names[uri][name], expected.ID)
+	return nil
+}
+
+// addBlock parses one Markdown block. Rules and outlines are rejected rather
+// than credited as a template execution.
+func (p *preparation) addBlock(block FeatureInput) (godog.Feature, error) {
+	if block.Path == "" || block.Block < 1 || block.Line < 1 || block.Line > 1_000_000 || strings.TrimSpace(block.Content) == "" {
+		return godog.Feature{}, errors.New("invalid feature path/block/line/content")
+	}
+	uri := fmt.Sprintf("%s#block-%d", block.Path, block.Block)
+	if p.blocks[uri] {
+		return godog.Feature{}, fmt.Errorf("duplicate block: %s", uri)
+	}
+	p.blocks[uri] = true
+	padded := strings.Repeat("\n", block.Line-1) + block.Content
+	doc, err := gherkin.ParseGherkinDocument(strings.NewReader(padded), func() string { p.next++; return fmt.Sprint(p.next) })
+	if err != nil {
+		return godog.Feature{}, fmt.Errorf("%s: %w", uri, err)
+	}
+	if doc.Feature == nil {
+		return godog.Feature{}, fmt.Errorf("no feature: %s", uri)
+	}
+	dialect := gherkin.DialectsBuiltin().GetDialect(doc.Feature.Language)
+	if dialect == nil {
+		return godog.Feature{}, fmt.Errorf("unknown language: %s", doc.Feature.Language)
+	}
+	if err := p.declareChildren(block, uri, doc.Feature.Children, dialect); err != nil {
+		return godog.Feature{}, err
+	}
+	return godog.Feature{Name: uri, Contents: []byte(padded)}, nil
+}
+
+func (p *preparation) declareChildren(block FeatureInput, uri string, children []*messages.FeatureChild, dialect *gherkin.Dialect) error {
+	p.names[uri] = map[string][]string{}
+	backgroundSteps := 0
+	for _, child := range children {
+		if child.Background != nil {
+			backgroundSteps += len(child.Background.Steps)
+		}
+	}
+	for _, child := range children {
+		if child.Rule != nil {
+			return errors.New("unsupported: Rule requires a bridge with rule-aware evidence")
+		}
+		scenario := child.Scenario
+		if scenario == nil {
+			continue
+		}
+		if isOutline(scenario.Keyword, len(scenario.Examples), dialect) {
+			return errors.New("unsupported: Scenario Outline requires concrete instance evidence")
+		}
+		if len(scenario.Steps) == 0 {
+			return errors.New("each simple scenario requires at least one step")
+		}
+		if err := p.declare(block, uri, int(scenario.Location.Line), scenario.Name, backgroundSteps+len(scenario.Steps)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// prepare matches parsed scenarios to the expected ones by origin (path,
+// block, line).
+func prepare(input Input) ([]godog.Feature, map[string]declaration, map[string]map[string][]string, error) {
 	if input.Schema != 1 || len(input.Features) == 0 || len(input.ExpectedScenarios) == 0 {
-		return nil, nil, errors.New("schema 1 requires nonempty features and expected_scenarios")
+		return nil, nil, nil, errors.New("schema 1 requires nonempty features and expected_scenarios")
 	}
-	wanted := map[string]ExpectedScenario{}
-	for _, item := range input.ExpectedScenarios {
-		if !scenarioID.MatchString(item.ID) || item.Path == "" || item.Block < 1 || item.Line < 1 {
-			return nil, nil, fmt.Errorf("invalid expected scenario: %q", item.ID)
-		}
-		if _, ok := wanted[item.ID]; ok {
-			return nil, nil, fmt.Errorf("duplicate expected ID: %s", item.ID)
-		}
-		wanted[item.ID] = item
+	wanted, err := expectedByOrigin(input.ExpectedScenarios)
+	if err != nil {
+		return nil, nil, nil, err
 	}
+	p := &preparation{wanted: wanted, declared: map[string]declaration{},
+		names: map[string]map[string][]string{}, blocks: map[string]bool{}}
 	features := []godog.Feature{}
-	declared := map[string]declaration{}
-	blocks := map[string]bool{}
-	next := 0
 	for _, block := range input.Features {
-		if block.Path == "" || block.Block < 1 || block.Line < 1 || block.Line > 1_000_000 || strings.TrimSpace(block.Content) == "" {
-			return nil, nil, errors.New("invalid feature path/block/line/content")
-		}
-		uri := fmt.Sprintf("%s#block-%d", block.Path, block.Block)
-		if blocks[uri] {
-			return nil, nil, fmt.Errorf("duplicate block: %s", uri)
-		}
-		blocks[uri] = true
-		padded := strings.Repeat("\n", block.Line-1) + block.Content
-		doc, err := gherkin.ParseGherkinDocument(strings.NewReader(padded), func() string { next++; return fmt.Sprint(next) })
+		feature, err := p.addBlock(block)
 		if err != nil {
-			return nil, nil, fmt.Errorf("%s: %w", uri, err)
+			return nil, nil, nil, err
 		}
-		if doc.Feature == nil {
-			return nil, nil, fmt.Errorf("no feature: %s", uri)
-		}
-		dialect := gherkin.DialectsBuiltin().GetDialect(doc.Feature.Language)
-		if dialect == nil {
-			return nil, nil, fmt.Errorf("unknown language: %s", doc.Feature.Language)
-		}
-		for _, tag := range doc.Feature.Tags {
-			if scenarioID.MatchString(strings.TrimPrefix(tag.Name, "@")) {
-				return nil, nil, errors.New("scenario IDs must be own scenario tags")
-			}
-		}
-		backgroundSteps := 0
-		for _, child := range doc.Feature.Children {
-			if child.Background != nil {
-				backgroundSteps += len(child.Background.Steps)
-			}
-		}
-		for _, child := range doc.Feature.Children {
-			if child.Rule != nil {
-				return nil, nil, errors.New("unsupported: Rule requires a bridge with rule-aware evidence")
-			}
-			scenario := child.Scenario
-			if scenario == nil {
-				continue
-			}
-			outline := len(scenario.Examples) > 0
-			for _, keyword := range dialect.ScenarioOutlineKeywords() {
-				if scenario.Keyword == keyword {
-					outline = true
-				}
-			}
-			if outline {
-				return nil, nil, errors.New("unsupported: Scenario Outline requires concrete instance evidence")
-			}
-			ids := []string{}
-			for _, tag := range scenario.Tags {
-				id := strings.TrimPrefix(tag.Name, "@")
-				if scenarioID.MatchString(id) {
-					ids = append(ids, id)
-				}
-			}
-			if len(ids) != 1 || len(scenario.Steps) == 0 {
-				return nil, nil, errors.New("each simple scenario requires one own ID and at least one step")
-			}
-			id := ids[0]
-			if _, ok := declared[id]; ok {
-				return nil, nil, fmt.Errorf("duplicate scenario ID: %s", id)
-			}
-			actual := ExpectedScenario{ID: id, Path: block.Path, Block: block.Block, Line: int(scenario.Location.Line)}
-			if expected, ok := wanted[id]; !ok || expected != actual {
-				return nil, nil, fmt.Errorf("unknown scenario or origin mismatch: %s", id)
-			}
-			declared[id] = declaration{ExpectedScenario: actual, URI: uri, Steps: backgroundSteps + len(scenario.Steps)}
-		}
-		features = append(features, godog.Feature{Name: uri, Contents: []byte(padded)})
+		features = append(features, feature)
 	}
-	if len(declared) != len(wanted) {
-		return nil, nil, errors.New("declared and expected scenario sets differ")
+	if len(p.declared) != len(wanted) {
+		return nil, nil, nil, errors.New("declared and expected scenario sets differ")
 	}
-	return features, declared, nil
+	return features, p.declared, p.names, nil
 }
 
 // Run executes actual steps registered by initialize. It never loads .feature
@@ -189,7 +231,7 @@ func Run(input Input, initialize func(*godog.ScenarioContext)) (report Report) {
 			report.Errors = append(report.Errors, fmt.Sprintf("runner panic: %v", p))
 		}
 	}()
-	features, declared, err := prepare(input)
+	features, declared, names, err := prepare(input)
 	if err != nil {
 		report.Errors = append(report.Errors, err.Error())
 		return
@@ -200,19 +242,19 @@ func Run(input Input, initialize func(*godog.ScenarioContext)) (report Report) {
 	}
 	current := -1
 	seen := map[string]int{}
+	occurrences := map[string]int{}
 	initializer := func(sc *godog.ScenarioContext) {
 		initialize(sc)
 		sc.Before(func(ctx context.Context, scenario *godog.Scenario) (context.Context, error) {
-			id := ""
-			for _, tag := range scenario.Tags {
-				candidate := strings.TrimPrefix(tag.Name, "@")
-				if scenarioID.MatchString(candidate) {
-					if id != "" {
-						return ctx, errors.New("multiple runtime IDs")
-					}
-					id = candidate
-				}
+			// Concurrency is 1, so scenarios run in file order: the nth runtime
+			// scenario with a name is the nth declared one in that block.
+			key := scenario.Uri + "\x00" + scenario.Name
+			candidates := names[scenario.Uri][scenario.Name]
+			if occurrences[key] >= len(candidates) {
+				return ctx, errors.New("unknown runtime scenario or URI")
 			}
+			id := candidates[occurrences[key]]
+			occurrences[key]++
 			origin, ok := declared[id]
 			if !ok || scenario.Uri != origin.URI {
 				return ctx, errors.New("unknown runtime scenario or URI")

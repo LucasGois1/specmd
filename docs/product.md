@@ -17,7 +17,7 @@ O SpecMD é um plugin para agentes de programação (Claude Code e Codex), insta
 ## Fluxo
 
 1. O dev conversa com o agente, e o agente escreve a documentação no repositório.
-2. Qualquer trabalho em Markdown dispara a análise. Documento sem cenários volta ao agente, que confirma os requisitos com o dev e escreve os cenários, marca o documento como referência quando ele não descreve comportamento, ou pergunta ao dev em caso de dúvida.
+2. Qualquer trabalho em Markdown dispara a análise. Documento sem cenários volta ao agente, que confirma os requisitos com o dev e escreve os cenários, adiciona o documento ao `.specmdignore` quando ele não descreve comportamento, ou pergunta ao dev em caso de dúvida.
 3. O agente mostra os cenários e pergunta se está tudo certo. A confirmação é a resposta do dev.
 4. O agente implementa. Ao concluir, os cenários são executados; os que estão sem implementação ou falhando voltam ao agente com o passo e o erro, até ficar tudo verde.
 

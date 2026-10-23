@@ -1,8 +1,10 @@
 """Private JSON bridge: execute in-memory Gherkin with real Behave steps.
 
-No .feature file is read or generated. Project Behave configuration, filters,
-dry-run options, and environment.py hooks are deliberately not loaded. This is
-process isolation, not a sandbox for hostile Python step definitions.
+No .feature file is read or generated. Scenarios are matched to the expected
+list by origin (path, block, line); parsed scenarios that are not expected,
+such as work-in-progress ones, are skipped. environment.py next to the steps
+directory is loaded; behave.ini and its filters are not. This is process
+isolation, not a sandbox for hostile Python step definitions.
 """
 
 from __future__ import annotations
@@ -12,7 +14,6 @@ from contextlib import redirect_stderr, redirect_stdout
 import io
 import json
 from pathlib import Path
-import re
 import sys
 import tempfile
 
@@ -20,11 +21,8 @@ from behave.configuration import Configuration
 from behave.model import Rule, ScenarioOutline
 from behave.parser import parse_feature
 from behave.runner import ModelRunner, load_step_modules
-from behave.runner_util import make_undefined_step_snippet
+from behave.runner_util import exec_file, make_undefined_step_snippet
 from behave.step_registry import registry
-
-
-SCENARIO_ID = re.compile(r"SMD-(?:[A-Za-z0-9]+-)*SCN-[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*")
 
 
 def _step(step):
@@ -37,25 +35,14 @@ def _step(step):
     return item
 
 
-def _identity(scenario):
-    identities = [str(tag) for tag in scenario.tags if SCENARIO_ID.fullmatch(str(tag))]
-    if len(identities) != 1:
-        raise ValueError("Cenário deve ter exatamente uma identidade estável.")
-    return identities[0]
-
-
 def _concrete(container):
     for item in container.run_items:
         if isinstance(item, Rule):
             yield from _concrete(item)
         elif isinstance(item, ScenarioOutline):
-            concrete = iter(item.scenarios)
-            for example_index, example in enumerate(item.examples, 1):
-                for row_index, _row in enumerate(example.table.rows, 1):
-                    scenario = next(concrete)
-                    yield scenario, f"{_identity(item)}:row:{example_index}:{row_index}"
+            yield from item.scenarios
         else:
-            yield item, _identity(item)
+            yield item
 
 
 def execute(root: Path, steps: str, payload: dict) -> dict:
@@ -80,26 +67,29 @@ def execute(root: Path, steps: str, payload: dict) -> dict:
         raise ValueError("Diretório steps não existe.")
     if any(path.is_symlink() for path in candidate.glob("*.py")):
         raise ValueError("Definições de passo não podem ser links simbólicos.")
-    features, origins = [], []
+    features, parsed, origins = [], [], []
     for item in features_input:
         path, block, line, content = item["path"], item["block"], item["line"], item["content"]
         if (not isinstance(path, str) or type(block) is not int or block < 1
                 or type(line) is not int or line < 1 or not isinstance(content, str)):
             raise ValueError("Bloco sem origem/conteúdo válido.")
-        feature = parse_feature("\n" * (line - 1) + content, filename=f"{path}#block-{block}")
+        feature = parse_feature("\n" * (line - 1) + content, language=payload.get("language"),
+                                filename=f"{path}#block-{block}")
         if feature is None:
             raise ValueError("Bloco sem funcionalidade Gherkin.")
         features.append(feature)
-        origins.extend((scenario, identity, path, block) for scenario, identity in _concrete(feature))
-    expected_by_id = {item["id"]: item for item in expected}
-    if len(expected_by_id) != len(expected) or len({item[1] for item in origins}) != len(origins):
-        raise ValueError("Identidades duplicadas no contrato ou parser.")
-    if {item[1] for item in origins} != set(expected_by_id):
-        raise ValueError("Instâncias do parser não correspondem ao inventário esperado.")
-    for scenario, identity, path, block in origins:
-        wanted = expected_by_id[identity]
-        if any(wanted.get(key) != value for key, value in (("path", path), ("block", block), ("line", scenario.line))):
-            raise ValueError("Origem do cenário diverge da inspeção.")
+        parsed.extend((scenario, path, block) for scenario in _concrete(feature))
+    expected_by_origin = {(item["path"], item["block"], item["line"]): item for item in expected}
+    if len(expected_by_origin) != len(expected):
+        raise ValueError("Origens duplicadas no inventário esperado.")
+    for scenario, path, block in parsed:
+        wanted = expected_by_origin.get((path, block, scenario.line))
+        if wanted is None:
+            scenario.mark_skipped()
+        else:
+            origins.append((scenario, wanted["id"], path, block))
+    if len(origins) != len(expected):
+        raise ValueError("Cenários do parser não correspondem ao inventário esperado.")
     sys.path[:0] = [str(root), str(candidate)]
     registry.clear()
     load_step_modules([str(candidate)])
@@ -107,6 +97,9 @@ def execute(root: Path, steps: str, payload: dict) -> dict:
     configuration.reporters = []
     configuration.dry_run = False
     runner = ModelRunner(configuration, features=features, step_registry=registry)
+    environment = candidate.parent / "environment.py"
+    if environment.is_file() and not environment.is_symlink():
+        exec_file(str(environment), runner.hooks)
     failed = runner.run_model()
     result["engine_failed"] = bool(failed)
     for scenario, identity, path, block in origins:
