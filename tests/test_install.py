@@ -29,6 +29,8 @@ class ManifestTests(unittest.TestCase):
         self.assertEqual([(entry["name"], entry["source"]) for entry in marketplace["plugins"]], [(plugin["name"], "./")])
         self.assertEqual(PLUGIN_ID, f"{plugin['name']}@{marketplace['name']}")
         self.assertNotIn("hooks", plugin)
+        # A fixed version pins installs to the cached copy; without it each commit is a new version.
+        self.assertNotIn("version", plugin)
 
     def test_command_and_skill_reference_the_plugin_root(self):
         self.assertIn("${CLAUDE_PLUGIN_ROOT}/scripts/specmd_cli.py", (REPOSITORY / "commands/init.md").read_text())

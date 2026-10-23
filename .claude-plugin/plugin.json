@@ -1,5 +1,4 @@
 {
   "name": "specmd",
-  "version": "0.3.0",
   "description": "Documentação Markdown canônica com cenários BDD embutidos e feedback determinístico ao agente."
 }
