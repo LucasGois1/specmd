@@ -1,0 +1,12 @@
+# Markdown deste repositório que não descreve comportamento do SpecMD.
+README.md
+AGENTS.md
+HANDOFF.md
+docs/
+!docs/requirements.md
+research/
+adapters/
+examples/
+commands/
+skills/
+vendor/
