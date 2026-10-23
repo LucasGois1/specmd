@@ -25,6 +25,7 @@ Este registro consolida a discussão que originou o projeto. As diretrizes abaix
 | D-017 | O nome escolhido pelo usuário é SpecMD. | Usar `specmd` como nome do repositório e da interface proposta. Disponibilidade global de marca ou pacote não foi verificada. |
 | D-018 | O suporte inicial precisa contemplar pelo menos Java, Python e Go. | Pesquisar e testar adaptadores reais por linguagem antes de estabilizar a arquitetura; não presumir um parâmetro universal de Cucumber. |
 | D-019 | O usuário solicitou investigar sobreposição com Markdown with Gherkin antes de avançar. | A pesquisa encontrou antecedentes adicionais; comparar reutilização e a menor integração necessária, sem presumir novidade ou vantagem de um produto independente. |
+| D-020 | O usuário quer testar o SpecMD localmente no Codex com um agente real. | Preparar instalação e ensaios em uma instância de teste do Codex; a presença do CLI não equivale à instalação do adaptador SpecMD nem à validação de seus bloqueios. |
 
 ## Escolhas técnicas propostas
 
@@ -46,7 +47,7 @@ Estas escolhas são hipóteses de implementação, sujeitas à validação:
 | Licença | Decisão explícita do mantenedor; visibilidade pública não escolhe uma licença automaticamente. |
 | Linguagem e distribuição do núcleo | Comparar integração do parser/runner, instalação e manutenção. |
 | Runner inicial | Spike demonstrando execução em memória, origem no Markdown e resultados estruturados. |
-| Primeiro agente integrado | Verificar APIs e hooks reais, suas versões e capacidade de bloquear eventos. |
+| Primeiro agente integrado | Priorizar a preparação de testes locais no Codex, verificando versão, APIs, hooks e capacidade real de bloquear eventos antes de anunciar suporte. |
 | Interface e armazenamento de aceites | Demonstrar identidade, conteúdo exato revisado, revogação e separação de credenciais. |
 | Granularidade dos aceites | Comparar aceite por documento, requisito ou conjunto, sem perder o contexto aprovado. |
 | Política de reaproveitamento de aceites | Definir efeitos de renomeação, retorno a conteúdo antigo, mudança de contexto e revogação. |

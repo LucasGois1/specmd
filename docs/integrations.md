@@ -44,6 +44,8 @@ Executar todos os testes após qualquer edição de texto produziria interrupç�
 
 O núcleo deve ser independente da integração escolhida. A primeira implementação pode validar um adaptador e depois adicionar o segundo.
 
+O usuário solicitou preparar testes locais no Codex. A [investigação do CLI 0.163.0](../research/codex/README.md) confirmou sua presença e interfaces de ajuda e examinou fontes oficiais de instalação, eventos e trust. Nenhum adaptador SpecMD foi instalado, nenhum hook foi disparado e nenhum bloqueio de sessão foi validado nessa investigação.
+
 Antes de afirmar suporte, cada adaptador precisa registrar e validar:
 
 - Produto, versão e forma de instalação suportados.
@@ -55,7 +57,7 @@ Antes de afirmar suporte, cada adaptador precisa registrar e validar:
 - Capacidade de distinguir espera por usuário, encerramento da interação e conclusão de tarefa.
 - Permissões necessárias e quais configurações o próprio agente pode modificar.
 
-Até essa validação, a capacidade desses itens permanece **não verificada** para as duas plataformas. Não se presume equivalência entre hooks ou bloqueio absoluto de sessão.
+Até essa validação, o funcionamento desses itens no fluxo SpecMD permanece **não verificado** para as duas plataformas. A inspeção estática e os comandos de ajuda do Codex não substituem uma prova em sessão real. Não se presume equivalência entre hooks ou bloqueio absoluto de sessão.
 
 Uma matriz de capacidades deve orientar a implementação: por exemplo, uma plataforma pode permitir feedback após escrita, mas não impedir toda edição futura. O adaptador deve expor essa diferença sem prometer uma garantia que seu ambiente não aplica.
 

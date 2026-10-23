@@ -54,6 +54,7 @@ Documentos informativos podem receber dispensa de Gherkin, mas essa classificaç
 | [Plano de validação](docs/validation-plan.md) | Experimentos, casos negativos e métricas. |
 | [Pesquisa dos runners](research/README.md) | Hipóteses, protótipos e evidências por linguagem. |
 | [Resultados de viabilidade](docs/runner-feasibility.md) | Execuções reais em Java, Python, Go e baseline MDG em JavaScript. |
+| [Preparação local no Codex](research/codex/README.md) | CLI disponível, instalação por marketplace e hooks pesquisados; adaptador SpecMD ainda não implementado. |
 | [Posicionamento e antecedentes](docs/positioning.md) | MDG, rastreabilidade, gates existentes e critérios para reduzir ou integrar a solução. |
 | [Decisões e pendências](docs/decisions.md) | Diretrizes da discussão e escolhas ainda abertas. |
 

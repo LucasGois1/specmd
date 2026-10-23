@@ -23,6 +23,10 @@ Esta investigação responde à exigência de executar cenários canônicos em M
 
 O [estudo consolidado](../docs/runner-feasibility.md) distingue resultados, APIs, riscos de manutenção e limites do que foi demonstrado. Os protótipos não constituem suporte produtivo nem implementam aceite humano.
 
+## Preparação de testes com agentes
+
+A [investigação local do Codex](codex/README.md) registra o CLI 0.163.0 já disponível, as interfaces de instalação por marketplace e a leitura de fontes oficiais de hooks e trust. Foram executados comandos de ajuda e versão; instalação do SpecMD, disparo de hooks e bloqueio em uma sessão real continuam pendentes.
+
 ## Critério de evidência
 
 O caso positivo deve executar implementações reais dos passos e código da linguagem. Parsing isolado ou simulação de runner não é suficiente. Os casos negativos precisam registrar o resultado real da engine e a decisão do gate; o harness pode terminar com sucesso por ter observado corretamente uma falha esperada.
