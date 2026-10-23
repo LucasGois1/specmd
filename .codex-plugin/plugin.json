@@ -1,0 +1,6 @@
+{
+  "name": "specmd",
+  "version": "0.2.0",
+  "description": "Contratos Markdown com revisão por versão, evidências e fluxo experimental para agentes.",
+  "hooks": "./hooks/hooks.json"
+}

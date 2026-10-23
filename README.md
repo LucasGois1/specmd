@@ -2,7 +2,21 @@
 
 Documentação canônica em Markdown, aceite humano versionado e evidências de execução para desenvolvimento com agentes de IA.
 
-> **Estado do projeto:** concepção e pesquisa técnica. O núcleo, os plugins e o serviço de aceite ainda não estão implementados. Os experimentos em `research/` investigam integração com runners e não constituem suporte produtivo. A publicação destes documentos não constitui aceite contratual das versões aqui descritas.
+> **Estado do projeto:** implementação experimental do ciclo completo para experimentar localmente: contratos Markdown, revisão no navegador, decisões assinadas por versão, execução de cenários, invalidação e hooks para agentes. A autoridade criada pela demonstração é local e não autentica uma pessoa nem isola suas permissões das do agente. O [guia rápido](docs/quickstart.md) permite testar a experiência; o [estado da implementação](docs/implementation-status.md) separa funcionamento, evidência e limitações. Publicar documentação não constitui aceite contratual.
+
+```bash
+git clone https://github.com/LucasGois1/specmd.git
+cd specmd
+git switch feat/codex-preflight
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -e .
+specmd demo --dest /tmp/specmd-cart
+export SPECMD_TRUST_STORE=/tmp/specmd-cart-authority/trust.json
+specmd review --root /tmp/specmd-cart --authority /tmp/specmd-cart-authority --trust "$SPECMD_TRUST_STORE"
+```
+
+Revise o contrato no navegador e registre sua decisão. Em outro terminal, com a mesma instalação e variável de confiança, execute `specmd run --root /tmp/specmd-cart` e `specmd check --root /tmp/specmd-cart`. O resultado local esperado é `demo_passed`. Os cenários Python executam código real; a garantia do aceite permanece uma demonstração local. Nenhum comando acima emite aceite automaticamente.
 
 ## O problema
 
@@ -21,13 +35,13 @@ O projeto propõe tornar explícita a relação entre **intenção reconhecida, 
 - Integrar o mecanismo ao trabalho de agentes por adaptadores e hooks, com uma checagem protegida de integração.
 - Manter um inventário incremental para evitar análises repetidas sem ignorar mudanças relevantes.
 
-Gherkin é a linguagem dos cenários; Cucumber é um possível mecanismo de execução. **Não se presume suporte nativo de Cucumber a qualquer Markdown.** Os [protótipos executados](docs/runner-feasibility.md) demonstraram parsing e adaptação em memória nas três linguagens, preservando a origem dos cenários no `.md`; isso ainda não constitui um produto integrado.
+Gherkin é a linguagem dos cenários; Cucumber é um possível mecanismo de execução. **Não se presume suporte nativo de Cucumber a qualquer Markdown.** O núcleo executa Python/Behave diretamente e conecta [bridges Java e Go](adapters/README.md) pelo mesmo protocolo JSON em memória, preservando a origem no `.md`. Os [protótipos anteriores](docs/runner-feasibility.md) registram a pesquisa que fundamentou essas integrações.
 
-O suporte inicial deve contemplar pelo menos Java, Python e Go. Os mecanismos de entrada e execução são pesquisados individualmente; não se presume um parâmetro de CLI comum às três linguagens.
+Python, Java e Go usam motores e integração próprios. Não se exige arquivo `.feature` nem sua geração temporária. Consulte os limites de formato e integração de cada bridge antes de configurar um projeto.
 
 Documentação executável e vários mecanismos de rastreabilidade e gates já têm antecedentes. A [pesquisa de posicionamento](docs/positioning.md) registra a sobreposição e recomenda comparar integrações existentes antes de construir novos subsistemas. O possível benefício do SpecMD é uma hipótese a validar, sem alegação de novidade ou exclusividade.
 
-## Fluxo pretendido
+## Fluxo implementado para experimentação
 
 1. Descobrir os documentos próprios do projeto e aplicar a política de escopo.
 2. Propor a classificação de documentos novos ou alterados.
@@ -43,6 +57,8 @@ Documentos informativos podem receber dispensa de Gherkin, mas essa classificaç
 
 | Documento | Conteúdo |
 | --- | --- |
+| [Guia rápido](docs/quickstart.md) | Demonstração, revisão, execução e instalação local. |
+| [Estado da implementação](docs/implementation-status.md) | Recursos implementados e limites de confiança/validação. |
 | [Produto](docs/product.md) | Problema, público, proposta, limites e oportunidades. |
 | [Requisitos e cenários](docs/requirements.md) | Obrigações identificadas e critérios de aceite em Gherkin no próprio Markdown. |
 | [Formato documental](docs/format.md) | Proposta de metadados, IDs, blocos e documentos mistos. |
@@ -54,7 +70,8 @@ Documentos informativos podem receber dispensa de Gherkin, mas essa classificaç
 | [Plano de validação](docs/validation-plan.md) | Experimentos, casos negativos e métricas. |
 | [Pesquisa dos runners](research/README.md) | Hipóteses, protótipos e evidências por linguagem. |
 | [Resultados de viabilidade](docs/runner-feasibility.md) | Execuções reais em Java, Python, Go e baseline MDG em JavaScript. |
-| [Preparação local no Codex](research/codex/README.md) | CLI disponível, instalação por marketplace e hooks pesquisados; adaptador SpecMD ainda não implementado. |
+| [Preflight experimental no Codex](docs/experimental-codex.md) | Instalação local por clone e build, opt-in, CLI, hooks e limites do primeiro incremento. |
+| [Pesquisa do host Codex](research/codex/README.md) | Interfaces, descoberta, trust e evidências da investigação anterior à validação completa do adaptador. |
 | [Posicionamento e antecedentes](docs/positioning.md) | MDG, rastreabilidade, gates existentes e critérios para reduzir ou integrar a solução. |
 | [Decisões e pendências](docs/decisions.md) | Diretrizes da discussão e escolhas ainda abertas. |
 
@@ -69,8 +86,12 @@ Exemplos de formato: [contrato comportamental](examples/cancellation.contract.md
 - Hooks locais ajudam a orientar o agente. Bloqueios contra bypass precisam de uma fronteira de permissões que o agente não possa alterar.
 - A autoria declarada em um commit Git não substitui a identidade autenticada de quem submeteu ou aprovou a mudança.
 
-## Como começar a implementação
+## Testes e limites
 
-Leia o [plano de implementação](docs/roadmap.md) e a [pesquisa](research/README.md). A viabilidade inicial de execução sem arquivos `.feature` foi demonstrada em Java, Python e Go. O próximo experimento proposto é um fluxo pequeno de ponta a ponta que una contrato Markdown, aceite humano de uma versão, execução e decisão de conclusão. Stack do núcleo, primeiro adaptador de agente, mecanismo de aprovação e licença permanecem em aberto.
+Execute `python -m unittest discover -s tests -v`. Há testes com protocolos de agentes simulados, HTTP local real, assinaturas reais e execução real de passos Python. Os testes não inventam uma leitura humana: decisões automáticas pertencem apenas às fixtures. Os bridges nativos possuem suas próprias verificações e instruções em `adapters/`.
 
-Não há comandos de instalação ou execução do produto nesta etapa. Comandos de experimentos, quando disponíveis, pertencem aos respectivos relatórios de pesquisa.
+`python scripts/test_local.py` executa a suíte e grava um relatório JSON reproduzível; veja [o escopo da validação](research/workflow/README.md).
+
+`schema = 1` preserva o preflight anterior, que nunca autoriza conclusão. `schema = 2` habilita o ciclo de revisão e execução. `demo_passed` serve à validação local; `verify --require-real` exige uma decisão de uma autoridade externa configurada como protegida e execução real nova. A implantação precisa proteger o verificador, a configuração e a autoridade das permissões do agente; esse isolamento não é instalado por um flag ou por um hook.
+
+O [guia do Codex](docs/experimental-codex.md) registra instalação e trust. O CLI nativo já foi instalado e seus hooks exercitados com backend determinístico. A tentativa anterior com o serviço de modelo retornou `401`; a experiência com LLM real e a instalação nativa do Claude permanecem sem validação. A utilidade do produto continua dependendo de um piloto comparativo; funcionalidades existentes não demonstram superioridade sobre ferramentas anteriores.

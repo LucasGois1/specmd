@@ -1,0 +1,166 @@
+{
+  "observed_at_utc": "2026-10-23T03:06:43.816864+00:00",
+  "scope": "Installed Python CLI and hook bootstrap with real Markdown; no model session, human approval, protected gate, or BDD execution.",
+  "versions": {
+    "specmd": "0.1.0",
+    "markdown-it-py": "4.0.0",
+    "PyYAML": "6.0.3",
+    "behave": "1.3.3"
+  },
+  "hook_bootstrap_sha256": "5683e479aa14a9c86ad9a39f7bc545b85473e3a5434d8561c5c78ed6f233a37d",
+  "source_contract_sha256": "883df9508eddecf0d30d678d252f085440636fcf3dbdbc92e68f1f995a64355a",
+  "all_expectations_met": true,
+  "cases": [
+    {
+      "name": "unconfigured_noop",
+      "interface": "hook-bootstrap",
+      "event": "Stop",
+      "exit": 0,
+      "reply": {},
+      "observed_status": null,
+      "observed_may_complete": null
+    },
+    {
+      "name": "initialize",
+      "interface": "cli",
+      "exit": 0,
+      "status": "initialized",
+      "may_complete": false,
+      "manifest_sha256": null,
+      "findings": []
+    },
+    {
+      "name": "unclassified_document",
+      "interface": "cli",
+      "exit": 1,
+      "status": "blocked",
+      "may_complete": false,
+      "manifest_sha256": "860b68bea05a4576b3e0bd0b3d53291cad7f0b788d60f129984a0d4465f0d7d9",
+      "findings": [
+        "frontmatter_missing",
+        "authority_not_configured",
+        "evidence_not_executed"
+      ]
+    },
+    {
+      "name": "session_start_feedback",
+      "interface": "hook-bootstrap",
+      "event": "SessionStart",
+      "exit": 0,
+      "reply": {
+        "hookSpecificOutput": {
+          "hookEventName": "SessionStart",
+          "additionalContext": "SpecMD: blocked; may_complete=false.\n- unclassified.md:1: Documento sem frontmatter de classificação specmd.\n- Autoridade de aceite humano ainda não implementada/configurada; classificação declarada não é aprovação.\n- Este scanner não executa cenários nem comprova a implementação dos requisitos.\nO estado em .specmd/local/status.json é uma observação, não um aceite humano.\nNão declare a tarefa concluída. Corrija as pendências locais; quando aguardar revisão humana, explique a pendência e devolva o controle. Este protótipo não oferece emissão de aceite ou gate protegido."
+        }
+      },
+      "observed_status": "blocked",
+      "observed_may_complete": false
+    },
+    {
+      "name": "repairable_first_stop",
+      "interface": "hook-bootstrap",
+      "event": "Stop",
+      "exit": 0,
+      "reply": {
+        "decision": "block",
+        "reason": "SpecMD: blocked; may_complete=false.\n- unclassified.md:1: Documento sem frontmatter de classificação specmd.\n- Autoridade de aceite humano ainda não implementada/configurada; classificação declarada não é aprovação.\n- Este scanner não executa cenários nem comprova a implementação dos requisitos.\nO estado em .specmd/local/status.json é uma observação, não um aceite humano.\nCorrija as pendências. Se depender do humano, explique o bloqueio e devolva o controle.",
+        "systemMessage": "SpecMD: blocked; may_complete=false.\n- unclassified.md:1: Documento sem frontmatter de classificação specmd.\n- Autoridade de aceite humano ainda não implementada/configurada; classificação declarada não é aprovação.\n- Este scanner não executa cenários nem comprova a implementação dos requisitos.\nO estado em .specmd/local/status.json é uma observação, não um aceite humano."
+      },
+      "observed_status": "blocked",
+      "observed_may_complete": false
+    },
+    {
+      "name": "repairable_repeated_stop",
+      "interface": "hook-bootstrap",
+      "event": "Stop",
+      "exit": 0,
+      "reply": {
+        "continue": false,
+        "stopReason": "SpecMD: blocked; may_complete=false.\n- unclassified.md:1: Documento sem frontmatter de classificação specmd.\n- Autoridade de aceite humano ainda não implementada/configurada; classificação declarada não é aprovação.\n- Este scanner não executa cenários nem comprova a implementação dos requisitos.\nO estado em .specmd/local/status.json é uma observação, não um aceite humano.\nPendências persistem após o feedback; devolvendo o controle para evitar um ciclo.",
+        "systemMessage": "SpecMD: blocked; may_complete=false.\n- unclassified.md:1: Documento sem frontmatter de classificação specmd.\n- Autoridade de aceite humano ainda não implementada/configurada; classificação declarada não é aprovação.\n- Este scanner não executa cenários nem comprova a implementação dos requisitos.\nO estado em .specmd/local/status.json é uma observação, não um aceite humano."
+      },
+      "observed_status": "blocked",
+      "observed_may_complete": false
+    },
+    {
+      "name": "valid_contract_pending_human",
+      "interface": "cli",
+      "exit": 1,
+      "status": "waiting_human_review",
+      "may_complete": false,
+      "manifest_sha256": "0cf78f7c67ed6abbcccd3f17c7cae8d2ca3187ed2fbcade024e9c6b682f1fce4",
+      "findings": [
+        "authority_not_configured",
+        "evidence_not_executed"
+      ]
+    },
+    {
+      "name": "pending_human_returns_control",
+      "interface": "hook-bootstrap",
+      "event": "Stop",
+      "exit": 0,
+      "reply": {
+        "continue": false,
+        "stopReason": "SpecMD: waiting_human_review; may_complete=false.\n- Autoridade de aceite humano ainda não implementada/configurada; classificação declarada não é aprovação.\n- Este scanner não executa cenários nem comprova a implementação dos requisitos.\nO estado em .specmd/local/status.json é uma observação, não um aceite humano.\nAguardando revisão humana; devolvendo o controle sem liberar a tarefa.",
+        "systemMessage": "SpecMD: waiting_human_review; may_complete=false.\n- Autoridade de aceite humano ainda não implementada/configurada; classificação declarada não é aprovação.\n- Este scanner não executa cenários nem comprova a implementação dos requisitos.\nO estado em .specmd/local/status.json é uma observação, não um aceite humano."
+      },
+      "observed_status": "waiting_human_review",
+      "observed_may_complete": false,
+      "scenario_origins": [
+        {
+          "id": "SMD-EX-SCN-001",
+          "line": 26
+        },
+        {
+          "id": "SMD-EX-SCN-002",
+          "line": 32
+        }
+      ]
+    },
+    {
+      "name": "contract_change_detected",
+      "interface": "hook-bootstrap",
+      "event": "PostToolUse",
+      "exit": 0,
+      "reply": {
+        "hookSpecificOutput": {
+          "hookEventName": "PostToolUse",
+          "additionalContext": "SpecMD: waiting_human_review; may_complete=false.\n- Autoridade de aceite humano ainda não implementada/configurada; classificação declarada não é aprovação.\n- Este scanner não executa cenários nem comprova a implementação dos requisitos.\nO estado em .specmd/local/status.json é uma observação, não um aceite humano.\nNão declare a tarefa concluída. Corrija as pendências locais; quando aguardar revisão humana, explique a pendência e devolva o controle. Este protótipo não oferece emissão de aceite ou gate protegido."
+        }
+      },
+      "observed_status": "waiting_human_review",
+      "observed_may_complete": false,
+      "observed_changes": [
+        {
+          "kind": "modified",
+          "path": "contract.md"
+        }
+      ],
+      "manifest_sha256": "0c2475ea31810e233885d2d35ce118aa775d1f66c7badafa633e940653536455"
+    },
+    {
+      "name": "invalid_configuration",
+      "interface": "cli",
+      "exit": 2,
+      "status": "error",
+      "may_complete": false,
+      "manifest_sha256": null,
+      "findings": [
+        "config_invalid"
+      ]
+    },
+    {
+      "name": "invalid_configuration_repeated_stop",
+      "interface": "hook-bootstrap",
+      "event": "Stop",
+      "exit": 0,
+      "reply": {
+        "continue": false,
+        "stopReason": "SpecMD: error; may_complete=false.\n- specmd.toml: A configuração inicial aceita somente schema = 1, sem outras opções.\nO estado em .specmd/local/status.json é uma observação, não um aceite humano.\nPendências persistem após o feedback; devolvendo o controle para evitar um ciclo.",
+        "systemMessage": "SpecMD: error; may_complete=false.\n- specmd.toml: A configuração inicial aceita somente schema = 1, sem outras opções.\nO estado em .specmd/local/status.json é uma observação, não um aceite humano."
+      },
+      "observed_status": "error",
+      "observed_may_complete": false
+    }
+  ]
+}

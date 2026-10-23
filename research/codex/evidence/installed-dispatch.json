@@ -1,0 +1,140 @@
+{
+  "observed_at_utc": "2026-10-23T03:58:29.844097+00:00",
+  "scope": "Real Codex CLI dispatch of the installed cached plugin with deterministic local Responses API output.",
+  "real_llm_executed": false,
+  "installed_plugin_id": "specmd@specmd-local",
+  "cache_matches_canonical_sources": true,
+  "temporary_trust_confirmed_by_native_listing": true,
+  "human_ui_trust_tested": false,
+  "global_trust_written": false,
+  "contract_acceptance_granted": false,
+  "source_sha256": {
+    "research/codex/probe_installed_dispatch.py": "61aef5750020a12b38efb76eb07840c6d0857346a5298350d1fd4aa0b7facb0c",
+    "research/codex/probe_installation.py": "8299105ac5163bec35dd8ac5f5e6f534a2e4cb54720b8e37d7b7ed50362b7348",
+    "research/codex/probe_native_fixture.py": "0f9129b5eda81f932315f596f09234b1a2e9579aec084d3728dbff9491d81b3b"
+  },
+  "cases": [
+    {
+      "case": "blocked",
+      "host_exit_code": 0,
+      "event_types": [
+        "thread.started",
+        "item.completed",
+        "turn.started",
+        "item.completed",
+        "item.completed",
+        "turn.completed"
+      ],
+      "host_messages": [
+        "Model metadata for `specmd-fixture` not found. Defaulting to fallback metadata; this can degrade performance and cause issues."
+      ],
+      "stderr_excerpt": "Reading additional input from stdin...",
+      "http_requests": [
+        {
+          "case": "blocked",
+          "method": "POST",
+          "path": "/v1/responses",
+          "request_bytes": 43931,
+          "model": "specmd-fixture",
+          "preflight_context_present": true,
+          "stream": true,
+          "response_index": 1
+        },
+        {
+          "case": "blocked",
+          "method": "POST",
+          "path": "/v1/responses",
+          "request_bytes": 44889,
+          "model": "specmd-fixture",
+          "preflight_context_present": true,
+          "stream": true,
+          "response_index": 2
+        }
+      ],
+      "specmd_status": "blocked",
+      "specmd_may_complete": false,
+      "last_hook_event": "Stop",
+      "fixture_unchanged_except_observed_cache": true,
+      "expectations_met": true
+    },
+    {
+      "case": "waiting",
+      "host_exit_code": 0,
+      "event_types": [
+        "thread.started",
+        "item.completed",
+        "turn.started",
+        "item.completed",
+        "turn.completed"
+      ],
+      "host_messages": [
+        "Model metadata for `specmd-fixture` not found. Defaulting to fallback metadata; this can degrade performance and cause issues."
+      ],
+      "stderr_excerpt": "Reading additional input from stdin...",
+      "http_requests": [
+        {
+          "case": "waiting",
+          "method": "POST",
+          "path": "/v1/responses",
+          "request_bytes": 43873,
+          "model": "specmd-fixture",
+          "preflight_context_present": true,
+          "stream": true,
+          "response_index": 3
+        }
+      ],
+      "specmd_status": "waiting_human_review",
+      "specmd_may_complete": false,
+      "last_hook_event": "Stop",
+      "fixture_unchanged_except_observed_cache": true,
+      "expectations_met": true
+    },
+    {
+      "case": "post_tool_use",
+      "host_exit_code": 0,
+      "http_requests": [
+        {
+          "case": "post_tool_use",
+          "method": "POST",
+          "path": "/v1/responses",
+          "request_bytes": 40839,
+          "model": "specmd-fixture",
+          "preflight_context_present": true,
+          "stream": true,
+          "response_index": 4
+        },
+        {
+          "case": "post_tool_use",
+          "method": "POST",
+          "path": "/v1/responses",
+          "request_bytes": 42068,
+          "model": "specmd-fixture",
+          "preflight_context_present": true,
+          "stream": true,
+          "response_index": 5
+        }
+      ],
+      "contract_sha256_before": "50ee44c512f3de3c83cddbe680e4dcffa91f03b0e2ca5874e5e0715c37813bb6",
+      "contract_sha256_after": "a13b52e9b2a5f0772e39e53fa624a4f9a1ecadbfcfd0919ffae50987b5bf54f5",
+      "post_tool_observation": {
+        "hook_event": "PostToolUse",
+        "status": "waiting_human_review",
+        "may_complete": false,
+        "observed_changes": [
+          {
+            "kind": "modified",
+            "path": "contract.md"
+          }
+        ],
+        "contract_sha256": "a13b52e9b2a5f0772e39e53fa624a4f9a1ecadbfcfd0919ffae50987b5bf54f5"
+      },
+      "last_hook_event": "Stop",
+      "specmd_may_complete": false,
+      "specmd_status": "waiting_human_review",
+      "stderr_excerpt": "Reading additional input from stdin...",
+      "expectations_met": true
+    }
+  ],
+  "expectations_met": true,
+  "persistent_trust_unchanged_after_dispatch": true
+}

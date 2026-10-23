@@ -2,7 +2,7 @@
 
 ## Estado do repositório
 
-Este projeto está na etapa de documentação e pesquisa técnica. O núcleo e os plugins não estão implementados. Protótipos em `research/` não constituem suporte produtivo. Preserve a distinção entre diretrizes da conversa, desenho técnico proposto, decisões pendentes e evidências realmente produzidas.
+Este projeto implementa um ciclo experimental em Python: inventário Markdown, revisão local, decisões Ed25519 versionadas, execução de cenários, evidência e adaptadores de agentes. Schema1 permanece preflight sem conclusão; schema2 pode produzir demo_passed em demonstração e passed em execução atual sob confiança externa configurada como protegida. O modo local não autentica a identidade humana nem isola a chave do agente. Verificador, configuração e autoridade precisam de uma fronteira de permissões externa para produção. Consulte docs/implementation-status.md. Protótipos em research/ não constituem suporte produtivo. Preserve a distinção entre código, propostas e evidências realmente produzidas.
 
 A autorização para criar ou editar documentação não deve ser apresentada como um recibo de aceite contratual. Nunca fabrique aprovação, assinatura, execução de testes ou suporte de integração.
 
@@ -16,6 +16,10 @@ A autorização para criar ou editar documentação não deve ser apresentada co
 - Cache e inventário são reconstruíveis e não constituem autoridade de aprovação.
 - Aguardar decisão humana é diferente de declarar uma tarefa concluída.
 - Hooks disponíveis e capacidade de bloqueio devem ser verificados por plataforma e versão. Não invente nomes de eventos ou APIs como se estivessem confirmados.
+- O opt-in `specmd.toml` e `.specmd/local/status.json` são configuração e observação locais, não aceites. A classificação, a configuração e os vínculos fazem parte do hash revisado. Não transforme estrutura válida em autorização de conclusão.
+- Não crie decisões em nome do usuário. Assinaturas e decisões sintéticas em testes devem permanecer em fixtures descartáveis, identificadas como simulação; jamais aplique seus recibos ao produto real.
+- Instalação do plugin e trust humano são etapas distintas. Oriente a revisão normal pela UX do host e não fabrique uma ação humana. Em testes já autorizados, uma configuração de confiança restrita à sessão e aos handlers concretos deve ter sua origem documentada; ela não comprova uso da UX nem constitui aceite de requisitos. Não use mecanismos de bypass de trust.
+- Gere o pacote por `scripts/build_codex_plugin.py` antes da instalação local. O marketplace aponta para o artefato por allowlist; não empacote o clone inteiro com `.venv`, `.git` ou dados locais.
 
 ## Trabalho nos documentos
 

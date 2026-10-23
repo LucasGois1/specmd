@@ -1,0 +1,42 @@
+{
+  "observed_at_utc": "2026-10-23T03:05:57.702417+00:00",
+  "command": [
+    "/opt/codex/bin/codex",
+    "-c",
+    "marketplaces.specmd-local.source_type=\"local\"",
+    "-c",
+    "marketplaces.specmd-local.source=\"/workspace/specmd\"",
+    "plugin",
+    "list",
+    "--marketplace",
+    "specmd-local",
+    "--available",
+    "--json"
+  ],
+  "exit": 0,
+  "stdout": "{\n  \"installed\": [],\n  \"available\": [\n    {\n      \"pluginId\": \"specmd@specmd-local\",\n      \"name\": \"specmd\",\n      \"marketplaceName\": \"specmd-local\",\n      \"version\": \"0.1.0\",\n      \"installed\": false,\n      \"enabled\": false,\n      \"source\": {\n        \"source\": \"local\",\n        \"path\": \"/workspace/specmd/dist/codex-plugin\"\n      },\n      \"marketplaceSource\": {\n        \"sourceType\": \"local\",\n        \"source\": \"/workspace/specmd\"\n      },\n      \"installPolicy\": \"AVAILABLE\",\n      \"authPolicy\": \"ON_USE\"\n    }\n  ]\n}\n",
+  "stderr": "WARNING: proceeding, even though we could not create PATH aliases: Read-only file system (os error 30)\n",
+  "scope": "Read-only marketplace discovery of generated allowlist bundle via session overrides; no installation or trust requested.",
+  "package_files_sha256": {
+    ".agents/plugins/marketplace.json": "54b7029269aed3708f62b91d9850ac387f5918f0be8fc9ca6d865537398476dd",
+    ".codex-plugin/plugin.json": "2c6c7e0e8eed306936d009ce7bd257f0a906ab1af45039d205db2553016d4688",
+    "hooks/hooks.json": "72ab2a207b068515d12c37de21c47d11d0b279b6d8a1478437ee2b3f86d87f63",
+    "scripts/build_codex_plugin.py": "2a9371a5274a33a021de9f7f2695a3466aeb4b5941a06d70c4086ee5c1a3e34c"
+  },
+  "bundle": {
+    "schema": "specmd-codex-bundle-v1",
+    "purpose": "Build inventory only; not a human approval, signature, or hook trust receipt.",
+    "content_sha256": "e8a65812e4f53792b0f167cad4bf6dff09c0a311c565b2d7c1979b8896906ea9",
+    "files_sha256": {
+      ".codex-plugin/plugin.json": "2c6c7e0e8eed306936d009ce7bd257f0a906ab1af45039d205db2553016d4688",
+      "hooks/hooks.json": "72ab2a207b068515d12c37de21c47d11d0b279b6d8a1478437ee2b3f86d87f63",
+      "pyproject.toml": "6ab2eeca7fae8f8f7a854786990f2a9e08ed703b3184015212931ecea4639d45",
+      "scripts/codex_hook.py": "5683e479aa14a9c86ad9a39f7bc545b85473e3a5434d8561c5c78ed6f233a37d",
+      "src/specmd/__init__.py": "693f02921f442b95854e517d7459168e08d14d5fbf055848d5aa19c7538cb36e",
+      "src/specmd/__main__.py": "935a1c1166b0c1ea35a82256345000bf2c73ded718d77773bc27a71ecce28f7d",
+      "src/specmd/cli.py": "b259cbd518a752f1dad7699490766c6229850589656809e77b038de277c8cc6e",
+      "src/specmd/codex.py": "40d15e1fb5c4c62241e1b2749fa7cdd34c4ffe17954cbfbefaa54f85f69f1c54",
+      "src/specmd/core.py": "f0b3f3fd797b50bf3e70fa9d09000587f49f5ed65bf4b95ea700ff6e327845b6"
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "observed_at_utc": "2026-10-23T03:05:59.211102+00:00",
+  "command": ".venv/bin/python -m unittest discover -s tests",
+  "tests_run": 49,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "successful": true,
+  "scope": "Local scanner and Codex adapter unit tests; not human approval, BDD execution or protected gate."
+}

@@ -1,0 +1,17 @@
+{
+  "observed_at_utc": "2026-10-23T11:53:19.254908+00:00",
+  "installed_version": "0.2.0",
+  "installed_root": "/run/codex-environment/codex-home/plugins/cache/specmd-local/specmd/0.2.0",
+  "files": 21,
+  "cache_matches_bundle": true,
+  "bundle_sha256": "e2b5c93c375e019fe70c9a89daebfcb9dff039e8294cf64a21083a04e9d30ada",
+  "hook_events_declared": [
+    "PostToolUse",
+    "PreToolUse",
+    "SessionStart",
+    "Stop"
+  ],
+  "native_dispatch_exercised_for_this_revision": false,
+  "human_hook_trust_granted": false,
+  "scope": "Actual local Codex plugin add succeeded; source and bundle preflight verified without a model. New lifecycle protocols use mocked-agent integration tests."
+}

@@ -1,0 +1,60 @@
+{
+  "status": "blocked_by_environment_before_hook_dispatch",
+  "observed_at_utc": "2026-10-23T03:10:02.682462+00:00",
+  "command": [
+    "codex",
+    "exec",
+    "--ignore-user-config",
+    "--ephemeral",
+    "--json",
+    "--sandbox",
+    "read-only",
+    "--skip-git-repo-check",
+    "-C",
+    "/workspace/specmd/research/codex/fixtures/runtime/waiting",
+    "-c",
+    "features.hooks=true",
+    "-c",
+    "features.plugins=false",
+    "-c",
+    "sqlite_home=\"/tmp/specmd-codex-hook-probe-db\"",
+    "-c",
+    "log_dir=\"/tmp/specmd-codex-hook-probe-logs\"",
+    "-c",
+    "hooks.SessionStart=[{hooks = [{type = \"command\", command = \"/workspace/specmd/.venv/bin/python /workspace/specmd/scripts/codex_hook.py\", timeout = 30}]}]",
+    "-c",
+    "hooks.state.\"/<session-flags>/config.toml:session_start:0:0\"={enabled = true, trusted_hash = \"sha256:cdb23b7c99254fcc43785bc2732523f3204573538d41550e1f8d4e45ee6f3391\"}",
+    "-c",
+    "hooks.Stop=[{hooks = [{type = \"command\", command = \"/workspace/specmd/.venv/bin/python /workspace/specmd/scripts/codex_hook.py\", timeout = 30}]}]",
+    "-c",
+    "hooks.state.\"/<session-flags>/config.toml:stop:0:0\"={enabled = true, trusted_hash = \"sha256:9abd8c6299d6c9c0d412bbbd9eba9d442df4e38e16bf6acc05dd566ef0b85d09\"}",
+    "Teste de instrumentação. Não use ferramentas, não leia nem altere arquivos. Diga somente que a verificação aguarda revisão humana; não declare conclusão ou aceite."
+  ],
+  "process_exit_code": 1,
+  "stdout": "",
+  "stderr": "WARNING: proceeding, even though we could not create PATH aliases: Read-only file system (os error 30)\nReading additional input from stdin...\nError: failed to initialize in-process app-server client: Read-only file system (os error 30)\n",
+  "handlers": [
+    {
+      "event": "SessionStart",
+      "key": "/<session-flags>/config.toml:session_start:0:0",
+      "candidate_hash": "sha256:cdb23b7c99254fcc43785bc2732523f3204573538d41550e1f8d4e45ee6f3391",
+      "provenance": "calculated from pinned official normalized-identity/fingerprint sources; not observed via hooks/list or validated by dispatch"
+    },
+    {
+      "event": "Stop",
+      "key": "/<session-flags>/config.toml:stop:0:0",
+      "candidate_hash": "sha256:9abd8c6299d6c9c0d412bbbd9eba9d442df4e38e16bf6acc05dd566ef0b85d09",
+      "provenance": "calculated from pinned official normalized-identity/fingerprint sources; not observed via hooks/list or validated by dispatch"
+    }
+  ],
+  "model_execution_observed": false,
+  "native_hook_execution_observed": false,
+  "global_config_written": false,
+  "home_repurposed": false,
+  "codex_home_repurposed": false,
+  "trust_bypass_used": false,
+  "contract_acceptance_granted": false,
+  "native_trust_validation_observed": false,
+  "session_scoped_trust_requested": true,
+  "research_expectations_met": false
+}
