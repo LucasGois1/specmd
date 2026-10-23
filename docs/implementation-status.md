@@ -38,7 +38,7 @@ Aceite não prova implementação. Testes verdes não provam que os requisitos e
 
 ## Validações pendentes
 
-A suíte local desta revisão passou **187 testes**, sem skips. Os seis casos de integração nativa Java/Go também passaram nas expectativas positivas e negativas. Assinaturas, HTTP local e execução Python são reais; agente e decisões de navegador nos testes são fixtures simuladas. A versão 0.2.0 do pacote foi instalada no Codex deste ambiente, com arquivos conferidos contra o bundle. Os relatórios estão em [research/workflow/evidence](../research/workflow/evidence/); nenhum deles representa leitura ou aceite humano dos contratos reais.
+O relatório registrado em [research/workflow/evidence](../research/workflow/evidence/local-tests.json) passou **187 testes**, sem skips. A revisão atual tem 188 testes, executados no CI em Linux e macOS com dependências instaladas de `pylock.toml`. Os seis casos de integração nativa Java/Go também passaram nas expectativas positivas e negativas. Assinaturas, HTTP local e execução Python são reais; agente e decisões de navegador nos testes são fixtures simuladas. A versão 0.2.0 do pacote foi instalada no Codex deste ambiente, com arquivos conferidos contra o bundle. Os relatórios estão em [research/workflow/evidence](../research/workflow/evidence/); nenhum deles representa leitura ou aceite humano dos contratos reais.
 
 A experiência de uma pessoa lendo, recusando, aceitando e retomando um agente ainda precisa de ensaios completos. A interação `/hooks` com trust humano exige evidência própria.
 
