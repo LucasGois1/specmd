@@ -12,7 +12,7 @@ class PretoolTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
+        self.root = Path(temporary.name).resolve()
         (self.root / "docs").mkdir()
         self.pending = {"status": "waiting_human_review", "may_complete": False}
 

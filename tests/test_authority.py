@@ -16,7 +16,7 @@ class AuthorityTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="specmd-authority-")
         self.addCleanup(self.temporary.cleanup)
-        base = Path(self.temporary.name)
+        base = Path(self.temporary.name).resolve()
         self.root = base / "project"
         self.root.mkdir()
         self.authority = base / "external-authority"

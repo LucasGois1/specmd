@@ -16,7 +16,7 @@ from specmd.review_server import build_server
 class ReviewServerTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
-        self.root = Path(self.temporary.name)
+        self.root = Path(self.temporary.name).resolve()
         self.authority = self.root / "external-demo-authority"
         self.trust = self.root / "trust.json"
         self.proposal = {

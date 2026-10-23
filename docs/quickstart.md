@@ -32,6 +32,8 @@ export SPECMD_PYTHON="$SPECMD_SOURCE/.venv/bin/python"
 
 Mantenha `SPECMD_PYTHON` como caminho absoluto ao iniciar um agente que usará hooks.
 
+O CI instala as dependências a partir de `pylock.toml`, com versões e hashes fixados e somente wheels. Para reproduzir esse ambiente, use `uv pip install --require-hashes --only-binary :all: -r pylock.toml`. Ao mudar as dependências do `pyproject.toml`, regenere o lock com o comando registrado no cabeçalho do arquivo.
+
 Para executar toda a validação local sem conta de modelo, use `"$SPECMD_PYTHON" scripts/test_local.py`. O relatório separa agente/navegador simulados de assinaturas, HTTP e testes Python reais. As decisões automáticas ficam apenas nas fixtures descartáveis.
 
 ## Criar uma demonstração

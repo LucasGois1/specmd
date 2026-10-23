@@ -21,7 +21,7 @@ class ExperienceTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="specmd-experience-")
         self.addCleanup(self.temporary.cleanup)
-        self.base = Path(self.temporary.name)
+        self.base = Path(self.temporary.name).resolve()
         self.root = self.base / "cart"
         self.demo = create_demo(self.root)
         self.authority = Path(self.demo["authority"])

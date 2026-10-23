@@ -18,7 +18,7 @@ class ClaudeHookTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
-        self.root = Path(self.temporary.name)
+        self.root = Path(self.temporary.name).resolve()
         (self.root / "specmd.toml").write_text("schema = 1\n")
 
     def payload(self, event="Stop", **extra):
