@@ -22,7 +22,7 @@ Funcionalidade: Documentação como fonte canônica
 
 ## SMD-REQ-002 — Descoberta dos documentos
 
-Qualquer Markdown do projeto entra na análise, inclusive arquivos novos ainda não versionados. Documentos que não descrevem comportamento do sistema (guias de setup, notas) ficam fora da cobrança de cenários por uma marcação explícita, que o agente adiciona quando é claro e pergunta ao dev quando há dúvida. Hoje a marcação é `kind: reference` no frontmatter; a **proposta** é um arquivo `.specmdignore` na raiz.
+Qualquer Markdown do projeto entra na análise, inclusive arquivos novos ainda não versionados. Documentos que não descrevem comportamento do sistema (guias de setup, notas) ficam fora da análise pelo `.specmdignore` na raiz, com padrões no estilo `.gitignore`. O agente adiciona entradas quando é claro e pergunta ao dev quando há dúvida.
 
 ```gherkin
 # language: pt
@@ -36,14 +36,14 @@ Funcionalidade: Descoberta de documentos
 
   @SMD-REQ-002 @SMD-SCN-103
   Cenário: Documento de referência não exige cenários
-    Dado um guia de setup marcado como referência
+    Dado um guia de setup listado no .specmdignore
     Quando a documentação é analisada
     Então o guia não gera pendência de cenários
 ```
 
 ## SMD-REQ-021 — Feedback sobre documentação sem cenários
 
-Depois de qualquer trabalho em Markdown, o agente recebe as pendências do documento alterado: requisito sem cenário, documento comportamental sem bloco Gherkin, Gherkin inválido ou IDs duplicados. O feedback orienta a confirmar os requisitos com o dev e escrever os cenários, a marcar o documento como referência quando não descreve comportamento, ou a perguntar ao dev em caso de dúvida.
+Depois de qualquer trabalho em Markdown, o agente recebe as pendências do documento alterado: requisito sem cenário, documento comportamental sem bloco Gherkin, Gherkin inválido ou IDs duplicados. O feedback orienta a confirmar os requisitos com o dev e escrever os cenários, a adicionar o documento ao `.specmdignore` quando não descreve comportamento, ou a perguntar ao dev em caso de dúvida.
 
 ```gherkin
 # language: pt

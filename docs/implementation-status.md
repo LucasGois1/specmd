@@ -12,11 +12,11 @@ Versão 0.3.0, depois da mudança de direção [D-021](decisions.md): o SpecMD �
 
 | Área | Implementado | Limite |
 | --- | --- | --- |
-| Descoberta | Todo Markdown do projeto, inclusive não versionado; hashes por documento e impressão digital dos requisitos e cenários (`spec_fp`). | Frontmatter `specmd` ainda é obrigatório; IDs exigem o prefixo `SMD-`. O modelo simplificado (`.specmdignore`, IDs livres) é a próxima entrega. |
-| Gherkin | Blocos cercados com requisitos, IDs, `Rule` e instâncias de `Scenario Outline` (schema 2). | MDG (`.feature.md`) não é lido. |
+| Descoberta | Todo Markdown do projeto, inclusive não versionado, menos o ignorado pelo Git e pelo `.specmdignore`; frontmatter opcional; hashes por documento e impressão digital dos requisitos e cenários (`spec_fp`). | O `.specmdignore` implementa um subconjunto dos padrões do `.gitignore` (sem classes `[...]`). |
+| Gherkin | Blocos cercados; requisito com ID de prefixo livre no título; cenário ligado ao requisito pela posição ou por tag; ID automático `caminho::nome` ou tag `…-SCN-…`; `Rule` e `Scenario Outline`; `gherkin_language`; `@wip`. | MDG (`.feature.md`) não é lido. |
 | Hooks | `SessionStart` (resumo e convenções), `UserPromptSubmit` (cenários vistos pelo dev), `PostToolUse` (pendências de documentação após a edição), `Stop` (pendências, cenários aguardando o dev, execução após mudança de código). | Dispatch nativo observado no Claude Code em modo headless ([evidência](../research/claude/README.md)); no Codex, os eventos novos não foram exercitados nativamente. A raiz do projeto vem de `CLAUDE_PROJECT_DIR` ou do diretório do processo do hook, nunca de caminhos do payload. |
 | Feedback | Cenário, passo, linha, mensagem de erro e trecho pronto para passos sem implementação. Mesmo feedback repetido ou quatro devoluções deixam concluir; erros internos viram aviso. | Mensagens em pt-BR. |
-| Execução | Python/Behave em subprocesso; bridges Java (Cucumber-JVM) e Go (Godog) pelo protocolo JSON. | O worker Python roda com o interpretador do plugin e não carrega `environment.py`; Java/Go recusam `Rule`/`Outline` e exigem tag de cenário `SMD-`. |
+| Execução | Python/Behave em subprocesso com o interpretador do projeto quando ele tem `behave`, carregando `environment.py`; bridges Java (Cucumber-JVM) e Go (Godog) pelo protocolo JSON, com cenários casados pela origem. | Java/Go recusam `Rule`/`Outline` e não pulam cenários `@wip`; `behave.ini` não é lido. |
 | Estado | `.specmd/local/state.json` com última execução, cenários vistos e contagem de devoluções; escrita atômica com lock. | Apenas POSIX (usa `fcntl`). |
 | CLI | `init`, `inventory`, `check`, `run`, `demo` e os adaptadores de hook. | — |
 | Instalação | `make agent` carrega o plugin só na sessão (`--plugin-dir`); bundle Codex por `scripts/build_codex_plugin.py`. | Instalação automática por repositório (marketplace + `.claude/settings.json`) é a entrega planejada. |
