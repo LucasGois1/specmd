@@ -1,9 +1,9 @@
 {
   "schema": 1,
-  "observed_at_utc": "2026-10-23T13:53:30.382390+00:00",
+  "observed_at_utc": "2026-10-23T13:59:21.081947+00:00",
   "claude_version": "2.1.309 (Claude Code)",
   "plugin_dir": "<repo>/dist/codex-plugin",
-  "flags": "-p --setting-sources project,local --strict-mcp-config --permission-mode acceptEdits",
+  "flags": "-p --model haiku --setting-sources project,local --strict-mcp-config --permission-mode acceptEdits",
   "scope": "Native headless Claude Code with a real model and the SpecMD plugin loaded by --plugin-dir, before any acceptance. Not exercised: workspace trust dialog, interactive UX, marketplace installation, user settings/hooks, human review or protected deployment.",
   "real_llm_executed": true,
   "human_review_performed": false,
@@ -19,8 +19,8 @@
       "code_edit_attempts": 0,
       "hooks": {
         "SessionStart": 1,
-        "PreToolUse": 12,
-        "PostToolUse": 8,
+        "PreToolUse": 20,
+        "PostToolUse": 14,
         "Stop": 1
       },
       "hook_failures": [],
@@ -60,16 +60,12 @@
           "target": "specmd.toml"
         },
         {
-          "tool": "Bash",
-          "target": "<shell>"
-        },
-        {
-          "tool": "Bash",
-          "target": "<shell>"
+          "tool": "Read",
+          "target": ".specmd"
         },
         {
           "tool": "Read",
-          "target": "docs/cart.md"
+          "target": "docs"
         },
         {
           "tool": "Read",
@@ -77,7 +73,39 @@
         },
         {
           "tool": "Read",
+          "target": ".gitignore"
+        },
+        {
+          "tool": "Bash",
+          "target": "<shell>"
+        },
+        {
+          "tool": "Bash",
+          "target": "<shell>"
+        },
+        {
+          "tool": "Read",
+          "target": "docs/cart.md"
+        },
+        {
+          "tool": "Bash",
+          "target": "<shell>"
+        },
+        {
+          "tool": "Bash",
+          "target": "<shell>"
+        },
+        {
+          "tool": "Bash",
+          "target": "<shell>"
+        },
+        {
+          "tool": "Read",
           "target": ".specmd/traceability.json"
+        },
+        {
+          "tool": "Read",
+          "target": "tests/steps/cart_steps.py"
         },
         {
           "tool": "Edit",
@@ -85,6 +113,10 @@
         },
         {
           "tool": "Edit",
+          "target": "docs/cart.md"
+        },
+        {
+          "tool": "Read",
           "target": "docs/cart.md"
         }
       ],
@@ -98,9 +130,9 @@
       "model": "claude-haiku-5-5",
       "specmd_plugin_loaded": true,
       "other_plugins": 10,
-      "turns": 13,
+      "turns": 21,
       "is_error": false,
-      "cost_usd": 0.0056898949999999995,
+      "cost_usd": 0.008025765,
       "expectations": {
         "specmd_plugin_loaded": true,
         "lifecycle_events_dispatched": true,
@@ -153,7 +185,7 @@
       "other_plugins": 10,
       "turns": 3,
       "is_error": false,
-      "cost_usd": 0.00191173,
+      "cost_usd": 0.0019118350000000002,
       "expectations": {
         "specmd_plugin_loaded": true,
         "lifecycle_events_dispatched": true,
@@ -168,7 +200,7 @@
   ],
   "passed": true,
   "source_sha256": {
-    "research/claude/probe_headless.py": "9a86bc9d07ff19dd5e99512c1bc491f41aafdaf09f6a0735ff7ec887049666b9",
+    "research/claude/probe_headless.py": "39b78ae4d1f4c03bf1de0cb3984d05289e7577367756236b928a73df2ce8a558",
     "hooks/hooks.json": "8b35cef0120d6e4a0ed4881a72ae205cf9e0373b69cfbc172cfc71166ea5d3ea",
     "scripts/specmd_hook.py": "9bf52396f3a2e02136d1dd9d26b25e1d1b47e2a132f4de81ac30d62a88d565ff",
     ".claude-plugin/plugin.json": "a2068504b29a09f9f5b5d33e46cdd740d3800e05ced1bab19b20cf8a3e8ac885",

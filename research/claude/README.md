@@ -11,7 +11,7 @@ python scripts/build_codex_plugin.py
 python research/claude/probe_headless.py
 ```
 
-O relatório padrão fica em `.specmd/local/claude-headless.json`. `--plugin-dir` permite testar outra raiz de plugin, inclusive o próprio clone; `--model` escolhe o modelo da sessão. Cada execução cria demos novos em um diretório temporário e consome uma pequena cota do modelo.
+O relatório padrão fica em `.specmd/local/claude-headless.json`; `--record` grava a evidência versionada em `evidence/`. `--use-clone` carrega o plugin do próprio clone em vez do bundle. O executável `claude` vem do `PATH`, o intérprete é o que roda o probe e o modelo é fixo (`haiku`): nenhum argumento escolhe comandos ou caminhos arbitrários. Cada execução cria demos novos em um diretório temporário e consome uma pequena cota do modelo.
 
 A sessão usa `claude -p` com `--plugin-dir`, `--setting-sources project,local`, `--strict-mcp-config` e `--permission-mode acceptEdits`. As duas primeiras opções isolam o plugin de hooks, plugins habilitados e servidores MCP das configurações do usuário. `acceptEdits` mostra que o bloqueio de código vem do `PreToolUse` do SpecMD, e não de uma pergunta de permissão sem resposta.
 
