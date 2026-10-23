@@ -7,16 +7,14 @@ Documentação canônica em Markdown, aceite humano versionado e evidências de 
 ```bash
 git clone https://github.com/LucasGois1/specmd.git
 cd specmd
-git switch main
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -e .
-specmd demo --dest /tmp/specmd-cart
-export SPECMD_TRUST_STORE=/tmp/specmd-cart-authority/trust.json
-specmd review --root /tmp/specmd-cart --authority /tmp/specmd-cart-authority --trust "$SPECMD_TRUST_STORE"
+make setup    # .venv, dependências e plugin
+make demo     # projeto de demonstração novo em ~/specmd-demo
+make agent    # Claude Code no demo, com o plugin SpecMD carregado
+make review   # em outro terminal: revisão do contrato no navegador
+make status   # estado do demo; make run executa os cenários
 ```
 
-Revise o contrato no navegador e registre sua decisão. Em outro terminal, com a mesma instalação e variável de confiança, execute `specmd run --root /tmp/specmd-cart` e `specmd check --root /tmp/specmd-cart`. O resultado local esperado é `demo_passed`. Os cenários Python executam código real; a garantia do aceite permanece uma demonstração local. Nenhum comando acima emite aceite automaticamente.
+Peça uma mudança ao agente, revise o contrato no navegador e registre sua decisão. Depois rode `make run` e `make status`. O resultado local esperado é `demo_passed`. Os comandos manuais equivalentes estão no [guia rápido](docs/quickstart.md). Os cenários Python executam código real; a garantia do aceite permanece uma demonstração local. Nenhum comando acima emite aceite automaticamente.
 
 ## O problema
 

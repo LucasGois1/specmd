@@ -10,6 +10,24 @@ specmd:
 
 Este roteiro cria um projeto descartável com contrato Markdown, implementação, steps reais e revisão no navegador. O aceite depende da sua ação explícita. A autoridade local não isola um agente com as mesmas permissões; `demo_passed` continua sendo uma demonstração.
 
+## Atalho com make
+
+Na raiz do clone, com Python 3.11 ou superior e o CLI `claude` autenticado:
+
+| Comando | O que faz |
+| --- | --- |
+| `make setup` | Cria `.venv`, instala as dependências e gera o plugin em `dist/codex-plugin`. |
+| `make demo` | Cria um demo novo em `~/specmd-demo/<data-hora>/cart`, com a autoridade ao lado, sem aceite. |
+| `make agent` | Abre o Claude Code no último demo com o plugin carregado só nessa sessão e as variáveis `SPECMD_PYTHON` e `SPECMD_TRUST_STORE` definidas. |
+| `make review` | Abre a revisão do último demo no navegador. Aceitar ou rejeitar é decisão sua. |
+| `make status` | Resume o estado do último demo. |
+| `make run` | Executa os cenários do último demo e resume o resultado. |
+| `make audit` | Lista as decisões registradas e o estado atual. |
+
+`DEMO_HOME` muda a pasta dos demos. `CLAUDE_ARGS` repassa opções ao `claude`, por exemplo `--setting-sources project,local` para não carregar hooks e plugins das suas configurações. `REVIEW_ARGS=--no-open` imprime o link da revisão sem abrir o navegador. Cada `make demo` cria uma pasta nova; demos anteriores não são apagados.
+
+As seções abaixo descrevem os mesmos passos sem `make`.
+
 ## Instalar
 
 Use Python 3.11 ou superior. A implementação experimental foi integrada à `main` pelo PR #1; o [handoff](../HANDOFF.md) transfere o contexto para a sessão local. Obtenha o código:
