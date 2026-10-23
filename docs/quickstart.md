@@ -22,8 +22,19 @@ Na raiz do clone:
 | `make status` | Resume o estado do último demo. |
 | `make run` | Executa os cenários do último demo e resume o resultado. |
 | `make test` | Roda a suíte local. |
+| `make init REPO=…` | Prepara um repositório seu para o SpecMD. |
 
 `DEMO_HOME` muda a pasta dos demos. `CLAUDE_ARGS` repassa opções ao `claude`, por exemplo `--setting-sources project,local` para não carregar hooks e plugins das suas configurações. Cada `make demo` cria uma pasta nova; demos anteriores não são apagados.
+
+## No seu repositório
+
+```sh
+make init REPO=/caminho/do/seu/repo
+```
+
+Isso cria `specmd.toml` e `.specmdignore` (se não existirem), adiciona `.specmd/local/` ao `.gitignore` e declara no `.claude/settings.json` o marketplace do SpecMD com o plugin habilitado, preservando o que já existe. Faça commit desses arquivos. Quem abrir o Claude Code no repositório e confiar na pasta recebe o plugin. Rodar de novo não muda nada.
+
+Sem o clone: dentro do Claude Code no seu repositório, `claude plugin install specmd --marketplace LucasGois1/specmd --scope project` e depois `/specmd:init`.
 
 ## Um roteiro de teste
 
@@ -46,7 +57,7 @@ Comandos do CLI, todos com `--root` (padrão: diretório atual):
 
 | Comando | Resultado |
 | --- | --- |
-| `specmd init` | Cria `specmd.toml` e um `.specmdignore` com os casos óbvios. |
+| `specmd init` | Prepara o repositório: `specmd.toml`, `.specmdignore`, `.gitignore` e o plugin no `.claude/settings.json`. |
 | `specmd inventory` | Documentos, requisitos, cenários e pendências da documentação. |
 | `specmd check` | Pendências e o resultado da última execução, se ainda atual. |
 | `specmd run` | Executa os cenários e guarda o resultado para os hooks. |

@@ -18,6 +18,7 @@ Ao relatar verificações, informe somente o que foi efetivamente executado e se
 - Hooks disponíveis devem ser verificados por plataforma e versão. Não invente nomes de eventos ou APIs como se estivessem confirmados.
 - Os dois hosts usam um único `hooks/hooks.json`; o Claude Code o carrega por padrão na raiz do plugin. Não declare um segundo arquivo de hooks.
 - Gere o pacote por `scripts/build_codex_plugin.py` antes de instalar localmente; não empacote o clone inteiro com `.venv`, `.git` ou dados locais.
+- As dependências de runtime do plugin ficam em `vendor/`, geradas por `scripts/vendor_deps.py` a partir do `pylock.toml`. Não edite `vendor/` à mão; ao mudar dependências, regenere o lock e o `vendor/`.
 
 ## Trabalho nos documentos
 

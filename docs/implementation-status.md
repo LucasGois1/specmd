@@ -18,8 +18,8 @@ Versão 0.3.0, depois da mudança de direção [D-021](decisions.md): o SpecMD �
 | Feedback | Cenário, passo, linha, mensagem de erro e trecho pronto para passos sem implementação. Mesmo feedback repetido ou quatro devoluções deixam concluir; erros internos viram aviso. | Mensagens em pt-BR. |
 | Execução | Python/Behave em subprocesso com o interpretador do projeto quando ele tem `behave`, carregando `environment.py`; bridges Java (Cucumber-JVM) e Go (Godog) pelo protocolo JSON, com cenários casados pela origem. | Java/Go recusam `Rule`/`Outline` e não pulam cenários `@wip`; `behave.ini` não é lido. |
 | Estado | `.specmd/local/state.json` com última execução, cenários vistos e contagem de devoluções; escrita atômica com lock. | Apenas POSIX (usa `fcntl`). |
-| CLI | `init`, `inventory`, `check`, `run`, `demo` e os adaptadores de hook. | — |
-| Instalação | `make agent` carrega o plugin só na sessão (`--plugin-dir`); bundle Codex por `scripts/build_codex_plugin.py`. | Instalação automática por repositório (marketplace + `.claude/settings.json`) é a entrega planejada. |
+| CLI | `init`, `inventory`, `check`, `run`, `demo` e os adaptadores de hook; `scripts/specmd_cli.py` roda o CLI pelo plugin. | — |
+| Instalação | Marketplace na raiz do repositório (`.claude-plugin/marketplace.json`, plugin `./`); `specmd init` (ou `/specmd:init`) cria `specmd.toml`, `.specmdignore` e mescla `extraKnownMarketplaces`/`enabledPlugins` no `.claude/settings.json`; dependências embutidas em `vendor/` e bootstrap que procura Python 3.11+; skill com as convenções; `make agent` para testar só na sessão. | O carregamento automático depois do diálogo de confiança segue a documentação do Claude Code e ainda não foi exercitado numa sessão interativa. Sem Windows. |
 
 ## Validações
 

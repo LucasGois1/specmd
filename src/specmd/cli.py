@@ -18,7 +18,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(prog="specmd", description="Documentação Markdown canônica com cenários verificáveis.")
     parser.add_argument("--version", action="version", version=f"specmd {__version__}")
     commands = parser.add_subparsers(dest="command", required=True)
-    for name, text in (("init", "Ativar o SpecMD no projeto"),
+    for name, text in (("init", "Preparar o repositório: specmd.toml, .specmdignore e plugin no Claude Code"),
                        ("inventory", "Listar documentos, requisitos e cenários"),
                        ("check", "Pendências da documentação e resultado da última execução"),
                        ("status", "Mesmo que check"),
@@ -42,17 +42,8 @@ def main(argv=None):
         if not root.is_dir():
             raise ValueError("A raiz precisa ser um diretório existente.")
         if args.command == "init":
-            from .core import IGNORE_FILE
-            from .demo import DEFAULT_IGNORE, initial_config
-            with (root / "specmd.toml").open("x", encoding="utf-8") as stream:
-                stream.write(initial_config())
-            created = ["specmd.toml"]
-            if not (root / IGNORE_FILE).exists():
-                (root / IGNORE_FILE).write_text(DEFAULT_IGNORE, encoding="utf-8")
-                created.append(IGNORE_FILE)
-            result = {"status": "initialized", "root": str(root), "created": created,
-                      "message": "SpecMD ativado. Documente o comportamento em Markdown com cenários Gherkin."}
-            _print(result)
+            from .project_setup import initialize
+            _print(initialize(root))
             return 0
         if args.command == "inventory":
             from .core import inspect_project
