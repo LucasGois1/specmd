@@ -45,6 +45,8 @@ Para o time: `/specmd:init` (ou `make init REPO=…` a partir deste clone) decla
 
 O estado local fica em `.specmd/local/`, que se ignora sozinho no Git.
 
+O plugin não fixa versão no manifesto, então cada commit da `main` do SpecMD é uma versão nova. Com o marketplace declarado pelo `/specmd:init` (`autoUpdate: true`), o Claude Code atualiza sozinho. Num marketplace adicionado à mão, use `/plugin marketplace update specmd`, depois `claude plugin update specmd@specmd` e `/reload-plugins`.
+
 ## Um roteiro de teste
 
 1. `make demo` e `make agent`.
