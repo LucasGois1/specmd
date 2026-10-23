@@ -38,6 +38,27 @@ def _inside(root: Path, relative: str) -> Path:
     return current
 
 
+def _document_scenarios(root: Path, document: Any, wip_tags: set[str]) -> list[dict]:
+    """Expected scenarios of one inspected document, refusing a changed file."""
+    if not isinstance(document, dict) or not isinstance(document.get("path"), str):
+        raise ValueError("Documento inválido na inspeção.")
+    relative = document["path"]
+    if hashlib.sha256(_inside(root, relative).read_bytes()).hexdigest() != document.get("sha256"):
+        raise ValueError("Documento mudou desde a inspeção: " + relative)
+    scenarios = document.get("scenarios")
+    if not isinstance(scenarios, list):
+        raise ValueError("Documento sem registro de cenários: " + relative)
+    expected = []
+    for scenario in scenarios:
+        valid = (isinstance(scenario, dict) and isinstance(scenario.get("id"), str) and scenario["id"]
+                 and type(scenario.get("line")) is int and type(scenario.get("block")) is int)
+        if not valid:
+            raise ValueError("Cenário sem identidade ou origem válida: " + relative)
+        if not wip_tags & set(scenario.get("tags", [])):
+            expected.append({**scenario, "path": relative})
+    return expected
+
+
 def _features(root: Path, inspection: dict, wip_tags: set[str] = frozenset()) -> tuple[list[dict], list[dict]]:
     """Use the scanner's inventory-checked in-memory extraction; skip work-in-progress scenarios."""
     from .core import extract_features
@@ -45,28 +66,7 @@ def _features(root: Path, inspection: dict, wip_tags: set[str] = frozenset()) ->
     documents = inspection.get("documents")
     if not isinstance(documents, list):
         raise ValueError("Inspeção sem inventário documental válido.")
-    expected = []
-    for document in documents:
-        if not isinstance(document, dict):
-            raise ValueError("Documento inválido na inspeção.")
-        relative = document.get("path")
-        if not isinstance(relative, str):
-            raise ValueError("Documento sem caminho válido.")
-        path = _inside(root, relative)
-        raw = path.read_bytes()
-        if hashlib.sha256(raw).hexdigest() != document.get("sha256"):
-            raise ValueError("Documento mudou desde a inspeção: " + relative)
-        scenarios = document.get("scenarios")
-        if not isinstance(scenarios, list):
-            raise ValueError("Documento sem registro de cenários: " + relative)
-        for scenario in scenarios:
-            if not isinstance(scenario, dict) or not isinstance(scenario.get("id"), str) or not scenario["id"]:
-                raise ValueError("Cenário sem identidade estável: " + relative)
-            if type(scenario.get("line")) is not int or type(scenario.get("block")) is not int:
-                raise ValueError("Cenário sem origem válida: " + relative)
-            if wip_tags & set(scenario.get("tags", [])):
-                continue
-            expected.append({**scenario, "path": relative})
+    expected = [item for document in documents for item in _document_scenarios(root, document, wip_tags)]
     if len({item["id"] for item in expected}) != len(expected):
         raise ValueError("Identidades de cenário duplicadas na inspeção.")
     features = []

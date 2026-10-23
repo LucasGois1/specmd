@@ -129,7 +129,7 @@ class InspectProjectTests(unittest.TestCase):
                    block(scenario(tags="@PAY-REQ-999")))
         report = self.report()
         self.assertEqual(report["status"], "needs_scenarios")
-        self.assertTrue({"requirement_uncovered", "requirement_unknown"} <= self.kinds(report))
+        self.assertLessEqual({"requirement_uncovered", "requirement_unknown"}, self.kinds(report))
 
     def test_default_ids_are_unique_within_a_document(self):
         self.write("docs/regras.md", block(scenario("Repetido"), scenario("Repetido")))

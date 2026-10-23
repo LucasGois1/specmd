@@ -84,92 +84,132 @@ func emptyReport() Report {
 	return Report{Schema: 1, Mode: "real", EngineFailed: true, Scenarios: []ScenarioResult{}}
 }
 
-// prepare matches parsed scenarios to the expected ones by origin (path, block,
-// line). Rules and outlines are rejected rather than credited as a template
-// execution. names maps each block URI and scenario name to IDs in file order.
-func prepare(input Input) ([]godog.Feature, map[string]declaration, map[string]map[string][]string, error) {
-	if input.Schema != 1 || len(input.Features) == 0 || len(input.ExpectedScenarios) == 0 {
-		return nil, nil, nil, errors.New("schema 1 requires nonempty features and expected_scenarios")
-	}
+// expectedByOrigin indexes the expected scenarios by origin; IDs are opaque
+// but must be unique.
+func expectedByOrigin(items []ExpectedScenario) (map[originKey]ExpectedScenario, error) {
 	wanted := map[originKey]ExpectedScenario{}
 	ids := map[string]bool{}
-	for _, item := range input.ExpectedScenarios {
+	for _, item := range items {
 		if item.ID == "" || item.Path == "" || item.Block < 1 || item.Line < 1 {
-			return nil, nil, nil, fmt.Errorf("invalid expected scenario: %q", item.ID)
+			return nil, fmt.Errorf("invalid expected scenario: %q", item.ID)
 		}
 		key := originKey{item.Path, item.Block, item.Line}
 		if _, ok := wanted[key]; ok || ids[item.ID] {
-			return nil, nil, nil, fmt.Errorf("duplicate expected scenario: %s", item.ID)
+			return nil, fmt.Errorf("duplicate expected scenario: %s", item.ID)
 		}
 		wanted[key] = item
 		ids[item.ID] = true
 	}
-	features := []godog.Feature{}
-	declared := map[string]declaration{}
-	names := map[string]map[string][]string{}
-	blocks := map[string]bool{}
-	next := 0
-	for _, block := range input.Features {
-		if block.Path == "" || block.Block < 1 || block.Line < 1 || block.Line > 1_000_000 || strings.TrimSpace(block.Content) == "" {
-			return nil, nil, nil, errors.New("invalid feature path/block/line/content")
-		}
-		uri := fmt.Sprintf("%s#block-%d", block.Path, block.Block)
-		if blocks[uri] {
-			return nil, nil, nil, fmt.Errorf("duplicate block: %s", uri)
-		}
-		blocks[uri] = true
-		padded := strings.Repeat("\n", block.Line-1) + block.Content
-		doc, err := gherkin.ParseGherkinDocument(strings.NewReader(padded), func() string { next++; return fmt.Sprint(next) })
-		if err != nil {
-			return nil, nil, nil, fmt.Errorf("%s: %w", uri, err)
-		}
-		if doc.Feature == nil {
-			return nil, nil, nil, fmt.Errorf("no feature: %s", uri)
-		}
-		dialect := gherkin.DialectsBuiltin().GetDialect(doc.Feature.Language)
-		if dialect == nil {
-			return nil, nil, nil, fmt.Errorf("unknown language: %s", doc.Feature.Language)
-		}
-		names[uri] = map[string][]string{}
-		backgroundSteps := 0
-		for _, child := range doc.Feature.Children {
-			if child.Background != nil {
-				backgroundSteps += len(child.Background.Steps)
-			}
-		}
-		for _, child := range doc.Feature.Children {
-			if child.Rule != nil {
-				return nil, nil, nil, errors.New("unsupported: Rule requires a bridge with rule-aware evidence")
-			}
-			scenario := child.Scenario
-			if scenario == nil {
-				continue
-			}
-			outline := len(scenario.Examples) > 0
-			for _, keyword := range dialect.ScenarioOutlineKeywords() {
-				if scenario.Keyword == keyword {
-					outline = true
-				}
-			}
-			if outline {
-				return nil, nil, nil, errors.New("unsupported: Scenario Outline requires concrete instance evidence")
-			}
-			if len(scenario.Steps) == 0 {
-				return nil, nil, nil, errors.New("each simple scenario requires at least one step")
-			}
-			expected, ok := wanted[originKey{block.Path, block.Block, int(scenario.Location.Line)}]
-			if !ok {
-				return nil, nil, nil, fmt.Errorf("unexpected scenario at %s:%d", block.Path, scenario.Location.Line)
-			}
-			declared[expected.ID] = declaration{ExpectedScenario: expected, URI: uri, Steps: backgroundSteps + len(scenario.Steps)}
-			names[uri][scenario.Name] = append(names[uri][scenario.Name], expected.ID)
-		}
-		features = append(features, godog.Feature{Name: uri, Contents: []byte(padded)})
+	return wanted, nil
+}
+
+func isOutline(keyword string, examples int, dialect *gherkin.Dialect) bool {
+	if examples > 0 {
+		return true
 	}
-	if len(declared) != len(wanted) {
+	for _, outline := range dialect.ScenarioOutlineKeywords() {
+		if keyword == outline {
+			return true
+		}
+	}
+	return false
+}
+
+// preparation accumulates declarations while each Markdown block is parsed.
+// names maps each block URI and scenario name to IDs in file order.
+type preparation struct {
+	wanted   map[originKey]ExpectedScenario
+	declared map[string]declaration
+	names    map[string]map[string][]string
+	blocks   map[string]bool
+	next     int
+}
+
+func (p *preparation) declare(block FeatureInput, uri string, line int, name string, steps int) error {
+	expected, ok := p.wanted[originKey{block.Path, block.Block, line}]
+	if !ok {
+		return fmt.Errorf("unexpected scenario at %s:%d", block.Path, line)
+	}
+	p.declared[expected.ID] = declaration{ExpectedScenario: expected, URI: uri, Steps: steps}
+	p.names[uri][name] = append(p.names[uri][name], expected.ID)
+	return nil
+}
+
+// addBlock parses one Markdown block. Rules and outlines are rejected rather
+// than credited as a template execution.
+func (p *preparation) addBlock(block FeatureInput) (godog.Feature, error) {
+	if block.Path == "" || block.Block < 1 || block.Line < 1 || block.Line > 1_000_000 || strings.TrimSpace(block.Content) == "" {
+		return godog.Feature{}, errors.New("invalid feature path/block/line/content")
+	}
+	uri := fmt.Sprintf("%s#block-%d", block.Path, block.Block)
+	if p.blocks[uri] {
+		return godog.Feature{}, fmt.Errorf("duplicate block: %s", uri)
+	}
+	p.blocks[uri] = true
+	padded := strings.Repeat("\n", block.Line-1) + block.Content
+	doc, err := gherkin.ParseGherkinDocument(strings.NewReader(padded), func() string { p.next++; return fmt.Sprint(p.next) })
+	if err != nil {
+		return godog.Feature{}, fmt.Errorf("%s: %w", uri, err)
+	}
+	if doc.Feature == nil {
+		return godog.Feature{}, fmt.Errorf("no feature: %s", uri)
+	}
+	dialect := gherkin.DialectsBuiltin().GetDialect(doc.Feature.Language)
+	if dialect == nil {
+		return godog.Feature{}, fmt.Errorf("unknown language: %s", doc.Feature.Language)
+	}
+	p.names[uri] = map[string][]string{}
+	backgroundSteps := 0
+	for _, child := range doc.Feature.Children {
+		if child.Background != nil {
+			backgroundSteps += len(child.Background.Steps)
+		}
+	}
+	for _, child := range doc.Feature.Children {
+		if child.Rule != nil {
+			return godog.Feature{}, errors.New("unsupported: Rule requires a bridge with rule-aware evidence")
+		}
+		scenario := child.Scenario
+		if scenario == nil {
+			continue
+		}
+		if isOutline(scenario.Keyword, len(scenario.Examples), dialect) {
+			return godog.Feature{}, errors.New("unsupported: Scenario Outline requires concrete instance evidence")
+		}
+		if len(scenario.Steps) == 0 {
+			return godog.Feature{}, errors.New("each simple scenario requires at least one step")
+		}
+		if err := p.declare(block, uri, int(scenario.Location.Line), scenario.Name, backgroundSteps+len(scenario.Steps)); err != nil {
+			return godog.Feature{}, err
+		}
+	}
+	return godog.Feature{Name: uri, Contents: []byte(padded)}, nil
+}
+
+// prepare matches parsed scenarios to the expected ones by origin (path,
+// block, line).
+func prepare(input Input) ([]godog.Feature, map[string]declaration, map[string]map[string][]string, error) {
+	if input.Schema != 1 || len(input.Features) == 0 || len(input.ExpectedScenarios) == 0 {
+		return nil, nil, nil, errors.New("schema 1 requires nonempty features and expected_scenarios")
+	}
+	wanted, err := expectedByOrigin(input.ExpectedScenarios)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	p := &preparation{wanted: wanted, declared: map[string]declaration{},
+		names: map[string]map[string][]string{}, blocks: map[string]bool{}}
+	features := []godog.Feature{}
+	for _, block := range input.Features {
+		feature, err := p.addBlock(block)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		features = append(features, feature)
+	}
+	if len(p.declared) != len(wanted) {
 		return nil, nil, nil, errors.New("declared and expected scenario sets differ")
 	}
-	return features, declared, names, nil
+	return features, p.declared, p.names, nil
 }
 
 // Run executes actual steps registered by initialize. It never loads .feature
