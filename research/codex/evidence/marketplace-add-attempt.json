@@ -1,0 +1,14 @@
+{
+  "command": [
+    "/opt/codex/bin/codex",
+    "plugin",
+    "marketplace",
+    "add",
+    "/workspace/specmd",
+    "--json"
+  ],
+  "exit": 1,
+  "stdout": "",
+  "stderr": "WARNING: proceeding, even though we could not create PATH aliases: Read-only file system (os error 30)\nError: failed to create marketplace install directory /run/codex-environment/codex-home/.tmp/marketplaces: Read-only file system (os error 30)\n",
+  "scope": "Official installation request limited to SpecMD; no trust requested and no home remapping."
+}

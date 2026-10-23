@@ -2,7 +2,7 @@
 
 Documentação canônica em Markdown, aceite humano versionado e evidências de execução para desenvolvimento com agentes de IA.
 
-> **Estado do projeto:** concepção e pesquisa técnica. O núcleo, os plugins e o serviço de aceite ainda não estão implementados. Os experimentos em `research/` investigam integração com runners e não constituem suporte produtivo. A publicação destes documentos não constitui aceite contratual das versões aqui descritas.
+> **Estado do projeto:** primeiro preflight local experimental em Python e pacote de plugin Codex em validação. Esse incremento inspeciona documentos, mas não concede aceite humano, não executa os cenários e nunca autoriza conclusão. O produto completo, a autoridade de aceite e o gate protegido de integração não estão implementados. Experimentos em `research/` não constituem suporte produtivo; publicar documentos não constitui aceite contratual.
 
 ## O problema
 
@@ -54,7 +54,8 @@ Documentos informativos podem receber dispensa de Gherkin, mas essa classificaç
 | [Plano de validação](docs/validation-plan.md) | Experimentos, casos negativos e métricas. |
 | [Pesquisa dos runners](research/README.md) | Hipóteses, protótipos e evidências por linguagem. |
 | [Resultados de viabilidade](docs/runner-feasibility.md) | Execuções reais em Java, Python, Go e baseline MDG em JavaScript. |
-| [Preparação local no Codex](research/codex/README.md) | CLI disponível, instalação por marketplace e hooks pesquisados; adaptador SpecMD ainda não implementado. |
+| [Preflight experimental no Codex](docs/experimental-codex.md) | Instalação local por clone e build, opt-in, CLI, hooks e limites do primeiro incremento. |
+| [Pesquisa do host Codex](research/codex/README.md) | Interfaces, descoberta, trust e evidências da investigação anterior à validação completa do adaptador. |
 | [Posicionamento e antecedentes](docs/positioning.md) | MDG, rastreabilidade, gates existentes e critérios para reduzir ou integrar a solução. |
 | [Decisões e pendências](docs/decisions.md) | Diretrizes da discussão e escolhas ainda abertas. |
 
@@ -69,8 +70,8 @@ Exemplos de formato: [contrato comportamental](examples/cancellation.contract.md
 - Hooks locais ajudam a orientar o agente. Bloqueios contra bypass precisam de uma fronteira de permissões que o agente não possa alterar.
 - A autoria declarada em um commit Git não substitui a identidade autenticada de quem submeteu ou aprovou a mudança.
 
-## Como começar a implementação
+## Como testar o primeiro incremento
 
-Leia o [plano de implementação](docs/roadmap.md) e a [pesquisa](research/README.md). A viabilidade inicial de execução sem arquivos `.feature` foi demonstrada em Java, Python e Go. O próximo experimento proposto é um fluxo pequeno de ponta a ponta que una contrato Markdown, aceite humano de uma versão, execução e decisão de conclusão. Stack do núcleo, primeiro adaptador de agente, mecanismo de aprovação e licença permanecem em aberto.
+O [guia experimental do Codex](docs/experimental-codex.md) descreve Python 3.11+, instalação com `pip install -e .`, geração do pacote local e configuração de `SPECMD_PYTHON`. O projeto alvo opta pelo preflight por meio de `specmd init`; `inventory` e `check --stage completion` retornam JSON. A estrutura válida ainda resulta em `waiting_human_review` e `may_complete: false`, pois aceite autenticado e evidências não estão implementados. Passaram 49 testes unitários e os mesmos 11 casos de integração local na fonte e no bundle; instalação persistente e início de uma sessão real foram impedidos pelo filesystem somente leitura do ambiente de nuvem. O funcionamento dos hooks dentro do host ainda precisa ser demonstrado em uma máquina com configuração gravável.
 
-Não há comandos de instalação ou execução do produto nesta etapa. Comandos de experimentos, quando disponíveis, pertencem aos respectivos relatórios de pesquisa.
+Python e Codex foram escolhidos para esse incremento local, sem estabelecer toda a stack do produto. O [plano](docs/roadmap.md) e a [pesquisa](research/README.md) orientam os próximos passos para unir contrato, aceite humano e execução. A viabilidade inicial dos runners foi demonstrada separadamente em Java, Python e Go; mecanismo de aprovação, gate protegido e licença permanecem em aberto.

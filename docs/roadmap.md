@@ -22,7 +22,7 @@ A demonstração deve permitir concluir com contrato aceito e cenários executad
 
 Incluir uma tarefa em que o agente inventa uma regra, escreve testes verdes e propõe documentá-la depois. Avaliar se a revisão expõe essa decisão e permite ao humano rejeitá-la, sem prometer detecção automática infalível. Comparar as tarefas com revisão humana e CI bem configurados, medindo desalinhamentos, esforço de revisão e bloqueios indevidos conforme o [plano de validação](validation-plan.md).
 
-Esse experimento demonstra o funcionamento conjunto e inicia a avaliação de utilidade. Os componentes acima ainda não estão implementados; esta recomendação não representa aceite humano de uma nova versão contratual.
+Esse experimento deve demonstrar o funcionamento conjunto e iniciar a avaliação de utilidade. O [primeiro preflight experimental](experimental-codex.md) já implementa inventário, parsing e tradução de hooks, mas ainda não integra aceite humano, execução ou gate protegido. A recomendação não representa aceite humano de uma nova versão contratual.
 
 ## Marcos e dependências
 

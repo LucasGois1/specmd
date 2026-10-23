@@ -2,7 +2,7 @@
 
 ## Estado do repositório
 
-Este projeto está na etapa de documentação e pesquisa técnica. O núcleo e os plugins não estão implementados. Protótipos em `research/` não constituem suporte produtivo. Preserve a distinção entre diretrizes da conversa, desenho técnico proposto, decisões pendentes e evidências realmente produzidas.
+Este projeto possui um primeiro preflight local experimental em Python e um pacote de plugin Codex em validação. Ele inspeciona documentos, mas não concede aceite, não executa cenários e nunca autoriza conclusão de projeto ativo (`may_complete` permanece `false`). O fluxo produtivo completo, a autoridade humana e o gate protegido de CI não estão implementados. Protótipos em `research/` não constituem suporte produtivo. Preserve a distinção entre código experimental, diretrizes da conversa, desenho proposto, decisões pendentes e evidências realmente produzidas.
 
 A autorização para criar ou editar documentação não deve ser apresentada como um recibo de aceite contratual. Nunca fabrique aprovação, assinatura, execução de testes ou suporte de integração.
 
@@ -16,6 +16,9 @@ A autorização para criar ou editar documentação não deve ser apresentada co
 - Cache e inventário são reconstruíveis e não constituem autoridade de aprovação.
 - Aguardar decisão humana é diferente de declarar uma tarefa concluída.
 - Hooks disponíveis e capacidade de bloqueio devem ser verificados por plataforma e versão. Não invente nomes de eventos ou APIs como se estivessem confirmados.
+- O opt-in `specmd.toml` e `.specmd/local/status.json` são configuração e observação locais, não aceites. Não transforme estrutura válida em autorização de conclusão.
+- Instalação do plugin e trust humano são etapas distintas. Oriente a revisão normal pela UX do host e não fabrique uma ação humana. Em testes já autorizados, uma configuração de confiança restrita à sessão e aos handlers concretos deve ter sua origem documentada; ela não comprova uso da UX nem constitui aceite de requisitos. Não use mecanismos de bypass de trust.
+- Gere o pacote por `scripts/build_codex_plugin.py` antes da instalação local. O marketplace aponta para o artefato por allowlist; não empacote o clone inteiro com `.venv`, `.git` ou dados locais.
 
 ## Trabalho nos documentos
 

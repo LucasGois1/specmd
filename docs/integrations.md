@@ -1,6 +1,8 @@
 # Integrações com agentes e CI
 
-> Estado: proposta inicial para revisão. Não existem comandos, plugins ou integrações implementados neste repositório. Os nomes de comandos, campos e códigos abaixo são propostas de interface. O suporte concreto dos hooks de Claude Code e Codex ainda precisa ser verificado por produto e versão.
+> Estado: existe um primeiro preflight experimental Python e pacote Codex em validação. `init`, `inventory` e `check --stage completion` já possuem implementação local; ela não concede aceite nem executa cenários e nunca libera conclusão de projeto ativo. O restante deste documento descreve o fluxo futuro, incluindo autoridade humana, execução integrada e gate protegido. O suporte de runtime do adaptador ainda precisa de evidência por produto e versão.
+
+O [guia experimental do Codex](experimental-codex.md) separa instalação por clone local e build, opt-in, comandos atuais, trust via UX e pendências de validação. O marketplace usa o pacote por allowlist em `dist/codex-plugin`, sem copiar dependências e dados locais do clone.
 
 O SpecMD deve se integrar ao fluxo de desenvolvimento sem duplicar suas regras em cada agente. Um núcleo comum verifica documentos, aceites e evidências; adaptadores traduzem eventos e respostas de cada plataforma.
 
@@ -44,7 +46,9 @@ Executar todos os testes após qualquer edição de texto produziria interrupç�
 
 O núcleo deve ser independente da integração escolhida. A primeira implementação pode validar um adaptador e depois adicionar o segundo.
 
-O usuário solicitou preparar testes locais no Codex. A [investigação do CLI 0.163.0](../research/codex/README.md) confirmou sua presença e interfaces de ajuda e examinou fontes oficiais de instalação, eventos e trust. Nenhum adaptador SpecMD foi instalado, nenhum hook foi disparado e nenhum bloqueio de sessão foi validado nessa investigação.
+O usuário solicitou preparar testes locais no Codex. A [investigação do CLI 0.163.0](../research/codex/README.md) confirmou sua presença e interfaces de ajuda e examinou fontes oficiais de instalação, eventos e trust. Essa investigação antecede o preflight atual e não comprova, por si só, sua instalação ou execução em sessão. A tentativa de instalação persistente no ambiente de nuvem encontrou configuração de usuário somente leitura; validação de runtime é uma etapa separada.
+
+O pacote atual declara `SessionStart`, `PostToolUse` e `Stop`. O adaptador apresenta contexto nos dois primeiros; no `Stop`, pede uma correção para problemas locais e depois devolve o controle para evitar ciclos, ou devolve imediatamente quando aguarda revisão humana. Em nenhum desses caminhos emite aceite ou autoriza conclusão. O guia distingue essa implementação da comprovação de efeitos no host real.
 
 Antes de afirmar suporte, cada adaptador precisa registrar e validar:
 
@@ -61,18 +65,26 @@ Até essa validação, o funcionamento desses itens no fluxo SpecMD permanece **
 
 Uma matriz de capacidades deve orientar a implementação: por exemplo, uma plataforma pode permitir feedback após escrita, mas não impedir toda edição futura. O adaptador deve expor essa diferença sem prometer uma garantia que seu ambiente não aplica.
 
-## Proposta de CLI
+## CLI experimental e etapas futuras
 
-Uma interface inicial poderia oferecer:
+O primeiro incremento implementa:
 
 ```text
+specmd init
 specmd inventory --format json
-specmd check --stage implementation --format json
 specmd check --stage completion --format json
+```
+
+`init` cria somente o opt-in `specmd.toml` com `schema = 1`. `inventory` produz inspeção, sem conceder conclusão; código `0` dessa operação não significa aprovação. `check` retorna `1` para projeto ativo bloqueado ou aguardando revisão e `2` para erro/inativo. Não existe um caminho `passed` de conclusão nesse incremento.
+
+As etapas abaixo continuam propostas e não são aceitas pela CLI atual:
+
+```text
+specmd check --stage implementation --format json
 specmd check --stage integration --format json
 ```
 
-Os comandos são propostas, não instruções executáveis nesta etapa. O protocolo deve ser versionado antes de se tornar contrato de integração.
+O protocolo completo abaixo é uma proposta; a implementação local é um subconjunto, descrito no [guia](experimental-codex.md). Os campos e códigos devem permanecer versionados antes de se tornar contrato estável de integração.
 
 O núcleo precisa distinguir a etapa verificada do estado da tarefa. Uma checagem de inventário bem-sucedida, por exemplo, não declara a implementação concluída.
 

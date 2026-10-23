@@ -7,7 +7,7 @@ specmd:
 
 # Formato proposto dos documentos
 
-Este documento descreve uma proposta de formato para o SpecMD. Não existe, neste estágio, parser, runner ou aprovação humana autenticada implementada. Os campos e convenções abaixo precisam ser validados no protótipo e revisados antes de serem estabilizados como uma API.
+Este documento descreve uma proposta de formato para o SpecMD. O [preflight experimental](experimental-codex.md) implementa um subconjunto de parsing e validação estrutural; não executa os cenários nem oferece aprovação humana autenticada. Os campos e convenções abaixo precisam de revisão e validação adicionais antes de serem estabilizados como uma API.
 
 Os requisitos do produto estão em [requirements.md](requirements.md). A classificação deste próprio documento também é uma proposta, não uma dispensa ou um aceite concedido pelo agente.
 
@@ -22,7 +22,7 @@ Markdown → AST de Markdown → blocos Gherkin → representação executável 
          → adaptador do runner → resultados associados ao documento original
 ```
 
-Arquivos `.feature` não são exigidos do usuário, não são mantidos como fonte paralela e não devem ser uma etapa obrigatória, mesmo temporária, para executar o contrato. O adaptador precisa integrar o conteúdo extraído ao mecanismo de execução. A viabilidade dessa integração com um runner concreto é a primeira investigação técnica descrita no [roadmap](roadmap.md); não se presume que o Cucumber aceite Markdown nativamente.
+Arquivos `.feature` não são exigidos do usuário, não são mantidos como fonte paralela e não devem ser uma etapa obrigatória, mesmo temporária, para executar o contrato. O adaptador precisa integrar o conteúdo extraído ao mecanismo de execução. Os [protótipos de runners](runner-feasibility.md) demonstraram caminhos de integração em memória; não se presume que o Cucumber aceite qualquer Markdown nativamente.
 
 ## Metadados propostos
 

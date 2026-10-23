@@ -1,0 +1,23 @@
+{
+  "stage": "native_discovery_without_thread_or_model",
+  "status": "blocked_by_environment_before_initialize",
+  "recorded_at_utc": "2026-10-23T03:13:45.982703+00:00",
+  "recording_method": "Transcribed from observed subprocess errors; successful native hooks/list response was not obtained.",
+  "attempts": [
+    {
+      "config": "default Codex home, inline SessionStart/Stop declarations",
+      "process_exit_code": 1,
+      "error": "failed to initialize sqlite state runtime under /run/codex-environment/codex-home"
+    },
+    {
+      "config": "sqlite_home and log_dir directed to /tmp by session flags; HOME and CODEX_HOME unchanged",
+      "process_exit_code": 1,
+      "error": "Read-only file system (os error 30)"
+    }
+  ],
+  "model_execution_observed": false,
+  "native_hook_execution_observed": false,
+  "trust_granted": false,
+  "contract_acceptance_granted": false,
+  "global_config_written": false
+}

@@ -1,6 +1,6 @@
 # Arquitetura proposta
 
-Este documento descreve uma proposta para implementação. Há [protótipos de integração com runners](runner-feasibility.md), mas não há núcleo de produto, plugin, serviço de aceite ou bloqueio protegido implementado ou validado neste repositório. A publicação desta documentação não constitui aceite contratual do seu conteúdo.
+Este documento descreve a arquitetura proposta para o produto completo. Há [protótipos de integração com runners](runner-feasibility.md) e um [preflight experimental com pacote Codex](experimental-codex.md); o fluxo integrado, a autoridade de aceite e o bloqueio protegido ainda não estão implementados ou validados. A publicação desta documentação não constitui aceite contratual do seu conteúdo.
 
 Leia também [produto](product.md), [requisitos](requirements.md), [formato](format.md), [aceite e confiança](approval-and-trust.md), [indexação](indexing.md), [integrações](integrations.md), [roadmap](roadmap.md) e [plano de validação](validation-plan.md).
 

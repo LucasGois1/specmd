@@ -1,8 +1,8 @@
 # Artefatos locais e cache; os caminhos definitivos da ferramenta ainda serão escolhidos.
 .DS_Store
-.specmd/cache/
-.specmd/tmp/
-.specmd/local/
+**/.specmd/cache/
+**/.specmd/tmp/
+**/.specmd/local/
 
 # Credenciais locais nunca são parte da documentação do projeto.
 .env
@@ -20,3 +20,6 @@
 **/.tools/
 **/.cache/
 **/*.class
+**/*.egg-info/
+build/
+dist/

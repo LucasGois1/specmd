@@ -1,0 +1,6 @@
+{
+  "name": "specmd",
+  "version": "0.1.0",
+  "description": "Preflight local de contratos Markdown para projetos que optam por SpecMD. Aceite humano e verificação protegida ainda não implementados.",
+  "hooks": "./hooks/hooks.json"
+}
