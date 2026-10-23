@@ -4,6 +4,7 @@ Standard library only and Python 3.8 syntax: the hook command may start with
 an old system python3 (macOS ships 3.9). The process is replaced, before stdin
 is read, by the first suitable interpreter found.
 """
+import json
 import os
 from pathlib import Path
 import shutil
@@ -13,6 +14,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 MINIMUM = (3, 11)
 _MARKER = "SPECMD_BOOTSTRAPPED"
+_ARGUMENTS = "SPECMD_BOOTSTRAP_ARGV"
 
 
 def candidates():
@@ -44,12 +46,16 @@ def ensure(script, minimum=MINIMUM):
     """Return True when this interpreter can run SpecMD; otherwise exec a better one or return False."""
     if sys.version_info[:2] >= tuple(minimum):
         sys.path[:0] = [str(ROOT / "src"), str(ROOT / "vendor")]
+        if _ARGUMENTS in os.environ:
+            sys.argv[1:] = json.loads(os.environ.pop(_ARGUMENTS))
         return True
     if os.environ.get(_MARKER):
         return False
     executable = find_interpreter(minimum)
     if executable is None:
         return False
+    # The arguments travel in the environment; the new process gets only the script.
     os.environ[_MARKER] = "1"
-    os.execv(executable, [executable, str(script)] + sys.argv[1:])
+    os.environ[_ARGUMENTS] = json.dumps(sys.argv[1:])
+    os.execv(executable, [executable, str(script)])
     return False  # pragma: no cover - execv does not return

@@ -114,6 +114,14 @@ class BootstrapTests(unittest.TestCase):
         with patch.dict(os.environ, {"SPECMD_BOOTSTRAPPED": "1"}):
             self.assertFalse(bootstrap.ensure("script.py", (99, 0)))
 
+    def test_arguments_survive_the_interpreter_switch(self):
+        bootstrap = _load("specmd_bootstrap")
+        with patch.dict(os.environ, {"SPECMD_BOOTSTRAP_ARGV": json.dumps(["check", "--root", "/x"])}), \
+                patch.object(sys, "argv", ["specmd_cli.py"]), patch.object(sys, "path", list(sys.path)):
+            self.assertTrue(bootstrap.ensure("specmd_cli.py"))
+            self.assertEqual(sys.argv, ["specmd_cli.py", "check", "--root", "/x"])
+            self.assertNotIn("SPECMD_BOOTSTRAP_ARGV", os.environ)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -13,6 +13,7 @@ from .demo import DEFAULT_IGNORE, initial_config
 
 MARKETPLACE = {"source": {"source": "github", "repo": "LucasGois1/specmd"}, "autoUpdate": True}
 PLUGIN_ID = "specmd@specmd"
+CONFIG_FILE = "specmd.toml"
 LOCAL_STATE = ".specmd/local/"
 
 
@@ -49,9 +50,9 @@ def _ensure_gitignore(root: Path) -> bool:
 def initialize(root: Path) -> dict[str, Any]:
     root = Path(root).resolve(strict=True)
     changed = []
-    if not (root / "specmd.toml").exists():
-        (root / "specmd.toml").write_text(initial_config(), encoding="utf-8")
-        changed.append("specmd.toml")
+    if not (root / CONFIG_FILE).exists():
+        (root / CONFIG_FILE).write_text(initial_config(), encoding="utf-8")
+        changed.append(CONFIG_FILE)
     if not (root / IGNORE_FILE).exists():
         (root / IGNORE_FILE).write_text(DEFAULT_IGNORE, encoding="utf-8")
         changed.append(IGNORE_FILE)
