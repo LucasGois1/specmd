@@ -45,4 +45,4 @@ Uma implementação que simplesmente não faz asserções ainda poderia produzir
 
 Se um agente introduzir outro limite, como um prazo máximo para cancelamento, essa mudança precisará aparecer como proposta de comportamento. Escrever um teste para esse limite não o transforma em requisito aceito.
 
-Consulte o [formato proposto](../docs/format.md), o [mecanismo de aceite](../docs/approval-and-trust.md) e o [plano de validação](../docs/validation-plan.md).
+Consulte o [formato proposto](../docs/format.md), o mecanismo de aceite (removido por [D-021](../docs/decisions.md)) e o [plano de validação](../docs/validation-plan.md).

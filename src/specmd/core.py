@@ -1,7 +1,7 @@
-"""Read-only inspection of opt-in Markdown contracts.
+"""Read-only inspection of opt-in Markdown documentation and its scenarios.
 
-Parsing is deliberately separate from human approval and runtime evidence.
-This increment never authorizes task completion and never executes scenarios.
+The scanner reports structural gaps (requirements without scenarios, invalid
+Gherkin, duplicate IDs) and never executes scenarios.
 """
 
 from __future__ import annotations
@@ -82,15 +82,13 @@ def _finding(kind: str, message: str, path: str | None = None,
     return item
 
 
-def _result(status: str, may_complete: bool | None,
-            findings: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+def _result(status: str, findings: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     return {
-        "protocol_version": 1,
-        "stage": "completion",
+        "protocol_version": 2,
         "status": status,
-        "may_complete": may_complete,
         "manifest": None,
         "manifest_sha256": None,
+        "spec_fp": None,
         "documents": [],
         "findings": findings if findings is not None else [],
     }
@@ -186,6 +184,12 @@ def _inspect_document(data: bytes, path: str,
         if token.type == "fence" and token.info.strip().split(maxsplit=1)
         and token.info.strip().split(maxsplit=1)[0].casefold() == "gherkin"
     ]
+    # Prose edits do not change the specification digest; requirements and
+    # scenarios do. Hooks use it to tell which scenarios the developer saw.
+    document["spec_sha256"] = hashlib.sha256(json.dumps(
+        [[item["id"] for item in document["requirements"]], [token.content for token in fences]],
+        ensure_ascii=False, separators=(",", ":"),
+    ).encode("utf-8")).hexdigest()
     if document["kind"] == "reference" and (document["requirements"] or fences):
         findings.append(_finding(
             "classification_conflict",
@@ -418,22 +422,21 @@ def inspect_project(root: Path, use_cache: bool = False) -> dict[str, Any]:
 
     Schema 1 preserves the original simple-scenario scanner. Schema 2 enables
     project identity, runner configuration, Rule and concrete outline rows.
-    Valid syntax is not approval: active projects cannot complete here.
     Default inspection writes nothing; use_cache only writes advisory records.
     """
     root = Path(root).absolute()
     config_path = root / "specmd.toml"
     if config_path.is_symlink():
-        return _result("error", False, [_finding(
+        return _result("error", [_finding(
             "config_symlink", "specmd.toml não pode ser um link simbólico.", "specmd.toml",
         )])
     if not config_path.exists():
-        return _result("inactive", None)
+        return _result("inactive")
     try:
         config_bytes = _read_regular_file(config_path)
         config = parse_config(config_bytes)
     except (OSError, ConfigError) as exc:
-        return _result("error", False, [_finding("config_invalid", str(exc), "specmd.toml")])
+        return _result("error", [_finding("config_invalid", str(exc), "specmd.toml")])
 
     findings: list[dict[str, Any]] = []
     documents: list[dict[str, Any]] = []
@@ -486,13 +489,12 @@ def inspect_project(root: Path, use_cache: bool = False) -> dict[str, Any]:
 
     documents.sort(key=lambda item: item["path"])
     _validate_links(documents, findings)
-    validation_failed = bool(findings)
-    findings.extend([
-        _finding("authority_not_configured", "Autoridade de aceite humano ainda não implementada/configurada; classificação declarada não é aprovação."),
-        _finding("evidence_not_executed", "Este scanner não executa cenários nem comprova a implementação dos requisitos."),
-    ])
-    result = _result("blocked" if validation_failed else "waiting_human_review", False, findings)
+    result = _result("needs_scenarios" if findings else "ready", findings)
     result["documents"] = documents
+    result["spec_fp"] = hashlib.sha256(json.dumps(
+        [[document["path"], document.get("spec_sha256")] for document in documents],
+        ensure_ascii=False, separators=(",", ":"),
+    ).encode("utf-8")).hexdigest()
     if complete_snapshot:
         manifest = {
             "schema": 1,
@@ -512,8 +514,7 @@ def extract_features(root: Path, inspection: dict[str, Any] | None = None) -> li
     """Return in-memory Gherkin blocks padded to their original Markdown lines.
 
     A supplied inspection is checked against a fresh inventory, including new
-    and removed documents. Extraction never creates .feature files or approval.
-    Callers must still enforce human acceptance and runtime evidence policies.
+    and removed documents. Extraction never creates .feature files.
     """
     root = Path(root).absolute()
     current = inspect_project(root, use_cache=False)
@@ -522,7 +523,7 @@ def extract_features(root: Path, inspection: dict[str, Any] | None = None) -> li
     if current["status"] == "error" or current["manifest_sha256"] is None:
         raise ValueError("Não foi possível obter um snapshot contratual completo para extração.")
     if inspection is not None and inspection.get("manifest_sha256") != current["manifest_sha256"]:
-        raise ValueError("O contrato mudou desde a inspeção; execute uma nova revisão.")
+        raise ValueError("A documentação mudou desde a inspeção; inspecione novamente.")
     features: list[dict[str, Any]] = []
     for document in current["documents"]:
         if document["kind"] not in {"behavioral", "mixed"}:

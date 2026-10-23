@@ -30,30 +30,6 @@ jobs:
         run: 'uv pip install --system --require-hashes --only-binary :all: -r pylock.toml'
       - name: Unit tests
         run: python -m unittest discover -s tests -v
-      - name: Verify opted-in contracts with external authority
-        if: ${{ matrix.os == 'ubuntu-latest' && hashFiles('specmd.toml') != '' }}
-        env:
-          SPECMD_TRUST_STORE_JSON: ${{ vars.SPECMD_TRUST_STORE_JSON }}
-        shell: bash
-        run: |
-          python - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-          import sys
-
-          raw = os.environ.get("SPECMD_TRUST_STORE_JSON", "")
-          if not raw.strip():
-              sys.exit("SPECMD_TRUST_STORE_JSON must contain the externally managed trust store.")
-          try:
-              store = json.loads(raw)
-          except ValueError:
-              sys.exit("SPECMD_TRUST_STORE_JSON is not valid JSON.")
-          destination = Path(os.environ["RUNNER_TEMP"]) / "specmd-trust.json"
-          destination.write_text(json.dumps(store), encoding="utf-8")
-          destination.chmod(0o600)
-          PY
-          python -m specmd verify --root . --require-real --trust "${RUNNER_TEMP}/specmd-trust.json"
 
   native-bridges:
     runs-on: ubuntu-latest

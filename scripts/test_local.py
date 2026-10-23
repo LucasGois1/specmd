@@ -27,8 +27,8 @@ def main():
         "passed": result.wasSuccessful(), "tests_run": result.testsRun,
         "failures": len(result.failures), "errors": len(result.errors),
         "skipped": len(result.skipped), "duration_seconds": round(time.monotonic() - started, 3),
-        "real_llm_executed": False, "human_review_performed": False,
-        "scope": "Local lifecycle, real Ed25519 signatures, real loopback HTTP, real Python BDD, fixture browser decisions and mocked agent protocols. Native Java/Go tests are separate.",
+        "real_llm_executed": False,
+        "scope": "Documentation scanner, scenario execution with real Python BDD and hook lifecycle through simulated agent payloads. Native Java/Go tests are separate.",
         "source_sha256": {path.relative_to(ROOT).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in sources},
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)

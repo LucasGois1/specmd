@@ -1,5 +1,7 @@
 # Plano de validação
 
+> **Histórico, anterior à [D-021](decisions.md).** Este documento descreve o desenho com aceite assinado, autoridade, trust e bloqueio de implementação, removido em 23/10/2026. Para o produto atual, veja [produto](product.md) e [estado da implementação](implementation-status.md).
+
 > Plano de validação do produto ainda não concluído. Há protótipos de runners e testes automatizados do ciclo experimental, registrados no [estudo técnico](runner-feasibility.md), no [estado atual](implementation-status.md) e no [handoff](../HANDOFF.md). Parte dos casos determinísticos já é exercitada em fixtures; a sessão humana com agente real e o piloto comparativo continuam necessários. Esses resultados não representam aceites dos contratos reais nem validação de utilidade do produto.
 
 O plano avalia duas questões diferentes: se o mecanismo aplica corretamente as regras declaradas e se seu uso melhora o desenvolvimento com agentes. Um gate tecnicamente correto pode produzir pouca utilidade ou interrupções excessivas; uma boa experiência não substitui a integridade do aceite.
@@ -144,7 +146,7 @@ As decisões de continuar, mudar o desenho ou ampliar o escopo devem referenciar
 - [Produto](product.md)
 - [Requisitos e cenários](requirements.md)
 - [Arquitetura](architecture.md)
-- [Aceite e fronteiras de confiança](approval-and-trust.md)
+- Aceite e fronteiras de confiança (removido por [D-021](decisions.md))
 - [Formato documental](format.md)
 - [Índice e processamento incremental](indexing.md)
 - [Integrações](integrations.md)

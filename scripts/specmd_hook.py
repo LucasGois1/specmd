@@ -10,6 +10,6 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from specmd.codex import run_hook
+from specmd.hooks import run_hook
 
 raise SystemExit(run_hook())

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Exercise the SpecMD hooks in a native, headless Claude Code session.
+"""Exercise the SpecMD hooks in native, headless Claude Code sessions.
 
-A real model runs `claude -p` against a fresh `specmd demo` while the contract
-still awaits review. The probe records which hooks the host dispatched and
-what they decided. Headless mode skips the workspace trust dialog, user
-settings are excluded to isolate the plugin, and no contract is accepted.
-Commands, model and output paths are fixed: only flags choose among them.
+A real model runs `claude -p` against fresh `specmd demo` projects. The probe
+records which hooks the host dispatched and what feedback they returned.
+Headless mode skips the workspace trust dialog and user settings are excluded
+to isolate the plugin. Commands, model and output paths are fixed: only flags
+choose among them.
 """
 from __future__ import annotations
 
@@ -25,44 +25,45 @@ BUNDLE = ROOT / "dist/codex-plugin"
 EVIDENCE = ROOT / "research/claude/evidence/headless-dispatch.json"
 LOCAL_REPORT = ROOT / ".specmd/local/claude-headless.json"
 MODEL = "haiku"
-CODE_FILES = ("app.py", "tests/steps/cart_steps.py")
-WATCHED = (*CODE_FILES, "docs/cart.md", "specmd.toml", ".specmd/traceability.json")
-EDIT_TOOLS = ("Edit", "Write", "MultiEdit")
+COUPON_DOC = """---
+specmd:
+  schema: 1
+  id: SMD-DEMO-DOC-002
+  kind: behavioral
+---
+
+# Cupons
+
+## SMD-DEMO-REQ-003 — Cupom DEZ
+
+O cupom DEZ aplica 10% de desconto sobre o total do carrinho, em centavos.
+
+```gherkin
+# language: pt
+Funcionalidade: Cupom de desconto
+
+  @SMD-DEMO-REQ-003 @SMD-DEMO-SCN-003
+  Cenário: Cupom DEZ em carrinho de 1000 centavos
+    Dado um carrinho vazio
+    Quando eu adicionar itens de 500 e 500 centavos
+    E eu aplicar o cupom "DEZ"
+    Então o total deve ser 900 centavos
+```
+"""
 CASES = {
-    "implement_request": ("Adicione ao carrinho um desconto de 10% para totais acima de 1000 centavos. "
-                          "Atualize contrato e código conforme necessário e conclua a tarefa."),
-    # Explicit tool instruction: the case must exercise the Edit denial itself.
-    "forced_code_edit": ("Teste do hook: leia app.py e use a ferramenta Edit para trocar `return sum(self.prices)` "
-                         "por `return sum(self.prices) * 9 // 10`. Não use shell. Se a ferramenta for negada, "
-                         "relate a negação e pare."),
+    # Documentation without scenarios must come back to the agent.
+    "documentation_gap": (None, "Crie o arquivo docs/frete.md descrevendo a regra de negócio: pedidos acima de "
+                                "10000 centavos têm frete grátis. Não altere código."),
+    # A code change that breaks a documented scenario must come back with the failure.
+    "code_breaks_scenario": (None, "Altere app.py para que total() some uma taxa fixa de 1 centavo. Faça só isso."),
+    # Confirmed scenarios with an undefined step must be implemented until green.
+    "implement_confirmed": (COUPON_DOC, "Os cenários de docs/cupons.md já foram confirmados comigo. Implemente o "
+                                        "necessário para eles passarem."),
 }
-
-
-def _hashes(project: Path) -> dict[str, str]:
-    return {name: hashlib.sha256((project / name).read_bytes()).hexdigest() for name in WATCHED}
 
 
 def _sanitize(value: str, base: Path) -> str:
     return value.replace(str(base), "<tmp>").replace(str(ROOT), "<repo>").replace(str(Path.home()), "~")
-
-
-def _target(tool_input: dict, project: Path) -> str:
-    raw = tool_input.get("file_path") or tool_input.get("path") or ""
-    if raw:
-        try:
-            return Path(raw).resolve().relative_to(project).as_posix()
-        except ValueError:
-            return "<fora do projeto>"
-    return "<shell>" if "command" in tool_input else ""
-
-
-def _on_init(summary: dict, event: dict) -> None:
-    summary["claude_code_version"] = event.get("claude_code_version")
-    summary["model"] = event.get("model")
-    # Other locally installed plugins are counted, not named.
-    names = [item.get("name") for item in event.get("plugins", [])]
-    summary["specmd_plugin_loaded"] = "specmd" in names
-    summary["other_plugins"] = len([name for name in names if name != "specmd"])
 
 
 def _reply(event: dict) -> dict:
@@ -73,6 +74,13 @@ def _reply(event: dict) -> dict:
     return reply if isinstance(reply, dict) else {}
 
 
+def _on_init(summary: dict, event: dict) -> None:
+    names = [item.get("name") for item in event.get("plugins", [])]
+    summary.update({"claude_code_version": event.get("claude_code_version"), "model": event.get("model"),
+                    "specmd_plugin_loaded": "specmd" in names,
+                    "other_plugins": len([name for name in names if name != "specmd"])})
+
+
 def _on_hook(summary: dict, event: dict, base: Path) -> None:
     name = event.get("hook_event")
     summary["hooks"][name] = summary["hooks"].get(name, 0) + 1
@@ -80,24 +88,21 @@ def _on_hook(summary: dict, event: dict, base: Path) -> None:
         summary["hook_failures"].append({"hook": event.get("hook_name"), "exit_code": event.get("exit_code"),
                                          "stderr": _sanitize((event.get("stderr") or "")[:200], base)})
     reply = _reply(event)
-    specific = reply.get("hookSpecificOutput", {})
-    if specific.get("permissionDecision") == "deny":
-        summary["denials"].append({"hook": event.get("hook_name"),
-                                   "reason": specific.get("permissionDecisionReason", "")[95:200]})
-    if name == "Stop" and reply:
-        status = (reply.get("stopReason") or reply.get("reason") or "").split(";")[0]
-        summary["stop_outputs"].append({key: reply[key] for key in ("continue", "decision") if key in reply}
-                                       | {"status": status})
+    text = (reply.get("reason") or reply.get("systemMessage")
+            or reply.get("hookSpecificOutput", {}).get("additionalContext") or "")
+    if text and name != "SessionStart":
+        summary["feedback"].append({"hook": name, "decision": reply.get("decision"), "text": text[:400]})
 
 
-def _on_assistant(summary: dict, event: dict, project: Path) -> None:
+def _on_assistant(summary: dict, event: dict, base: Path) -> None:
     for item in event.get("message", {}).get("content", []):
         if item.get("type") == "tool_use":
-            summary["tool_uses"].append({"tool": item.get("name"), "target": _target(item.get("input") or {}, project)})
+            target = (item.get("input") or {}).get("file_path") or ""
+            summary["tool_uses"].append({"tool": item.get("name"), "target": _sanitize(target, base)})
 
 
-def _summarize(stream: Path, project: Path, base: Path) -> dict:
-    summary = {"hooks": {}, "hook_failures": [], "denials": [], "tool_uses": [], "stop_outputs": []}
+def _summarize(stream: Path, base: Path) -> dict:
+    summary = {"hooks": {}, "hook_failures": [], "feedback": [], "tool_uses": []}
     for line in stream.read_text(encoding="utf-8").splitlines():
         try:
             event = json.loads(line)
@@ -109,36 +114,42 @@ def _summarize(stream: Path, project: Path, base: Path) -> dict:
         elif kind == "system" and subtype == "hook_response":
             _on_hook(summary, event, base)
         elif kind == "assistant":
-            _on_assistant(summary, event, project)
+            _on_assistant(summary, event, base)
         elif kind == "result":
             summary.update({"turns": event.get("num_turns"), "is_error": event.get("is_error"),
                             "cost_usd": event.get("total_cost_usd")})
     return summary
 
 
-def _expectations(name: str, summary: dict, changed: list[str], code_attempts: list[dict]) -> dict:
-    denied_edits = [item for item in summary["denials"] if item["hook"] in {f"PreToolUse:{tool}" for tool in EDIT_TOOLS}]
-    stops = summary["stop_outputs"]
-    return {
+def _expectations(name: str, summary: dict, state: dict) -> dict:
+    feedback = summary["feedback"]
+    common = {
         "specmd_plugin_loaded": summary.get("specmd_plugin_loaded") is True,
-        "lifecycle_events_dispatched": all(summary["hooks"].get(event) for event in ("SessionStart", "PreToolUse", "Stop")),
+        "lifecycle_events_dispatched": all(summary["hooks"].get(event) for event in ("SessionStart", "Stop")),
         "no_hook_failures": not summary["hook_failures"],
-        "code_edit_exercised": name != "forced_code_edit" or bool(code_attempts),
-        "code_unchanged_without_acceptance": not set(CODE_FILES) & set(changed),
-        "code_edits_denied": len(denied_edits) >= len(code_attempts),
-        "stop_returns_control": bool(stops) and all(item.get("continue") is False or item.get("decision") == "block"
-                                                    for item in stops),
+        "never_stopped_session": all(item.get("decision") in {None, "block"} for item in feedback),
     }
+    if name == "documentation_gap":
+        common["gap_fed_back"] = any("docs/frete.md" in item["text"] for item in feedback)
+    elif name == "code_breaks_scenario":
+        common["failure_fed_back"] = any(item.get("decision") == "block" and "não passaram" in item["text"]
+                                         for item in feedback)
+    elif name == "implement_confirmed":
+        common["scenarios_executed"] = isinstance(state.get("last_run"), dict)
+    return common
 
 
-def run_case(name: str, prompt: str, claude: str, plugin_dir: Path, timeout: int, base: Path) -> dict:
+def run_case(name: str, document: str | None, prompt: str, claude: str, plugin_dir: Path, timeout: int,
+             base: Path) -> dict:
     project = base / name
-    created = subprocess.run([sys.executable, "-m", "specmd", "demo", "--dest", str(project)],
-                             capture_output=True, text=True, timeout=60, check=True)
-    trust = json.loads(created.stdout)["trust_store"]
-    before = _hashes(project)
+    subprocess.run([sys.executable, "-m", "specmd", "demo", "--dest", str(project)],
+                   capture_output=True, text=True, timeout=60, check=True)
+    subprocess.run(["git", "init", "-q", str(project)], check=True)
+    if document:
+        (project / "docs/cupons.md").write_text(document, encoding="utf-8")
     stream = base / f"{name}.jsonl"
-    environment = {**os.environ, "SPECMD_PYTHON": sys.executable, "SPECMD_TRUST_STORE": trust}
+    environment = {key: value for key, value in os.environ.items() if key != "CLAUDE_PROJECT_DIR"}
+    environment["SPECMD_PYTHON"] = sys.executable
     command = [claude, "-p", prompt, "--plugin-dir", str(plugin_dir),
                "--setting-sources", "project,local", "--strict-mcp-config", "--model", MODEL,
                "--permission-mode", "acceptEdits", "--output-format", "stream-json", "--verbose",
@@ -146,21 +157,22 @@ def run_case(name: str, prompt: str, claude: str, plugin_dir: Path, timeout: int
     with stream.open("w", encoding="utf-8") as output:
         completed = subprocess.run(command, cwd=project, env=environment, stdout=output,
                                    stderr=subprocess.DEVNULL, timeout=timeout)
-    after = _hashes(project)
-    summary = _summarize(stream, project, base)
-    code_attempts = [use for use in summary["tool_uses"] if use["tool"] in EDIT_TOOLS and use["target"] in CODE_FILES]
-    changed = sorted(path for path in WATCHED if before[path] != after[path])
-    expectations = _expectations(name, summary, changed, code_attempts)
-    return {"case": name, "prompt": prompt, "exit_code": completed.returncode, "changed_files": changed,
-            "code_edit_attempts": len(code_attempts), **summary, "expectations": expectations,
-            "expectation_met": all(expectations.values())}
+    summary = _summarize(stream, base)
+    check = subprocess.run([sys.executable, "-m", "specmd", "check", "--root", str(project)],
+                           capture_output=True, text=True, timeout=120)
+    final = json.loads(check.stdout)
+    state_path = project / ".specmd/local/state.json"
+    state = json.loads(state_path.read_text()) if state_path.exists() else {}
+    expectations = _expectations(name, summary, state)
+    return {"case": name, "prompt": prompt, "exit_code": completed.returncode, "final_status": final.get("status"),
+            **summary, "expectations": expectations, "expectation_met": all(expectations.values())}
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--use-clone", action="store_true", help="Carregar o plugin do clone em vez do bundle gerado")
     parser.add_argument("--record", action="store_true", help="Gravar em research/claude/evidence em vez de .specmd/local")
-    parser.add_argument("--timeout", type=int, default=300)
+    parser.add_argument("--timeout", type=int, default=600)
     args = parser.parse_args()
     plugin_dir = ROOT if args.use_clone else BUNDLE
     output = EVIDENCE if args.record else LOCAL_REPORT
@@ -173,26 +185,26 @@ def main() -> int:
         return 2
     version = subprocess.run([claude, "--version"], capture_output=True, text=True, timeout=30).stdout.strip()
     base = Path(tempfile.mkdtemp(prefix="specmd-claude-")).resolve()
-    cases = [run_case(name, prompt, claude, plugin_dir, args.timeout, base) for name, prompt in CASES.items()]
+    cases = [run_case(name, document, prompt, claude, plugin_dir, args.timeout, base)
+             for name, (document, prompt) in CASES.items()]
     sources = [Path(__file__), ROOT / "hooks/hooks.json", ROOT / "scripts/specmd_hook.py",
                ROOT / ".claude-plugin/plugin.json", *sorted((ROOT / "src/specmd").glob("*.py"))]
     report = {
-        "schema": 1, "observed_at_utc": datetime.now(timezone.utc).isoformat(), "claude_version": version,
+        "schema": 2, "observed_at_utc": datetime.now(timezone.utc).isoformat(), "claude_version": version,
         "plugin_dir": _sanitize(str(plugin_dir), base),
         "flags": f"-p --model {MODEL} --setting-sources project,local --strict-mcp-config --permission-mode acceptEdits",
-        "scope": ("Native headless Claude Code with a real model and the SpecMD plugin loaded by --plugin-dir, "
-                  "before any acceptance. Not exercised: workspace trust dialog, interactive UX, marketplace "
-                  "installation, user settings/hooks, human review or protected deployment."),
-        "real_llm_executed": True, "human_review_performed": False, "acceptance_issued": False,
-        "cases": cases, "passed": all(case["expectation_met"] for case in cases),
+        "scope": ("Native headless Claude Code with a real model and the SpecMD plugin loaded by --plugin-dir. "
+                  "Not exercised: workspace trust dialog, interactive UX, marketplace installation, user "
+                  "settings/hooks, a real developer answering the agent."),
+        "real_llm_executed": True, "cases": cases, "passed": all(case["expectation_met"] for case in cases),
         "source_sha256": {path.relative_to(ROOT).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
                           for path in sources},
     }
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({"passed": report["passed"], "cases": [
-        {key: case[key] for key in ("case", "hooks", "code_edit_attempts", "changed_files", "expectation_met")}
-        for case in cases], "output": _sanitize(str(output), base)}, ensure_ascii=False, indent=2))
+        {key: case[key] for key in ("case", "hooks", "final_status", "expectations")} for case in cases],
+        "output": _sanitize(str(output), base)}, ensure_ascii=False, indent=2))
     return 0 if report["passed"] else 1
 
 

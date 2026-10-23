@@ -8,6 +8,8 @@ specmd:
 
 # Handoff — SpecMD para o agente local
 
+> **Histórico, anterior à [D-021](docs/decisions.md).** Este documento descreve o desenho com aceite assinado, autoridade, trust e bloqueio de implementação, removido em 23/10/2026. Para o produto atual, veja [produto](docs/product.md) e [estado da implementação](docs/implementation-status.md).
+
 Documento preparado a pedido de Lucas para transferir o contexto da descoberta, pesquisa e implementação ao agente que trabalhará no computador dele. Não é necessário ter acesso à conversa original.
 
 **Referência desta transferência:** 23/10/2026. Repositório público: [LucasGois1/specmd](https://github.com/LucasGois1/specmd). A implementação experimental **0.2.0** foi integrada à `main` pelo [PR #1](https://github.com/LucasGois1/specmd/pull/1), no merge `352c8323f701cefaca2fca4f8d42952e2de07fbd`. O código verificado antes do merge está em `e24142308b2e98904eff062012918fb89060d065`; a árvore de arquivos do merge foi conferida e era igual à desse commit.
@@ -109,12 +111,12 @@ Detalhes e versões estão em [runner-feasibility.md](docs/runner-feasibility.md
 | Configuração | [config.py](src/specmd/config.py) | Leitura/validação estrita de `specmd.toml`; schema1 legado e schema2 do fluxo completo. |
 | Inventário e parsing | [core.py](src/specmd/core.py) | Markdown, frontmatter, hashes, IDs, requisitos/cenários, origem, validações e extração em memória. |
 | Ciclo de revisão e evidência | [workflow.py](src/specmd/workflow.py) | Proposta, decisão aplicável, rastreabilidade, snapshot de código, execução, invalidação, conclusão e auditoria. |
-| Assinaturas e confiança | [authority.py](src/specmd/authority.py) | Ed25519, autorização de chave por contexto, decisão vigente externa, rejeição/revogação e identidade de repositório. |
-| Revisão local | [review_server.py](src/specmd/review_server.py) | HTTP de loopback, texto integral/diff verificado, configuração/vínculos, aceitar/rejeitar e recusa de versão obsoleta. |
+| Assinaturas e confiança | authority.py (removido por [D-021](docs/decisions.md)) | Ed25519, autorização de chave por contexto, decisão vigente externa, rejeição/revogação e identidade de repositório. |
+| Revisão local | review_server.py (removido por [D-021](docs/decisions.md)) | HTTP de loopback, texto integral/diff verificado, configuração/vínculos, aceitar/rejeitar e recusa de versão obsoleta. |
 | Execução | [runner.py](src/specmd/runner.py), [behave_worker.py](src/specmd/behave_worker.py) | Subprocessos, protocolo JSON, conjunto exato esperado, passos efetivos, timeout e worker Python. |
 | Bridges nativos | [Java](adapters/java/README.md), [Go](adapters/go/README.md) | Código e exemplos para integrar passos reais das aplicações nesses motores. |
 | Codex e Claude | [codex.py](src/specmd/codex.py), [claude.py](src/specmd/claude.py) | Tradução de estados para o protocolo de hooks dos hosts. |
-| Pré-implementação | [pretool.py](src/specmd/pretool.py) | Política local conservadora para permitir leituras/docs e negar ações de implementação enquanto falta aceite. |
+| Pré-implementação | pretool.py (removido por [D-021](docs/decisions.md)) | Política local conservadora para permitir leituras/docs e negar ações de implementação enquanto falta aceite. |
 | Demonstração | [demo.py](src/specmd/demo.py) | Projeto descartável de carrinho, dois requisitos/cenários, implementação, steps e autoridade demonstrativa externa. Não aceita automaticamente o contrato. |
 | Bundle | [build_codex_plugin.py](scripts/build_codex_plugin.py) | Gera pacote por allowlist, com manifests/hooks/bootstrap e módulos Python. |
 | Testes e relatórios | [test_local.py](scripts/test_local.py), [tests](tests), [research/workflow](research/workflow/README.md) | Validação local reprodutível e escopo explícito das evidências. |
@@ -459,7 +461,7 @@ Copie o texto abaixo para a nova sessão, ajustando apenas o caminho do clone qu
 | Por que o projeto existe? | [Produto](docs/product.md) e [decisões](docs/decisions.md). |
 | Quais obrigações e cenários foram registrados? | [Requisitos](docs/requirements.md). |
 | Como escrever/classificar contratos? | [Formato](docs/format.md). |
-| Como o ciclo e a confiança funcionam? | [Arquitetura](docs/architecture.md) e [aceite/confiança](docs/approval-and-trust.md). |
+| Como o ciclo e a confiança funcionam? | [Arquitetura](docs/architecture.md) e aceite/confiança (removido por [D-021](docs/decisions.md)). |
 | Onde há capacidade atual e onde há proposta? | [Estado](docs/implementation-status.md), código e evidências da versão. |
 | Como instalar e ensaiar? | [Quickstart](docs/quickstart.md), [Codex](docs/experimental-codex.md) e [integrações](docs/integrations.md). |
 | Por que não usar `.feature` e como os motores foram testados? | [Viabilidade](docs/runner-feasibility.md), [research](research/README.md) e [adapters](adapters/README.md). |

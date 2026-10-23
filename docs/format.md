@@ -7,6 +7,8 @@ specmd:
 
 # Formato documental e suporte atual
 
+> **Histórico, anterior à [D-021](decisions.md).** Este documento descreve o desenho com aceite assinado, autoridade, trust e bloqueio de implementação, removido em 23/10/2026. Para o produto atual, veja [produto](product.md) e [estado da implementação](implementation-status.md).
+
 O SpecMD implementa um formato experimental de contratos Markdown e um lifecycle de revisão, assinatura e execução. O scanner continua sendo um preflight estrutural: isoladamente não executa cenários, não valida uma pessoa e não libera conclusão. O fluxo integrado combina esse inventário com aceites e evidências separados. Consulte o [estado de implementação](implementation-status.md) para distinguir capacidades implementadas, validações realizadas e limites de implantação.
 
 Os requisitos do produto estão em [requirements.md](requirements.md). A classificação deste próprio documento também é uma proposta, não uma dispensa ou um aceite concedido pelo agente.
@@ -73,7 +75,7 @@ specmd:
 
 Um documento descoberto sem classificação é tratado pelo sistema como pendente. Esse estado pode ser representado no inventário sem escrever automaticamente metadados no arquivo do usuário.
 
-Não há campo de frontmatter que conceda aprovação. Um agente pode editar esses metadados, propor classificações e justificar dispensas; a autoridade continua sendo o [registro de aceite protegido](approval-and-trust.md), vinculado ao conteúdo e ao escopo revisados. Um campo como `approved: true` não substitui esse registro.
+Não há campo de frontmatter que conceda aprovação. Um agente pode editar esses metadados, propor classificações e justificar dispensas; a autoridade continua sendo o registro de aceite protegido (removido por [D-021](decisions.md)), vinculado ao conteúdo e ao escopo revisados. Um campo como `approved: true` não substitui esse registro.
 
 ### Comportamental: `behavioral`
 

@@ -131,7 +131,6 @@ command = ["python", "-c", " print('literal') ", ""]
                     load_config(self.root)
                 result = inspect_project(self.root)
                 self.assertEqual(result["status"], "error")
-                self.assertFalse(result["may_complete"])
 
     def test_rule_inherits_feature_and_rule_requirement_tags(self):
         source = document("""## SMD-REQ-001 — Acesso
@@ -150,7 +149,7 @@ Funcionalidade: Regras
 """)
         self.write(source)
         result = inspect_project(self.root)
-        self.assertEqual(result["status"], "waiting_human_review")
+        self.assertEqual(result["status"], "ready")
         scenario = result["documents"][0]["scenarios"][0]
         self.assertEqual(scenario["requirements"], ["SMD-REQ-001", "SMD-REQ-002"])
         self.assertIn("Cenário:", source.splitlines()[scenario["line"] - 1])
@@ -160,7 +159,7 @@ Funcionalidade: Regras
         source = document(OUTLINE)
         self.write(source)
         result = inspect_project(self.root)
-        self.assertEqual(result["status"], "waiting_human_review")
+        self.assertEqual(result["status"], "ready")
         scenarios = result["documents"][0]["scenarios"]
         self.assertEqual([item["id"] for item in scenarios], [
             "SMD-SCN-001:row:1:1", "SMD-SCN-001:row:1:2", "SMD-SCN-001:row:2:1",
@@ -171,7 +170,6 @@ Funcionalidade: Regras
             self.assertIn("|", source.splitlines()[item["line"] - 1])
             self.assertIn("Esquema do Cenário:", source.splitlines()[item["definition_line"] - 1])
         self.assertIn("Somar 3", scenarios[2]["name"])
-        self.assertFalse(result["may_complete"])
 
     def test_outline_inside_rule_keeps_requirement_inheritance(self):
         body = """## SMD-REQ-001 — Acesso
@@ -193,7 +191,7 @@ Funcionalidade: Regras
 """
         self.write(document(body))
         result = inspect_project(self.root)
-        self.assertEqual(result["status"], "waiting_human_review")
+        self.assertEqual(result["status"], "ready")
         self.assertEqual(result["documents"][0]["scenarios"][0]["requirements"], ["SMD-REQ-001", "SMD-REQ-002"])
 
     def test_empty_outline_examples_do_not_satisfy_a_requirement(self):
@@ -204,14 +202,14 @@ Funcionalidade: Regras
             with self.subTest(body=body):
                 self.write(document(body))
                 result = inspect_project(self.root)
-                self.assertEqual(result["status"], "blocked")
+                self.assertEqual(result["status"], "needs_scenarios")
                 self.assertIn("scenarios_missing", self.kinds(result))
                 self.assertIn("requirement_uncovered", self.kinds(result))
 
     def test_outline_template_cannot_reuse_a_simple_scenario_identity(self):
         self.write(document(SIMPLE + OUTLINE.replace("## SMD-REQ-001 — Soma\n", "")))
         result = inspect_project(self.root)
-        self.assertEqual(result["status"], "blocked")
+        self.assertEqual(result["status"], "needs_scenarios")
         self.assertIn("scenario_id_duplicate", self.kinds(result))
 
     def test_reference_cannot_hide_explicit_requirements_or_gherkin(self):
@@ -219,7 +217,7 @@ Funcionalidade: Regras
             with self.subTest(body=body):
                 self.write(document(body, kind="reference"))
                 result = inspect_project(self.root)
-                self.assertEqual(result["status"], "blocked")
+                self.assertEqual(result["status"], "needs_scenarios")
                 self.assertIn("classification_conflict", self.kinds(result))
 
     def test_extract_features_preserves_source_lines_and_creates_no_feature_file(self):
@@ -262,7 +260,7 @@ Funcionalidade: Regras
         cache_files[0].write_text(json.dumps(payload), encoding="utf-8")
         observed = inspect_project(self.root, use_cache=True)
         self.assertEqual(observed, initial)
-        self.assertEqual(observed["status"], "blocked")
+        self.assertEqual(observed["status"], "needs_scenarios")
         self.assertIn("gherkin_missing", self.kinds(observed))
         self.assertFalse(json.loads(cache_files[0].read_text(encoding="utf-8"))["authority"])
 
@@ -291,7 +289,7 @@ Funcionalidade: Regras
             except (NotImplementedError, OSError):
                 self.skipTest("Symlinks indisponíveis nesta plataforma")
             result = inspect_project(self.root, use_cache=True)
-            self.assertEqual(result["status"], "waiting_human_review")
+            self.assertEqual(result["status"], "ready")
             self.assertEqual(list(target.iterdir()), [])
 
 
