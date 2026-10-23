@@ -51,7 +51,7 @@ def scrub(value):
     value = str(value).replace(str(REPOSITORY), "[REPOSITORY]")
     result = []
     for line in value.splitlines():
-        if re.search(r"authorization|bearer |api.?key|access.?token|refresh.?token|gh[pousr]_|sk-[A-Za-z0-9]", line, re.I):
+        if re.search(r"authorization|bearer |api.?key|access.?token|refresh.?token|gh[pousr]_|sk-[a-z0-9]", line, re.I):
             result.append("[REDACTED_AUTH_LINE]")
         else:
             result.append(line)
@@ -150,7 +150,7 @@ class FixtureServer(ThreadingHTTPServer):
 
 class FixtureHandler(BaseHTTPRequestHandler):
     def log_message(self, *_args):
-        pass
+        pass  # Keep the fixture server silent; requests are recorded separately.
 
     def do_GET(self):
         if self.path != "/v1/models":

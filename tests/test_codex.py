@@ -79,8 +79,9 @@ class HookTests(unittest.TestCase):
         elsewhere = self.root / "elsewhere"
         elsewhere.mkdir()
         (self.root / ".specmd").symlink_to(elsewhere, target_is_directory=True)
+        payload, result = self.payload(), self.result("waiting_human_review")
         with self.assertRaisesRegex(ValueError, "link simbólico"):
-            handle_hook(self.payload(), lambda _: self.result("waiting_human_review"))
+            handle_hook(payload, lambda _: result)
         self.assertFalse((elsewhere / "local").exists())
 
     def test_observed_changes_include_rename_as_remove_and_add(self):
@@ -123,8 +124,9 @@ class HookTests(unittest.TestCase):
             {"may_complete": 1},
             {"findings": None},
         ):
+            payload, result = self.payload(), {**self.successful(), **change}
             with self.subTest(change=change), self.assertRaises(ValueError):
-                handle_hook(self.payload(), lambda _: {**self.successful(), **change})
+                handle_hook(payload, lambda _: result)
 
     def test_default_checker_is_the_workflow_not_the_legacy_preflight(self):
         from unittest.mock import Mock

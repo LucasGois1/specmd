@@ -22,8 +22,9 @@ import time
 REPOSITORY = Path(__file__).resolve().parents[2]
 DIRECTORY = REPOSITORY / "research/codex"
 EVIDENCE = DIRECTORY / "evidence"
+PYTHON = REPOSITORY / ".venv/bin/python"
 FIXTURES = DIRECTORY / "fixtures/runtime"
-COMMAND = shlex.join([str(REPOSITORY / ".venv/bin/python"), str(DIRECTORY / "record_hook.py")])
+COMMAND = shlex.join([str(PYTHON), str(DIRECTORY / "record_hook.py")])
 HOOK_LOG = EVIDENCE / "runtime-hook-events.jsonl"
 CASE_NAMES = ("blocked", "waiting")
 
@@ -32,7 +33,7 @@ def scrub(text):
     text = text.replace(str(REPOSITORY), "[REPOSITORY]")
     lines = []
     for line in text.splitlines():
-        if re.search(r"authorization|bearer |api.?key|access.?token|refresh.?token|gh[pousr]_|sk-[A-Za-z0-9]", line, re.I):
+        if re.search(r"authorization|bearer |api.?key|access.?token|refresh.?token|gh[pousr]_|sk-[a-z0-9]", line, re.I):
             lines.append("[REDACTED_AUTH_LINE]")
         else:
             lines.append(line)
@@ -64,7 +65,7 @@ def rpc_discover(fixture, config_arguments=None):
     process = subprocess.Popen(
         ["codex", *(configuration() if config_arguments is None else config_arguments), "app-server", "--stdio"],
         cwd=fixture, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        text=True, encoding="utf-8", env={**os.environ, "SPECMD_PYTHON": str(REPOSITORY / ".venv/bin/python")},
+        text=True, encoding="utf-8", env={**os.environ, "SPECMD_PYTHON": str(PYTHON)},
     )
     output = queue.Queue()
     errors = queue.Queue()
@@ -205,7 +206,7 @@ def run(review_path, cases=CASE_NAMES):
                   for p in fixture.glob("*") if p.is_file()}
         try:
             completed = subprocess.run(command, cwd=REPOSITORY, capture_output=True, text=True,
-                                       timeout=90, env={**os.environ, "SPECMD_PYTHON": str(REPOSITORY / ".venv/bin/python")})
+                                       timeout=90, env={**os.environ, "SPECMD_PYTHON": str(PYTHON)})
             stdout, stderr, exit_code, timed_out = completed.stdout, completed.stderr, completed.returncode, False
         except subprocess.TimeoutExpired as error:
             stdout = error.stdout.decode() if isinstance(error.stdout, bytes) else error.stdout or ""

@@ -298,7 +298,7 @@ func Serve(reader io.Reader, writer io.Writer, initialize func(*godog.ScenarioCo
 		report.Errors = []string{err.Error()}
 	} else {
 		var trailing any
-		if err := decoder.Decode(&trailing); err != io.EOF {
+		if decoder.Decode(&trailing) != io.EOF {
 			report = emptyReport()
 			report.Errors = []string{"expected one JSON input object"}
 		} else {

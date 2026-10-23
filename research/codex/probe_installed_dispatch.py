@@ -19,6 +19,7 @@ import probe_native_fixture as fixture
 
 ROOT = Path(__file__).resolve().parents[2]
 OUTPUT = ROOT / "research/codex/evidence/installed-dispatch.json"
+STATUS = ".specmd/local/status.json"
 
 
 def post_tool_case(server, arguments):
@@ -45,7 +46,7 @@ def post_tool_case(server, arguments):
                            "output": [item], "usage": {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}}}]
                 return "".join("event: " + event["type"] + "\ndata: " + json.dumps(event) + "\n\n" for event in events).encode()
             if server.active_case == "post_tool_use" and len(requests) == 2:
-                state_path = project / ".specmd/local/status.json"
+                state_path = project / STATUS
                 state = json.loads(state_path.read_text()) if state_path.exists() else {}
                 observation.update({"hook_event": state.get("hook_event"), "status": state.get("status"),
                                     "may_complete": state.get("may_complete"),
@@ -63,7 +64,7 @@ def post_tool_case(server, arguments):
                                        timeout=60, env=fixture.child_environment())
         finally:
             fixture.sse_response = original
-        state_path = project / ".specmd/local/status.json"
+        state_path = project / STATUS
         state = json.loads(state_path.read_text()) if state_path.exists() else {}
         requests = [request for request in server.requests if request["case"] == "post_tool_use"]
         after = hashlib.sha256(contract.read_bytes()).hexdigest()
@@ -107,7 +108,7 @@ def main():
     try:
         for case in fixture.CASES:
             project = fixture.FIXTURES / case
-            state_path = project / ".specmd/local/status.json"
+            state_path = project / STATUS
             state_path.unlink(missing_ok=True)  # Reconstructible fixture observation.
             before = fixture.fixture_hashes(project)
             server.active_case = case

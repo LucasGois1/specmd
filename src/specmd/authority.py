@@ -9,7 +9,6 @@ the agent. A JSON mode flag alone does not establish that separation.
 from __future__ import annotations
 
 import base64
-import binascii
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -26,6 +25,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey,
 
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
+_REPOSITORY_PREFIX = "repo:"
 _PROPOSAL_FIELDS = (
     "schema", "project_id", "repository", "contract_sha256", "manifest", "documents",
 )
@@ -35,7 +35,7 @@ def _canonical(value: Any) -> bytes:
     try:
         return json.dumps(value, ensure_ascii=False, sort_keys=True,
                           separators=(",", ":"), allow_nan=False).encode("utf-8")
-    except (TypeError, ValueError, UnicodeError) as exc:
+    except (TypeError, ValueError) as exc:
         raise ValueError("O conteúdo não possui representação JSON canônica válida.") from exc
 
 
@@ -56,12 +56,12 @@ def _sha(value: Any, name: str) -> str:
 
 
 def _repository(value: Any) -> str:
-    if isinstance(value, str) and value.startswith("repo:"):
-        identifier = _text(value[5:], "repository_id")
+    if isinstance(value, str) and value.startswith(_REPOSITORY_PREFIX):
+        identifier = _text(value[len(_REPOSITORY_PREFIX):], "repository_id")
         if any(character.isspace() or ord(character) < 32 or ord(character) == 127
                for character in identifier) or "\\" in identifier or identifier.startswith("/"):
             raise ValueError("repository_id não pode conter espaços, controles ou caminho absoluto.")
-        return "repo:" + identifier
+        return _REPOSITORY_PREFIX + identifier
     if not isinstance(value, (str, os.PathLike)):
         raise ValueError("repository precisa ser uma identidade repo: ou caminho absoluto.")
     path = Path(value)
@@ -71,7 +71,7 @@ def _repository(value: Any) -> str:
 
 
 def _outside(path: Path, repository: str, workspace_root: Path | str | None = None) -> Path:
-    roots = [] if repository.startswith("repo:") else [Path(repository)]
+    roots = [] if repository.startswith(_REPOSITORY_PREFIX) else [Path(repository)]
     if workspace_root is not None:
         workspace = Path(workspace_root)
         if not workspace.is_absolute():
@@ -131,7 +131,7 @@ def _read_json(path: Path) -> dict:
 def _decode(value: Any, length: int, name: str) -> bytes:
     try:
         decoded = base64.b64decode(value, validate=True)
-    except (TypeError, ValueError, binascii.Error) as exc:
+    except (TypeError, ValueError) as exc:  # binascii.Error is a ValueError
         raise ValueError(f"{name} não contém base64 válido.") from exc
     if len(decoded) != length:
         raise ValueError(f"{name} possui tamanho inválido.")
@@ -318,9 +318,9 @@ def create_review(root: Path, inspection: dict, config: dict) -> dict:
     repository_id = config.get("repository_id")
     if repository_id is not None:
         repository_id = _text(repository_id, "repository_id")
-        if repository_id.startswith("repo:"):
+        if repository_id.startswith(_REPOSITORY_PREFIX):
             raise ValueError("repository_id não deve incluir o prefixo repo:.")
-        repository = _repository("repo:" + repository_id)
+        repository = _repository(_REPOSITORY_PREFIX + repository_id)
     else:
         repository = str(root)
     manifest = _manifest(inspection.get("manifest"), inspection.get("manifest_sha256"))
@@ -357,7 +357,7 @@ def sign_approval(proposal: dict, authority_dir: Path, reviewer: str,
     if decision not in {"accept", "reject"}:
         raise ValueError("decision precisa ser accept ou reject.")
     workspace_root = workspace_root if workspace_root is not None else proposal.get("workspace_root")
-    if body["repository"].startswith("repo:") and workspace_root is None:
+    if body["repository"].startswith(_REPOSITORY_PREFIX) and workspace_root is None:
         raise ValueError("workspace_root é necessário para verificar a autoridade externa.")
     authority_dir = _outside(Path(authority_dir), body["repository"], workspace_root)
     trust_path = authority_dir / "trust.json"
@@ -397,7 +397,7 @@ def verify_approval(envelope: dict, trust_path: Path, expected: dict) -> dict:
     project_id = _text(expected.get("project_id"), "project_id")
     repository = _repository(_text(expected.get("repository"), "repository"))
     workspace_root = expected.get("workspace_root")
-    if repository.startswith("repo:") and workspace_root is None:
+    if repository.startswith(_REPOSITORY_PREFIX) and workspace_root is None:
         raise ValueError("workspace_root é necessário para verificar o trust externo.")
     contract_sha256 = _sha(expected.get("contract_sha256"), "contract_sha256")
     if not isinstance(envelope, dict) or set(envelope) != {"schema", "algorithm", "key_id", "payload", "signature"}:

@@ -199,16 +199,15 @@ def _rg(root: Path, base: Path, arguments: list[str]) -> None:
         argument = arguments[index]
         if argument == "--" and not options_done:
             options_done = True
-        elif not options_done and argument in flags:
-            pass
-        elif not options_done and argument in valued:
-            index += 1
-            if index >= len(arguments):
-                raise ValueError("Opção rg sem valor.")
-            if argument in {"-e", "--regexp"}:
-                pattern = True
         elif not options_done and argument.startswith("-"):
-            raise ValueError("Opção rg não reconhecida; preprocessadores e follow não são permitidos.")
+            if argument in valued:
+                index += 1
+                if index >= len(arguments):
+                    raise ValueError("Opção rg sem valor.")
+                if argument in {"-e", "--regexp"}:
+                    pattern = True
+            elif argument not in flags:
+                raise ValueError("Opção rg não reconhecida; preprocessadores e follow não são permitidos.")
         elif not files_mode and not pattern:
             pattern = True
         else:
@@ -242,18 +241,14 @@ def _git(root: Path, base: Path, arguments: list[str]) -> None:
         argument = arguments[index]
         if argument == "--" and not paths_only:
             paths_only = True
-        elif not paths_only and argument in booleans:
-            pass
-        elif not paths_only and argument in values:
-            index += 1
-            if index >= len(arguments):
-                raise ValueError("Opção Git sem valor.")
-        elif not paths_only and argument.startswith(prefixes):
-            pass
-        elif not paths_only and subcommand in {"log", "show"} and argument.startswith("-") and argument[1:].isdigit():
-            pass
         elif not paths_only and argument.startswith("-"):
-            raise ValueError("Opção Git não reconhecida; execução externa e arquivos de saída são proibidos.")
+            if argument in values:
+                index += 1
+                if index >= len(arguments):
+                    raise ValueError("Opção Git sem valor.")
+            elif not (argument in booleans or argument.startswith(prefixes)
+                      or (subcommand in {"log", "show"} and argument[1:].isdigit())):
+                raise ValueError("Opção Git não reconhecida; execução externa e arquivos de saída são proibidos.")
         else:
             _inside(root, argument, base)
         index += 1

@@ -57,8 +57,9 @@ class ClaudeHookTests(unittest.TestCase):
     def test_false_success_with_a_finding_is_rejected(self):
         result = self.result("passed", True)
         result["findings"] = [{"kind": "missing", "message": "Teste faltante."}]
+        payload = self.payload()
         with self.assertRaises(ValueError):
-            handle_hook(self.payload(), lambda _: result)
+            handle_hook(payload, lambda _: result)
 
     def test_malformed_input_emits_valid_stop_control_not_unreliable_exit(self):
         with patch("sys.stdin", io.StringIO("{")), contextlib.redirect_stdout(io.StringIO()) as output:

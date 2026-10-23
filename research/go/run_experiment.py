@@ -18,6 +18,7 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parent
+CONTRACT = "contract.md"
 
 
 def main() -> int:
@@ -75,7 +76,7 @@ def main() -> int:
         print(json.dumps(cases[-1], ensure_ascii=False))
 
     # This is stdin support provided by our adapter, not a claim about Godog CLI.
-    stdin_case = subprocess.run([str(executable), "-case", "pass", "-source", "-", "-uri", "contract-via-stdin.md"], cwd=ROOT, env=env, input=(ROOT / "contract.md").read_text(encoding="utf-8"), text=True, capture_output=True, timeout=30)
+    stdin_case = subprocess.run([str(executable), "-case", "pass", "-source", "-", "-uri", "contract-via-stdin.md"], cwd=ROOT, env=env, input=(ROOT / CONTRACT).read_text(encoding="utf-8"), text=True, capture_output=True, timeout=30)
     (evidence / "adapter-stdin.stdout.json").write_text(stdin_case.stdout, encoding="utf-8")
     (evidence / "adapter-stdin.stderr.log").write_text(stdin_case.stderr, encoding="utf-8")
     try:
@@ -108,14 +109,14 @@ def main() -> int:
         "godog": "v0.16.0",
         "goldmark": "v1.7.13",
         "platform": platform.system() + "/" + platform.machine(),
-        "source_sha256": hashlib.sha256((ROOT / "contract.md").read_bytes()).hexdigest(),
+        "source_sha256": hashlib.sha256((ROOT / CONTRACT).read_bytes()).hexdigest(),
         "cases": cases,
         "transport_cases": transport_cases,
         "adapter_stdin_passed": stdin_ok,
         "feature_files_found": feature_files,
         "harness_passed": not problems,
         "problems": problems,
-        "source_files_sha256": {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in ("main.go", "system.go", "contract.md", "empty.md", "reference.md", "go.mod", "go.sum", "run_experiment.py")},
+        "source_files_sha256": {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in ("main.go", "system.go", CONTRACT, "empty.md", "reference.md", "go.mod", "go.sum", "run_experiment.py")},
         "scope": "Experimento técnico; não implementa aceite humano, proteção CI ou prova de completude de requisitos.",
     }
     (evidence / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

@@ -125,11 +125,10 @@ def _validate_report(report: Any, expected: list[dict], mode: str) -> list[dict]
         if type(declared_count) is int and count < declared_count:
             raise ValueError("Execução não comprovou todos os passos declarados: " + observed["id"])
         steps = observed.get("steps")
-        if steps is not None:
-            if not isinstance(steps, list) or not steps or any(
-                not isinstance(step, dict) or step.get("status") != "passed" for step in steps
-            ) or len(steps) != count:
-                raise ValueError("Passo pendente, indefinido, ignorado ou inconsistente: " + observed["id"])
+        if steps is not None and (not isinstance(steps, list) or not steps or any(
+            not isinstance(step, dict) or step.get("status") != "passed" for step in steps
+        ) or len(steps) != count):
+            raise ValueError("Passo pendente, indefinido, ignorado ou inconsistente: " + observed["id"])
     return scenarios
 
 
@@ -215,7 +214,7 @@ simulated assurance, even when their protocol-level expectations pass.
             raise ValueError("Existem cenários sem runner atribuído.")
         if any(not items for _, _, _, _, items in normalized):
             raise ValueError("Runner sem cenários atribuídos; execução vazia é recusada.")
-    except (OSError, UnicodeError, ValueError, TypeError) as error:
+    except (OSError, ValueError, TypeError) as error:
         findings.append(_finding("runner_configuration_invalid", str(error)))
         return result
 
