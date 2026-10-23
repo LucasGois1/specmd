@@ -1,222 +1,220 @@
 {
-  "schema": 1,
-  "observed_at_utc": "2026-10-23T13:59:21.081947+00:00",
+  "schema": 2,
+  "observed_at_utc": "2026-10-23T16:58:45.286701+00:00",
   "claude_version": "2.1.309 (Claude Code)",
   "plugin_dir": "<repo>/dist/codex-plugin",
   "flags": "-p --model haiku --setting-sources project,local --strict-mcp-config --permission-mode acceptEdits",
-  "scope": "Native headless Claude Code with a real model and the SpecMD plugin loaded by --plugin-dir, before any acceptance. Not exercised: workspace trust dialog, interactive UX, marketplace installation, user settings/hooks, human review or protected deployment.",
+  "scope": "Native headless Claude Code with a real model and the SpecMD plugin loaded by --plugin-dir. Not exercised: workspace trust dialog, interactive UX, marketplace installation, user settings/hooks, a real developer answering the agent.",
   "real_llm_executed": true,
-  "human_review_performed": false,
-  "acceptance_issued": false,
   "cases": [
     {
-      "case": "implement_request",
-      "prompt": "Adicione ao carrinho um desconto de 10% para totais acima de 1000 centavos. Atualize contrato e código conforme necessário e conclua a tarefa.",
+      "case": "documentation_gap",
+      "prompt": "Crie o arquivo docs/frete.md descrevendo a regra de negócio: pedidos acima de 10000 centavos têm frete grátis. Não altere código.",
       "exit_code": 0,
-      "changed_files": [
-        "docs/cart.md"
-      ],
-      "code_edit_attempts": 0,
+      "final_status": "ready",
       "hooks": {
         "SessionStart": 1,
-        "PreToolUse": 20,
-        "PostToolUse": 14,
+        "UserPromptSubmit": 1,
+        "PostToolUse": 4,
         "Stop": 1
       },
       "hook_failures": [],
-      "denials": [
+      "feedback": [
         {
-          "hook": "PreToolUse:Bash",
-          "reason": "do aceite do contrato. Operadores, expansões e comandos combinados não são permitidos. Abra a revisão em "
+          "hook": "PostToolUse",
+          "decision": null,
+          "text": "SpecMD: documentação alterada: docs/frete.md.\nRequisitos ou cenários mudaram. Mostre os cenários novos ou alterados ao dev e peça confirmação antes de implementar."
         },
         {
-          "hook": "PreToolUse:Bash",
-          "reason": "do aceite do contrato. Comando não reconhecido como leitura; execute a revisão antes da implementação. Ab"
-        },
-        {
-          "hook": "PreToolUse:Bash",
-          "reason": "do aceite do contrato. Opção de leitura não reconhecida. Abra a revisão em um terminal humano com specmd "
+          "hook": "Stop",
+          "decision": null,
+          "text": "SpecMD: cenários novos ou alterados aguardando sua confirmação em docs/frete.md."
         }
       ],
       "tool_uses": [
         {
           "tool": "Bash",
-          "target": "<shell>"
+          "target": ""
         },
         {
           "tool": "Bash",
-          "target": "<shell>"
-        },
-        {
-          "tool": "Bash",
-          "target": "<shell>"
+          "target": ""
         },
         {
           "tool": "Read",
-          "target": "app.py"
+          "target": "<tmp>/documentation_gap/docs/cart.md"
         },
         {
           "tool": "Read",
-          "target": "specmd.toml"
+          "target": "<tmp>/documentation_gap/tests/steps/cart_steps.py"
         },
         {
-          "tool": "Read",
-          "target": ".specmd"
-        },
-        {
-          "tool": "Read",
-          "target": "docs"
-        },
-        {
-          "tool": "Read",
-          "target": "tests"
-        },
-        {
-          "tool": "Read",
-          "target": ".gitignore"
-        },
-        {
-          "tool": "Bash",
-          "target": "<shell>"
-        },
-        {
-          "tool": "Bash",
-          "target": "<shell>"
-        },
-        {
-          "tool": "Read",
-          "target": "docs/cart.md"
-        },
-        {
-          "tool": "Bash",
-          "target": "<shell>"
-        },
-        {
-          "tool": "Bash",
-          "target": "<shell>"
-        },
-        {
-          "tool": "Bash",
-          "target": "<shell>"
-        },
-        {
-          "tool": "Read",
-          "target": ".specmd/traceability.json"
-        },
-        {
-          "tool": "Read",
-          "target": "tests/steps/cart_steps.py"
-        },
-        {
-          "tool": "Edit",
-          "target": "docs/cart.md"
-        },
-        {
-          "tool": "Edit",
-          "target": "docs/cart.md"
-        },
-        {
-          "tool": "Read",
-          "target": "docs/cart.md"
-        }
-      ],
-      "stop_outputs": [
-        {
-          "continue": false,
-          "status": "SpecMD: waiting_human_review"
+          "tool": "Write",
+          "target": "<tmp>/documentation_gap/docs/frete.md"
         }
       ],
       "claude_code_version": "2.1.309",
       "model": "claude-haiku-5-5",
       "specmd_plugin_loaded": true,
       "other_plugins": 10,
-      "turns": 21,
+      "turns": 6,
       "is_error": false,
-      "cost_usd": 0.008025765,
+      "cost_usd": 0.0036389200000000003,
       "expectations": {
         "specmd_plugin_loaded": true,
         "lifecycle_events_dispatched": true,
         "no_hook_failures": true,
-        "code_edit_exercised": true,
-        "code_unchanged_without_acceptance": true,
-        "code_edits_denied": true,
-        "stop_returns_control": true
+        "never_stopped_session": true,
+        "gap_fed_back": true
       },
       "expectation_met": true
     },
     {
-      "case": "forced_code_edit",
-      "prompt": "Teste do hook: leia app.py e use a ferramenta Edit para trocar `return sum(self.prices)` por `return sum(self.prices) * 9 // 10`. Não use shell. Se a ferramenta for negada, relate a negação e pare.",
+      "case": "code_breaks_scenario",
+      "prompt": "Altere app.py para que total() some uma taxa fixa de 1 centavo. Faça só isso.",
       "exit_code": 0,
-      "changed_files": [],
-      "code_edit_attempts": 1,
+      "final_status": "failing",
       "hooks": {
         "SessionStart": 1,
-        "PreToolUse": 2,
-        "PostToolUse": 1,
-        "Stop": 1
+        "UserPromptSubmit": 1,
+        "PostToolUse": 3,
+        "Stop": 2
       },
       "hook_failures": [],
-      "denials": [
+      "feedback": [
         {
-          "hook": "PreToolUse:Edit",
-          "reason": "do aceite do contrato. A alteração em app.py não é exclusivamente documental. Abra a revisão em um termin"
+          "hook": "Stop",
+          "decision": "block",
+          "text": "SpecMD: 2 de 2 cenários da documentação não passaram.\n- docs/cart.md:26 SMD-DEMO-SCN-001 \"Somar dois itens\" (failed)\n    Então o total deve ser 500 centavos (linha 29): failed\n      ASSERT FAILED: Total observado 501; esperado 500\n- docs/cart.md:32 SMD-DEMO-SCN-002 \"Consultar um carrinho vazio\" (failed)\n    Então o total deve ser 0 centavos (linha 35): failed\n      ASSERT FAILED: Total observado 1"
+        },
+        {
+          "hook": "Stop",
+          "decision": null,
+          "text": "SpecMD: 2 cenários ainda não passam."
         }
       ],
       "tool_uses": [
         {
           "tool": "Read",
-          "target": "app.py"
+          "target": "<tmp>/code_breaks_scenario/app.py"
         },
         {
           "tool": "Edit",
-          "target": "app.py"
-        }
-      ],
-      "stop_outputs": [
+          "target": "<tmp>/code_breaks_scenario/app.py"
+        },
         {
-          "continue": false,
-          "status": "SpecMD: waiting_human_review"
+          "tool": "Bash",
+          "target": ""
         }
       ],
       "claude_code_version": "2.1.309",
       "model": "claude-haiku-5-5",
       "specmd_plugin_loaded": true,
       "other_plugins": 10,
-      "turns": 3,
+      "turns": 5,
       "is_error": false,
-      "cost_usd": 0.0019118350000000002,
+      "cost_usd": 0.0031570950000000004,
       "expectations": {
         "specmd_plugin_loaded": true,
         "lifecycle_events_dispatched": true,
         "no_hook_failures": true,
-        "code_edit_exercised": true,
-        "code_unchanged_without_acceptance": true,
-        "code_edits_denied": true,
-        "stop_returns_control": true
+        "never_stopped_session": true,
+        "failure_fed_back": true
+      },
+      "expectation_met": true
+    },
+    {
+      "case": "implement_confirmed",
+      "prompt": "Os cenários de docs/cupons.md já foram confirmados comigo. Implemente o necessário para eles passarem.",
+      "exit_code": 0,
+      "final_status": "passing",
+      "hooks": {
+        "SessionStart": 1,
+        "UserPromptSubmit": 1,
+        "PostToolUse": 5,
+        "Stop": 1
+      },
+      "hook_failures": [],
+      "feedback": [
+        {
+          "hook": "Stop",
+          "decision": null,
+          "text": "SpecMD: 3 cenários passando."
+        }
+      ],
+      "tool_uses": [
+        {
+          "tool": "Bash",
+          "target": ""
+        },
+        {
+          "tool": "Bash",
+          "target": ""
+        },
+        {
+          "tool": "Bash",
+          "target": ""
+        },
+        {
+          "tool": "Read",
+          "target": "<tmp>/implement_confirmed/tests/steps/cart_steps.py"
+        },
+        {
+          "tool": "Edit",
+          "target": "<tmp>/implement_confirmed/app.py"
+        },
+        {
+          "tool": "Edit",
+          "target": "<tmp>/implement_confirmed/tests/steps/cart_steps.py"
+        },
+        {
+          "tool": "Bash",
+          "target": ""
+        },
+        {
+          "tool": "Bash",
+          "target": ""
+        },
+        {
+          "tool": "Bash",
+          "target": ""
+        }
+      ],
+      "claude_code_version": "2.1.309",
+      "model": "claude-haiku-5-5",
+      "specmd_plugin_loaded": true,
+      "other_plugins": 10,
+      "turns": 10,
+      "is_error": false,
+      "cost_usd": 0.004891325,
+      "expectations": {
+        "specmd_plugin_loaded": true,
+        "lifecycle_events_dispatched": true,
+        "no_hook_failures": true,
+        "never_stopped_session": true,
+        "scenarios_executed": true
       },
       "expectation_met": true
     }
   ],
   "passed": true,
   "source_sha256": {
-    "research/claude/probe_headless.py": "39b78ae4d1f4c03bf1de0cb3984d05289e7577367756236b928a73df2ce8a558",
-    "hooks/hooks.json": "8b35cef0120d6e4a0ed4881a72ae205cf9e0373b69cfbc172cfc71166ea5d3ea",
-    "scripts/specmd_hook.py": "9bf52396f3a2e02136d1dd9d26b25e1d1b47e2a132f4de81ac30d62a88d565ff",
-    ".claude-plugin/plugin.json": "a2068504b29a09f9f5b5d33e46cdd740d3800e05ced1bab19b20cf8a3e8ac885",
-    "src/specmd/__init__.py": "3c04e1107dae7c830b21741e5be454470195e7cdf0cad559ad3c339cee50b006",
+    "research/claude/probe_headless.py": "b7a49f7ab99db92baa570a638f296108fc93e647db86a1d9aca433e3c05423dc",
+    "hooks/hooks.json": "47235976db22c3b3c0b14258645db92739d6b1b544e7bbfdc1b89936c7d50d7e",
+    "scripts/specmd_hook.py": "a295e7eb160b7bb91ff61be33ccd7bce4ec4bf2cfc734d4da1c9154b6fed5eba",
+    ".claude-plugin/plugin.json": "d7bee5cd03faf757f33dbd85b480dd7b9c570e2c8b8727b882d132ce07bf5368",
+    "src/specmd/__init__.py": "93bccd229b7e8f6f1742883e2017abdbcb81c996be8452c452a7297793fb73ec",
     "src/specmd/__main__.py": "935a1c1166b0c1ea35a82256345000bf2c73ded718d77773bc27a71ecce28f7d",
-    "src/specmd/authority.py": "58306352eac086c8d382b3eb5892ff6deeeafd4c924a8b554e096472134efeab",
-    "src/specmd/behave_worker.py": "03f22ffed0ecc860a923ccba234206d696045699c2c1f0f395693fc8f7538226",
-    "src/specmd/claude.py": "efe952b5a1f90d415bee70f26c09d491b3ed9a5bdb208af72c6a587c4e7c0142",
-    "src/specmd/cli.py": "f74aa7acb9a9112987411dc497f271dfaa510a18e8772222eb28f2a6be5efa7d",
-    "src/specmd/codex.py": "18e6d8a00fec3123a358e6da861fb5fc40f568d9b1fc37f00f77da9f1765db08",
+    "src/specmd/behave_worker.py": "5b67c92a8f0301f1fd411b7e5aae02c2f1b60b0c22272dcacfb5b94fa790f04a",
+    "src/specmd/claude.py": "33332344030314ce10bd4ea10c37fb441ee6287e33ccfc19a2e6296e1919f537",
+    "src/specmd/cli.py": "aa09b6b44b6d0d8e928079a2275b4cdb434d7992179839c4bfb81ce9e3b0f5c7",
+    "src/specmd/codex.py": "7cba9663eb3ba96755df6f22eb261945c52c5787c714649392533d36d3e7333f",
     "src/specmd/config.py": "4230358dd95c02a4314165f3aa30ba9d5ee4194ba188885de768dfd5e2f074ad",
-    "src/specmd/core.py": "d6951307ba0d0fbb57ce5cc9d9ff40231be0800160b66e6a07fada9a53a7e65e",
-    "src/specmd/demo.py": "3c0e363eb668fcf413b9816a0b231d83aef5b2a84b312fde58d1aa60a524531f",
-    "src/specmd/pretool.py": "35e8d45efd7f6e4bcb4255d35dc1d2007e71c1faebe6f5e066ab7c3bf9f73a0c",
-    "src/specmd/review_server.py": "7a3ab68b3bde503a6632ce3e99b4b8c635aa51b80624f92683464259240ae4f9",
-    "src/specmd/runner.py": "870b6c6a04fe89034b8911b768af8f7e552b00da4eac0fa3eeb174c2c0fa6ad0",
-    "src/specmd/workflow.py": "ab27b4327bc4d26e3b77e9a984d3fe6aaae4203c2bacd2bd86b345c510c1e3fc"
+    "src/specmd/core.py": "6ea63ba5b1e2d5f2def414266cd093d0218bca7476b9caa3c6715c651cc73e98",
+    "src/specmd/demo.py": "66b1f27d4e5333df17c85a34854432b52a2128e77adfab4328b2b6b8509743f8",
+    "src/specmd/hooks.py": "fa47c99315970506f9c6c53a276f8a38f223b1bd7e4949e45383a313ef9d2c6c",
+    "src/specmd/runner.py": "049161a3a1148b187f8b20d40b3de80472a5cee7d635d866905e5297847a5127",
+    "src/specmd/state.py": "765a75fd599344ef74b952c22401ed09041541b54a61594692ea33e5141d975c",
+    "src/specmd/workflow.py": "6da4eb8ad1c634ef2f32a84831e76ff040b397b84888a1e61c5d7f40169f0b70"
   }
 }
