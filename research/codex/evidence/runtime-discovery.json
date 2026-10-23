@@ -1,0 +1,90 @@
+{
+  "stage": "native_discovery_without_thread_or_model",
+  "observed_at_utc": "2026-10-23T03:51:23.486896+00:00",
+  "hook_command": "/workspace/specmd/.venv/bin/python /workspace/specmd/research/codex/record_hook.py",
+  "source_sha256": {
+    "research/codex/record_hook.py": "137f0608ba502cd164db00fa7847cc0fc9ee9317a72194b3085a1c1dfea7b305",
+    "research/codex/probe_runtime.py": "805760af9148d66b4bd73542071c415756e415a9d946a3514a4a6046451ab8a8",
+    "scripts/codex_hook.py": "5683e479aa14a9c86ad9a39f7bc545b85473e3a5434d8561c5c78ed6f233a37d",
+    "src/specmd/__init__.py": "693f02921f442b95854e517d7459168e08d14d5fbf055848d5aa19c7538cb36e",
+    "src/specmd/__main__.py": "935a1c1166b0c1ea35a82256345000bf2c73ded718d77773bc27a71ecce28f7d",
+    "src/specmd/cli.py": "b259cbd518a752f1dad7699490766c6229850589656809e77b038de277c8cc6e",
+    "src/specmd/codex.py": "40d15e1fb5c4c62241e1b2749fa7cdd34c4ffe17954cbfbefaa54f85f69f1c54",
+    "src/specmd/core.py": "f0b3f3fd797b50bf3e70fa9d09000587f49f5ed65bf4b95ea700ff6e327845b6"
+  },
+  "cases": [
+    {
+      "case": "blocked",
+      "hooks": [
+        {
+          "key": "/<session-flags>/config.toml:session_start:0:0",
+          "eventName": "sessionStart",
+          "currentHash": "sha256:5768e8fbf64f700561f058764854004f1355085764e7b2cb25911039f8377aba",
+          "trustStatus": "untrusted",
+          "source": "sessionFlags",
+          "sourcePath": "/<session-flags>/config.toml",
+          "enabled": true,
+          "handlerType": "command",
+          "command": "/workspace/specmd/.venv/bin/python /workspace/specmd/research/codex/record_hook.py",
+          "async": false
+        },
+        {
+          "key": "/<session-flags>/config.toml:stop:0:0",
+          "eventName": "stop",
+          "currentHash": "sha256:329f6ad7b5bba31b6a78c217274978dd5183e0ed553498bd09bf9b0485a07ad8",
+          "trustStatus": "untrusted",
+          "source": "sessionFlags",
+          "sourcePath": "/<session-flags>/config.toml",
+          "enabled": true,
+          "handlerType": "command",
+          "command": "/workspace/specmd/.venv/bin/python /workspace/specmd/research/codex/record_hook.py",
+          "async": false
+        }
+      ],
+      "request": {
+        "method": "hooks/list",
+        "cwds": [
+          "/workspace/specmd/research/codex/fixtures/runtime/blocked"
+        ]
+      }
+    },
+    {
+      "case": "waiting",
+      "hooks": [
+        {
+          "key": "/<session-flags>/config.toml:session_start:0:0",
+          "eventName": "sessionStart",
+          "currentHash": "sha256:5768e8fbf64f700561f058764854004f1355085764e7b2cb25911039f8377aba",
+          "trustStatus": "untrusted",
+          "source": "sessionFlags",
+          "sourcePath": "/<session-flags>/config.toml",
+          "enabled": true,
+          "handlerType": "command",
+          "command": "/workspace/specmd/.venv/bin/python /workspace/specmd/research/codex/record_hook.py",
+          "async": false
+        },
+        {
+          "key": "/<session-flags>/config.toml:stop:0:0",
+          "eventName": "stop",
+          "currentHash": "sha256:329f6ad7b5bba31b6a78c217274978dd5183e0ed553498bd09bf9b0485a07ad8",
+          "trustStatus": "untrusted",
+          "source": "sessionFlags",
+          "sourcePath": "/<session-flags>/config.toml",
+          "enabled": true,
+          "handlerType": "command",
+          "command": "/workspace/specmd/.venv/bin/python /workspace/specmd/research/codex/record_hook.py",
+          "async": false
+        }
+      ],
+      "request": {
+        "method": "hooks/list",
+        "cwds": [
+          "/workspace/specmd/research/codex/fixtures/runtime/waiting"
+        ]
+      }
+    }
+  ],
+  "trust_granted": false,
+  "contract_acceptance_granted": false,
+  "global_config_written": false
+}

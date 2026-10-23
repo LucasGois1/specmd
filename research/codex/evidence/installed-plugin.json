@@ -1,0 +1,103 @@
+{
+  "observed_at_utc": "2026-10-23T03:58:23.648414+00:00",
+  "scope": "Actual marketplace installation and native hook listing/trust; no hook or model execution.",
+  "installed": {
+    "pluginId": "specmd@specmd-local",
+    "name": "specmd",
+    "marketplaceName": "specmd-local",
+    "version": "0.1.0",
+    "installed": true,
+    "enabled": true,
+    "source": {
+      "source": "local",
+      "path": "/workspace/specmd/dist/codex-plugin"
+    },
+    "marketplaceSource": {
+      "sourceType": "local",
+      "source": "/workspace/specmd"
+    },
+    "installPolicy": "AVAILABLE",
+    "authPolicy": "ON_USE"
+  },
+  "cache_matches_canonical_sources": true,
+  "initial_hooks": [
+    {
+      "key": "specmd@specmd-local:hooks/hooks.json:post_tool_use:0:0",
+      "eventName": "postToolUse",
+      "pluginId": "specmd@specmd-local",
+      "command": "\"${SPECMD_PYTHON:-python3}\" \"/run/codex-environment/codex-home/plugins/cache/specmd-local/specmd/0.1.0/scripts/codex_hook.py\"",
+      "source": "plugin",
+      "sourcePath": "/run/codex-environment/codex-home/plugins/cache/specmd-local/specmd/0.1.0/hooks/hooks.json",
+      "enabled": true,
+      "currentHash": "sha256:b42020bc7cb1177677254983284f3343d8f72e11bf69d74b6ec53cb1d02d7546",
+      "trustStatus": "untrusted",
+      "async": false
+    },
+    {
+      "key": "specmd@specmd-local:hooks/hooks.json:session_start:0:0",
+      "eventName": "sessionStart",
+      "pluginId": "specmd@specmd-local",
+      "command": "\"${SPECMD_PYTHON:-python3}\" \"/run/codex-environment/codex-home/plugins/cache/specmd-local/specmd/0.1.0/scripts/codex_hook.py\"",
+      "source": "plugin",
+      "sourcePath": "/run/codex-environment/codex-home/plugins/cache/specmd-local/specmd/0.1.0/hooks/hooks.json",
+      "enabled": true,
+      "currentHash": "sha256:68e28d3d58f13ce32583d68d9bb5566435b21ee79bca34b38807da6b61b12fa1",
+      "trustStatus": "untrusted",
+      "async": false
+    },
+    {
+      "key": "specmd@specmd-local:hooks/hooks.json:stop:0:0",
+      "eventName": "stop",
+      "pluginId": "specmd@specmd-local",
+      "command": "\"${SPECMD_PYTHON:-python3}\" \"/run/codex-environment/codex-home/plugins/cache/specmd-local/specmd/0.1.0/scripts/codex_hook.py\"",
+      "source": "plugin",
+      "sourcePath": "/run/codex-environment/codex-home/plugins/cache/specmd-local/specmd/0.1.0/hooks/hooks.json",
+      "enabled": true,
+      "currentHash": "sha256:10ca7b5eff735235ca7e2c5e5f1789ea81e78c7abffd50be60b941456c019742",
+      "trustStatus": "untrusted",
+      "async": false
+    }
+  ],
+  "session_scoped_trust_hooks": [
+    {
+      "key": "specmd@specmd-local:hooks/hooks.json:post_tool_use:0:0",
+      "eventName": "postToolUse",
+      "pluginId": "specmd@specmd-local",
+      "command": "\"${SPECMD_PYTHON:-python3}\" \"/run/codex-environment/codex-home/plugins/cache/specmd-local/specmd/0.1.0/scripts/codex_hook.py\"",
+      "source": "plugin",
+      "sourcePath": "/run/codex-environment/codex-home/plugins/cache/specmd-local/specmd/0.1.0/hooks/hooks.json",
+      "enabled": true,
+      "currentHash": "sha256:b42020bc7cb1177677254983284f3343d8f72e11bf69d74b6ec53cb1d02d7546",
+      "trustStatus": "trusted",
+      "async": false
+    },
+    {
+      "key": "specmd@specmd-local:hooks/hooks.json:session_start:0:0",
+      "eventName": "sessionStart",
+      "pluginId": "specmd@specmd-local",
+      "command": "\"${SPECMD_PYTHON:-python3}\" \"/run/codex-environment/codex-home/plugins/cache/specmd-local/specmd/0.1.0/scripts/codex_hook.py\"",
+      "source": "plugin",
+      "sourcePath": "/run/codex-environment/codex-home/plugins/cache/specmd-local/specmd/0.1.0/hooks/hooks.json",
+      "enabled": true,
+      "currentHash": "sha256:68e28d3d58f13ce32583d68d9bb5566435b21ee79bca34b38807da6b61b12fa1",
+      "trustStatus": "trusted",
+      "async": false
+    },
+    {
+      "key": "specmd@specmd-local:hooks/hooks.json:stop:0:0",
+      "eventName": "stop",
+      "pluginId": "specmd@specmd-local",
+      "command": "\"${SPECMD_PYTHON:-python3}\" \"/run/codex-environment/codex-home/plugins/cache/specmd-local/specmd/0.1.0/scripts/codex_hook.py\"",
+      "source": "plugin",
+      "sourcePath": "/run/codex-environment/codex-home/plugins/cache/specmd-local/specmd/0.1.0/hooks/hooks.json",
+      "enabled": true,
+      "currentHash": "sha256:10ca7b5eff735235ca7e2c5e5f1789ea81e78c7abffd50be60b941456c019742",
+      "trustStatus": "trusted",
+      "async": false
+    }
+  ],
+  "persistent_trust_unchanged": true,
+  "human_ui_trust_tested": false,
+  "contract_acceptance_granted": false,
+  "expectations_met": true
+}

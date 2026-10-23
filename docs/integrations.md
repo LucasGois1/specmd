@@ -1,6 +1,6 @@
 # Integrações com agentes e CI
 
-> Estado: existe um primeiro preflight experimental Python e pacote Codex em validação. `init`, `inventory` e `check --stage completion` já possuem implementação local; ela não concede aceite nem executa cenários e nunca libera conclusão de projeto ativo. O restante deste documento descreve o fluxo futuro, incluindo autoridade humana, execução integrada e gate protegido. O suporte de runtime do adaptador ainda precisa de evidência por produto e versão.
+> Estado: existe um primeiro preflight experimental Python e pacote Codex. `init`, `inventory` e `check --stage completion` possuem implementação local, sem conceder aceite, executar cenários ou liberar conclusão de projeto ativo. Instalação e três eventos nativos foram demonstrados no Codex `0.163.0` com respostas simuladas; o fluxo com modelo LLM real permanece impedido por autenticação. O restante deste documento descreve capacidades futuras, incluindo autoridade humana, execução integrada e gate protegido.
 
 O [guia experimental do Codex](experimental-codex.md) separa instalação por clone local e build, opt-in, comandos atuais, trust via UX e pendências de validação. O marketplace usa o pacote por allowlist em `dist/codex-plugin`, sem copiar dependências e dados locais do clone.
 
@@ -46,7 +46,7 @@ Executar todos os testes após qualquer edição de texto produziria interrupç�
 
 O núcleo deve ser independente da integração escolhida. A primeira implementação pode validar um adaptador e depois adicionar o segundo.
 
-O usuário solicitou preparar testes locais no Codex. A [investigação do CLI 0.163.0](../research/codex/README.md) confirmou sua presença e interfaces de ajuda e examinou fontes oficiais de instalação, eventos e trust. Essa investigação antecede o preflight atual e não comprova, por si só, sua instalação ou execução em sessão. A tentativa de instalação persistente no ambiente de nuvem encontrou configuração de usuário somente leitura; validação de runtime é uma etapa separada.
+O usuário solicitou preparar testes locais no Codex. A [investigação do CLI 0.163.0](../research/codex/README.md) registra a primeira falha por filesystem somente leitura e o sucesso posterior de instalação. O plugin instalado exerceu `SessionStart`, `PostToolUse` e `Stop` no executável real: uma ferramenta alterou contrato temporário, o hash foi atualizado e a parada preservou a pendência. O backend forneceu respostas determinísticas simuladas, sem inferência LLM; trust foi restrito à sessão, distinto da interação humana pela UX.
 
 O pacote atual declara `SessionStart`, `PostToolUse` e `Stop`. O adaptador apresenta contexto nos dois primeiros; no `Stop`, pede uma correção para problemas locais e depois devolve o controle para evitar ciclos, ou devolve imediatamente quando aguarda revisão humana. Em nenhum desses caminhos emite aceite ou autoriza conclusão. O guia distingue essa implementação da comprovação de efeitos no host real.
 
@@ -61,7 +61,7 @@ Antes de afirmar suporte, cada adaptador precisa registrar e validar:
 - Capacidade de distinguir espera por usuário, encerramento da interação e conclusão de tarefa.
 - Permissões necessárias e quais configurações o próprio agente pode modificar.
 
-Até essa validação, o funcionamento desses itens no fluxo SpecMD permanece **não verificado** para as duas plataformas. A inspeção estática e os comandos de ajuda do Codex não substituem uma prova em sessão real. Não se presume equivalência entre hooks ou bloqueio absoluto de sessão.
+A lista completa ainda não foi validada. Para Codex, os caminhos controlados acima têm evidência de runtime; interação pela UX de trust e fluxo com modelo real continuam pendentes. Claude Code não foi exercitado. Não se presume equivalência entre hooks, autoridade protegida ou bloqueio absoluto de sessão.
 
 Uma matriz de capacidades deve orientar a implementação: por exemplo, uma plataforma pode permitir feedback após escrita, mas não impedir toda edição futura. O adaptador deve expor essa diferença sem prometer uma garantia que seu ambiente não aplica.
 

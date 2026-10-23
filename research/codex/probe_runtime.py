@@ -46,7 +46,7 @@ def source_hashes():
 
 
 def configuration():
-    arguments = ["-c", "features.hooks=true", "-c", "features.plugins=false",
+    arguments = ["-c", "features.hooks=true", "-c", "features.plugins=false", "-c", "features.apps=false",
                  "-c", 'sqlite_home="/tmp/specmd-codex-hook-probe-db"',
                  "-c", 'log_dir="/tmp/specmd-codex-hook-probe-logs"']
     for event in ("SessionStart", "Stop"):
@@ -60,9 +60,9 @@ def collect_stream(stream, output):
         output.put(line)
 
 
-def rpc_discover(fixture):
+def rpc_discover(fixture, config_arguments=None):
     process = subprocess.Popen(
-        ["codex", *configuration(), "app-server", "--stdio"],
+        ["codex", *(configuration() if config_arguments is None else config_arguments), "app-server", "--stdio"],
         cwd=fixture, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         text=True, encoding="utf-8", env={**os.environ, "SPECMD_PYTHON": str(REPOSITORY / ".venv/bin/python")},
     )
@@ -111,12 +111,19 @@ def rpc_discover(fixture):
         for entry in entries:
             for hook in entry.get("hooks", []):
                 # Do not record unrelated user/plugin hooks or grant them trust.
-                handler = hook.get("handler", {})
-                if handler.get("command") == COMMAND:
+                if hook.get("command") == COMMAND:
                     selected.append({key: hook.get(key) for key in (
-                        "key", "eventName", "currentHash", "trustStatus", "source", "sourcePath", "enabled", "handler")})
+                        "key", "eventName", "currentHash", "trustStatus", "source", "sourcePath", "enabled", "handlerType", "command", "async")})
         if len(selected) != 2:
-            raise RuntimeError(f"Expected exactly two concrete probe handlers, found {len(selected)}")
+            def shape(value, depth=0):
+                if depth > 4:
+                    return type(value).__name__
+                if isinstance(value, dict):
+                    return {key: shape(item, depth + 1) for key, item in value.items()}
+                if isinstance(value, list):
+                    return [shape(value[0], depth + 1)] if value else []
+                return type(value).__name__
+            raise RuntimeError(f"Expected exactly two concrete probe handlers, found {len(selected)}; response shape={shape(listed.get('result'))}")
         return {"case": fixture.name, "hooks": selected, "request": {"method": "hooks/list", "cwds": [str(fixture)]}}
     finally:
         if process.stdin:
@@ -139,7 +146,7 @@ def discover():
     except Exception as error:
         failure = {
             "stage": "native_discovery_without_thread_or_model",
-            "status": "blocked_by_environment_before_initialize",
+            "status": "native_discovery_failed",
             "observed_at_utc": datetime.now(timezone.utc).isoformat(),
             "error": scrub(str(error)),
             "trust_granted": False,
@@ -148,10 +155,11 @@ def discover():
             "contract_acceptance_granted": False,
             "global_config_written": False,
         }
-        (EVIDENCE / "runtime-discovery-failure.json").write_text(json.dumps(failure, ensure_ascii=False, indent=2) + "\n")
+        (EVIDENCE / "runtime-discovery-current-failure.json").write_text(json.dumps(failure, ensure_ascii=False, indent=2) + "\n")
         raise
     result = {
         "stage": "native_discovery_without_thread_or_model",
+        "observed_at_utc": datetime.now(timezone.utc).isoformat(),
         "hook_command": COMMAND,
         "source_sha256": source_hashes(),
         "cases": rows,
@@ -167,21 +175,27 @@ def discover():
             print(row["case"], hook["eventName"], hook["key"], hook["currentHash"], hook["trustStatus"])
 
 
-def run(review_path):
+def run(review_path, cases=CASE_NAMES):
     review = json.loads(review_path.read_text())
     if review["source_sha256"] != source_hashes() or review["hook_command"] != COMMAND:
         raise SystemExit("Reviewed code/command changed; discover and review again before granting scoped trust.")
     HOOK_LOG.unlink(missing_ok=True)
     records = []
-    for case in CASE_NAMES:
+    for case in cases:
         fixture = FIXTURES / case
         row = next(item for item in review["cases"] if item["case"] == case)
         arguments = configuration()
+        states = []
         for hook in row["hooks"]:
-            if hook["handler"]["command"] != COMMAND or hook["eventName"] not in ("SessionStart", "Stop"):
+            if hook["command"] != COMMAND or hook["eventName"] not in ("sessionStart", "stop"):
                 raise SystemExit("Refusing trust for an unexpected handler")
             state = '{enabled = true, trusted_hash = ' + json.dumps(hook["currentHash"]) + '}'
-            arguments += ["-c", "hooks.state." + json.dumps(hook["key"]) + "=" + state]
+            states.append(json.dumps(hook["key"]) + "=" + state)
+        # CLI override paths split on dots. Quote full hook keys inside the value.
+        arguments += ["-c", "hooks.state={" + ",".join(states) + "}"]
+        confirmed = rpc_discover(fixture, arguments)["hooks"]
+        if not all(hook["trustStatus"] == "trusted" for hook in confirmed):
+            raise SystemExit("Native hook trust was not confirmed; refusing to start a model turn")
         command = ["codex", "exec", "--ignore-user-config", "--ephemeral", "--json",
                    "--sandbox", "read-only", "--skip-git-repo-check", "-C", str(fixture), *arguments,
                    "Este é um teste de instrumentação dos hooks SpecMD. Não use ferramentas, não leia arquivos e não altere nada. "
@@ -237,7 +251,10 @@ def run(review_path):
                         "research_expectations_met": bool(success)})
         print(case, "host_exit=", exit_code, "stop_calls=", len(stop_records), "expectations=", bool(success))
     report = {"stage": "live_native_session", "cases": records,
-              "specific_handler_trust_via_session_flags": True, "global_config_written": False,
+              "specific_handler_trust_requested_via_session_flags": True,
+              "specific_handler_trust_confirmed_by_native_listing": True,
+              "model_backend": "Configured Codex service; no simulated model responses.",
+              "global_config_written": False,
               "trust_bypass_used": False, "contract_acceptance_granted": False,
               "plugin_installation_tested": False,
               "research_expectations_met": all(item["research_expectations_met"] for item in records)}
@@ -250,11 +267,12 @@ def main():
     parser.add_argument("--discover", action="store_true", help="List concrete hooks without trust or model")
     parser.add_argument("--run", action="store_true", help="Run two model sessions after explicit handler/code review")
     parser.add_argument("--reviewed-hooks", type=Path, help="Exact discovery record whose handlers/code were reviewed")
+    parser.add_argument("--case", choices=CASE_NAMES, help="Run only one live-model fixture")
     args = parser.parse_args()
     if args.run:
         if not args.reviewed_hooks:
             parser.error("--run requires --reviewed-hooks after explicit authorization of these concrete handlers")
-        return run(args.reviewed_hooks)
+        return run(args.reviewed_hooks, (args.case,) if args.case else CASE_NAMES)
     discover()
     return 0
 

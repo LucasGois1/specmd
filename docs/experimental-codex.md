@@ -17,15 +17,18 @@ O fluxo completo descrito em [Produto](product.md), [Aceite e confiança](approv
 | --- | --- |
 | Scanner e tradução de hooks | 49 testes unitários passaram, sem falhas, erros ou skips: 40 do núcleo e 9 do adaptador. |
 | CLI Python instalada e bootstrap do hook | Os mesmos 11 casos de integração com Markdown real passaram usando a fonte e o bundle gerado, sem sessão com modelo ou execução BDD. Não são 22 casos distintos. |
-| Pacote e descoberta pelo Codex | Bundle por allowlist gerado e reconhecido como versão `0.1.0`; descoberta não equivale à instalação (`installed: false`). |
-| Instalação persistente neste ambiente de nuvem | Tentativa bloqueada por configuração de usuário em filesystem somente leitura; não equivale a instalação concluída. |
-| Eventos reais e controle em sessão Codex | Tentativa impedida pelo filesystem somente leitura antes de qualquer hook ou chamada ao modelo; ainda não validados no host. |
+| Pacote e instalação pelo Codex | Bundle por allowlist instalado e habilitado como `specmd@specmd-local`, versão `0.1.0`; três hooks listados nativamente. |
+| Histórico da instalação | A primeira tentativa falhou por filesystem somente leitura. Com o ambiente posteriormente gravável, a instalação foi concluída, sem alterar `HOME` ou `CODEX_HOME`. |
+| Trust restrito ao ensaio | Listagem nativa confirmou os handlers como confiáveis somente por flags de sessão; trust persistente não foi alterado. |
+| Hooks nativos com backend controlado | CLI Codex real executou `SessionStart` e `Stop`; bloqueio produziu duas paradas e espera humana uma. As respostas vieram de fixture HTTP determinístico, sem modelo LLM real. |
+| Dispatch do plugin instalado | Três casos passaram no CLI real, usando o cache instalado e backend local determinístico. `SessionStart` forneceu contexto, `PostToolUse` registrou alteração feita por ferramenta real e `Stop` preservou a pendência. |
+| Sessão com serviço de modelo configurado | Tentativa retornou `401` por autenticação não interpretada pelo serviço. `SessionStart` ocorreu, mas não houve resposta de modelo nem ciclo de `Stop` completo. |
 | Trust humano pelo `/hooks` | Não demonstrado neste relatório; precisa de ação do usuário na interface. |
 | Aceite de contratos, execução de cenários e gate de CI | Não implementados neste incremento. |
 
 As interfaces do host foram investigadas no Codex CLI `0.163.0`. Compatibilidade com outras versões, Windows e Claude Code ainda não foi validada.
 
-Evidências: [testes unitários](../research/codex/evidence/unit-tests.json), [CLI/bootstrap a partir da fonte](../research/codex/evidence/preflight-integration.json), [mesmos casos usando o bundle](../research/codex/evidence/bundle-integration.json) e [tentativa de iniciar uma sessão real](../research/codex/evidence/runtime-startup-attempt.json). Os testes de tradução exercitam o protocolo do adaptador; não demonstram, sozinhos, o efeito dos controles em uma sessão do host.
+Evidências: [testes unitários](../research/codex/evidence/unit-tests.json), [CLI/bootstrap a partir da fonte](../research/codex/evidence/preflight-integration.json), [mesmos casos usando o bundle](../research/codex/evidence/bundle-integration.json), [instalação real](../research/codex/evidence/installed-plugin.json), [hooks instrumentados com respostas simuladas](../research/codex/evidence/native-fixture-results.json), [dispatch do plugin instalado](../research/codex/evidence/installed-dispatch.json) e [tentativa com serviço de modelo configurado](../research/codex/evidence/runtime-results.json). A [falha inicial de startup](../research/codex/evidence/runtime-startup-attempt.json) permanece como histórico, não como estado atual do ambiente.
 
 ## Preparar o ambiente Python
 
@@ -67,7 +70,7 @@ O builder gera `dist/codex-plugin`, usado como source pelo [marketplace local](.
 
 Essa separação importa porque o instalador do host copia recursivamente a source do plugin. O `.gitignore` do clone não é uma política de empacotamento. Neste incremento, a distribuição é **clone local + build**; instalar diretamente um marketplace Git remoto precisará de uma forma de distribuir o artefato gerado, que não está versionado.
 
-Os comandos de marketplace e instalação persistem estado de usuário do Codex. O procedimento precisa ocorrer em um ambiente onde esse estado seja gravável. A falha de instalação observada no ambiente de nuvem está registrada separadamente da prova de descoberta em [research/codex](../research/codex/README.md).
+Os comandos de marketplace e instalação persistem estado de usuário do Codex. O procedimento precisa ocorrer em um ambiente onde esse estado seja gravável. A primeira falha de instalação e o sucesso posterior estão registrados separadamente em [research/codex](../research/codex/README.md).
 
 ## Revisar e autorizar os hooks
 
@@ -154,7 +157,9 @@ No projeto alvo, inclua `.specmd/local/` no `.gitignore` para manter esse estado
 
 A configuração do projeto, o cache, o pacote e o ambiente Python são mutáveis. O hash de trust pesquisado no Codex identifica a configuração do handler, não garante os bytes de todo script externo chamado. Portanto, confiar o hook não protege por si só a integridade do código nem resolve bypass por um agente com as mesmas permissões locais.
 
-Ainda precisam de evidência separada: instalação persistente em máquina gravável, concessão humana de trust, eventos em sessão real, retomada após mudanças e experiência sem ciclos. Um ensaio por flags de sessão, quando registrado, não substitui instalação pelo marketplace nem a revisão humana pelo `/hooks`.
+A instalação persistente e o dispatch de seu pacote foram demonstrados. Um primeiro ensaio instrumentado também contou os eventos do host: `blocked` levou a uma nova resposta e a um segundo `Stop`; `waiting_human_review` devolveu o controle na primeira parada. O ensaio com o plugin instalado confirmou esses caminhos e um terceiro caso: `exec_command` alterou um contrato temporário descartável, e `PostToolUse` recalculou seu hash e registrou a modificação antes da resposta seguinte. O evento final foi `Stop`, com `may_complete: false`.
+
+Ainda precisam de evidência separada: concessão humana de trust pela interface, fluxo completo com modelo LLM real e experiência de retomada. Respostas determinísticas demonstram o controle do host, sem demonstrar que um modelo interpretou ou cumpriu as instruções. Trust por flags de sessão não equivale à revisão humana pelo `/hooks`. A instalação alterou legitimamente o estado de marketplace/plugin do usuário; somente a confiança dos hooks ficou restrita à sessão, sem persistência de trust.
 
 Aceite autenticado, evidências de implementação e gate protegido de CI permanecem fora deste incremento. As capacidades futuras e os critérios completos estão em [Integrações](integrations.md) e [Plano de validação](validation-plan.md).
 

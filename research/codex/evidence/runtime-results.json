@@ -1,0 +1,40 @@
+{
+  "stage": "live_native_session",
+  "cases": [
+    {
+      "case": "waiting",
+      "host_exit_code": 1,
+      "timed_out": false,
+      "event_types": [
+        {
+          "type": "thread.started"
+        },
+        {
+          "type": "turn.started"
+        },
+        {
+          "type": "error",
+          "error": "[REDACTED_AUTH_LINE]"
+        },
+        {
+          "type": "turn.failed",
+          "error": "[REDACTED_AUTH_LINE]"
+        }
+      ],
+      "stderr_excerpt": "Reading additional input from stdin...\n2026-10-23T03:51:24.048697Z ERROR codex_models_manager::manager: failed to refresh available models: unexpected status 401 Unauthorized: {\"detail\":\"Could not parse your authentication token. Please try signing in again.\"}, url: https://chatgpt.com/backend-api/codex/models?client_version=0.163.0, cf-ray: a4edc8767fc85122-MSP, request id: req_b840796a639940ea8f03e97afce7967c\n2026-10-23T03:51:24.050470Z ERROR codex_models_manager::manager: failed to refresh available models: unexpected status 401 Unauthorized: {\"detail\":\"Could not parse your authentication token. Please try signing in again.\"}, url: https://chatgpt.com/backend-api/codex/models?client_version=0.163.0, cf-ray: a4edc876bce119ca-MSP, request id: req_d4234aa6efc54c378a330520b069816e\n2026-10-23T03:51:24.484979Z ERROR codex_models_manager::manager: failed to refresh available models: unexpected status 401 Unauthorized: {\"detail\":\"Could not parse your authentication token. Please try signing in again.\"}, url: https://chatgpt.com/backend-api/codex/models?client_version=0.163.0, cf-ray: a4edc877ef278bdc-MSP, request id: req_6b5e1e639edd4dceb4d15c91d55af791\n2026-10-23T03:51:24.696122Z ERROR codex_models_manager::manager: failed to refresh available models: unexpected status 401 Unauthorized: {\"detail\":\"Could not parse your authentication token. Please try signing in again.\"}, url: https://chatgpt.com/backend-api/codex/models?client_version=0.163.0, cf-ray: a4edc87aae4819ca-MSP, request id: req_40aae812dedd473db541e0c7d5ef18a9\n2026-10-23T03:51:24.817390Z ERROR codex_api::endpoint::responses_websocket: failed to connect to websocket: HTTP error: 401 Unauthorized, url: wss://chatgpt.com/backend-api/codex/responses\n2026-10-23T03:51:25.520294Z ERROR codex_api::endpoint::responses_websocket: failed to connect to websocket: HTTP error: 401 Unauthorized, url: wss://chatgpt.com/backend-api/codex/responses",
+      "native_stop_calls": 0,
+      "fixture_unchanged": true,
+      "specmd_status": "waiting_human_review",
+      "specmd_may_complete": false,
+      "research_expectations_met": false
+    }
+  ],
+  "specific_handler_trust_requested_via_session_flags": true,
+  "specific_handler_trust_confirmed_by_native_listing": true,
+  "model_backend": "Configured Codex service; no simulated model responses.",
+  "global_config_written": false,
+  "trust_bypass_used": false,
+  "contract_acceptance_granted": false,
+  "plugin_installation_tested": false,
+  "research_expectations_met": false
+}

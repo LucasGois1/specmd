@@ -1,10 +1,21 @@
 # Preparação da integração local com Codex
 
-Estado: investigação de interfaces e descoberta local do pacote SpecMD. O host reconheceu o pacote como disponível, mas este relatório ainda não comprova instalação, concessão de trust ou disparo de hooks em runtime. A autorização para testar não é evidência de um teste que ainda não ocorreu.
+Estado: plugin instalado pelo Codex CLI real e dispatch de seus hooks demonstrado com backend local determinístico. **Não houve resposta de modelo LLM real nesse ensaio.** A tentativa com o serviço configurado falhou por autenticação; trust humano pela interface continua sendo uma prova separada.
+
+| Camada | Evidência atual |
+| --- | --- |
+| Núcleo e adaptador | [49 testes unitários](evidence/unit-tests.json) passaram. |
+| CLI/bootstrap | Os mesmos 11 casos passaram na [fonte](evidence/preflight-integration.json) e no [bundle](evidence/bundle-integration.json). |
+| Marketplace/plugin | [Instalação real](evidence/installed-plugin.json), `installed: true`, `enabled: true`, versão `0.1.0`, três hooks listados. |
+| Trust do ensaio | Confirmado por listagem nativa, restrito a flags da sessão; trust persistente inalterado. |
+| Controle nativo do host | [Dois casos passaram](evidence/native-fixture-results.json) com respostas HTTP locais simuladas e handlers instrumentados por flags. |
+| Dispatch do plugin instalado | [Três casos passaram](evidence/installed-dispatch.json) usando o pacote do cache, sem handlers inline; incluem alteração por ferramenta real e respostas HTTP simuladas. |
+| Serviço de modelo configurado | [Tentativa real](evidence/runtime-results.json) retornou `401`; ciclo de parada não foi completado. |
+| `/hooks` humano e aceite contratual | Não realizados; não podem ser inferidos do trust de sessão. |
 
 ## Verificações executadas
 
-O executável `/opt/codex/bin/codex` responde `codex-cli 0.163.0`. Foram executados comandos de versão, ajuda, descoberta de marketplace local, uma tentativa oficial de registrar o marketplace e tentativas de iniciar o runtime. Os caminhos de instalação e runtime falharam em filesystem somente leitura. Não há execução observada de modelo ou de hooks pelo host, instalação concluída, trust validado por dispatch ou inspeção de arquivos de autenticação nesta investigação.
+O executável `/opt/codex/bin/codex` responde `codex-cli 0.163.0`. Foram executados comandos de ajuda, descoberta, instalação e runtime. As primeiras tentativas falharam com filesystem somente leitura; depois de o ambiente tornar-se gravável, o marketplace e o plugin foram instalados. A cronologia abaixo preserva as falhas iniciais e distingue a execução do host com respostas simuladas da tentativa com serviço de modelo real. Não foram inspecionados arquivos de autenticação.
 
 Reprodução da coleta local:
 
@@ -63,7 +74,7 @@ O resultado foi código `0`, plugin `specmd@specmd-local`, versão `0.1.0`, sour
 
 Para instalar em um ambiente de usuário com configuração gravável, as interfaces suportadas são `codex plugin marketplace add /caminho/do/specmd` e `codex plugin add specmd@specmd-local`. Esses passos persistem estado de usuário. Não foi redirecionado `HOME` ou `CODEX_HOME` para contornar restrições do ambiente.
 
-## Tentativa oficial de instalação neste ambiente
+## Histórico inicial: instalação impedida pelo filesystem
 
 Após autorização para instalar o pacote concreto, foi conferida a ausência de marketplace homônimo. `codex plugin marketplace list --json` retornou lista vazia, conforme [evidence/marketplace-before-install.json](evidence/marketplace-before-install.json).
 
@@ -73,7 +84,13 @@ O comando oficial `codex plugin marketplace add /workspace/specmd --json` retorn
 failed to create marketplace install directory /run/codex-environment/codex-home/.tmp/marketplaces: Read-only file system (os error 30)
 ```
 
-A saída está em [evidence/marketplace-add-attempt.json](evidence/marketplace-add-attempt.json). O registro do marketplace não foi concluído e o comando de instalação do plugin não foi executado após essa falha de pré-requisito. Não foi sobrescrita configuração existente, concedido trust ou remapeado o diretório de usuário. A disponibilidade mostrada pelo comando de descoberta com overrides não deve ser apresentada como uma instalação concluída.
+A saída está em [evidence/marketplace-add-attempt.json](evidence/marketplace-add-attempt.json). Naquela tentativa, o registro não foi concluído e a instalação do plugin não prosseguiu. Não foi remapeado o diretório de usuário. A disponibilidade da descoberta com overrides era uma evidência distinta de instalação.
+
+## Instalação efetiva e listagem de hooks
+
+Com o ambiente posteriormente gravável, os comandos oficiais de marketplace e plugin foram executados com sucesso. [installed-plugin.json](evidence/installed-plugin.json) registra `specmd@specmd-local` instalado e habilitado, versão `0.1.0`, com a cópia instalada correspondendo às fontes canônicas.
+
+A listagem nativa reconheceu os três handlers `SessionStart`, `PostToolUse` e `Stop`, inicialmente não confiáveis. Flags restritas à sessão tornaram os handlers revisados confiáveis na listagem, sem alterar trust persistente. Isso comprova instalação e reconhecimento; ainda não comprova seu dispatch nem interação humana pela tela `/hooks`. `HOME` e `CODEX_HOME` foram preservados.
 
 ## Hooks confirmados no schema da versão
 
@@ -85,15 +102,15 @@ Há configuração de handlers de comando e MCP; o schema também declara varian
 
 O manifesto oficial de plugin possui um componente `hooks`, com declaração inline ou referência a arquivos. A configuração expõe estado com `enabled` e `trusted_hash`. Um recorte do schema, com URL e blob de origem, está em [evidence/schema-excerpt.json](evidence/schema-excerpt.json).
 
-## Trust e controle: fatos da fonte, ainda sem prova de runtime
+## Trust e controle: fonte e escopo dos ensaios
 
 A fonte oficial de `config_rules.rs` aceita alterações de estado do hook somente das camadas de usuário e de flags da sessão. Camadas de projeto e de plugin podem declarar hooks, mas não escrever esse estado do usuário.
 
-Essa regra de camadas não estabelece, sozinha, uma autoridade fora do alcance do agente: se ele controla a configuração de usuário ou as flags da invocação, a separação precisa ser aplicada pelo ambiente. A tentativa de runtime descrita abaixo solicitou confiança somente para dois handlers concretos por flags da sessão, como ensaio autorizado; a inicialização falhou antes de haver confirmação de dispatch. Não foi utilizada flag de bypass nem apresentada uma ação de UI humana como realizada.
+Essa regra de camadas não estabelece, sozinha, uma autoridade fora do alcance do agente: se ele controla a configuração de usuário ou as flags da invocação, a separação precisa ser aplicada pelo ambiente. Os ensaios posteriores solicitaram confiança restrita aos handlers concretos e conferiram `trustStatus` pela listagem nativa. Não foi utilizada flag de bypass nem apresentada uma ação de UI humana como realizada.
 
 Na implementação de `Stop`, um handler autorizado a aplicar efeitos de controle pode bloquear a parada por JSON com `decision: "block"` e uma razão não vazia. Existe também tratamento de saída `2` com razão no stderr. A própria fonte possui caso de teste indicando que saída `2` sem razão não bloqueia. Portanto, traduzir cegamente qualquer código não zero da futura CLI SpecMD em bloqueio seria incorreto.
 
-A implementação de `PreToolUse` também possui resultado de bloqueio, incluindo decisão de permissão deny e tratamento de saída `2` com razão. Essas observações vêm de leitura da fonte fixada; nenhum hook foi ativado ou disparado nesta investigação.
+A implementação de `PreToolUse` também possui resultado de bloqueio, incluindo decisão de permissão deny e tratamento de saída `2` com razão. Esse evento foi estudado na fonte, mas não foi exercitado pelo SpecMD neste ensaio. A execução observada de `SessionStart` e `Stop` é descrita separadamente abaixo.
 
 A TUI oficial possui o comando `/hooks`, descrito como gerenciamento de hooks de ciclo de vida. A interação dessa tela e a concessão humana de confiança não foram exercitadas. Um hash de trust pode ser específico do handler; atribuí-lo por configuração continua sendo um ato de confiança, não uma operação que o plugin pode realizar em nome do humano.
 
@@ -101,59 +118,70 @@ Na fonte inspecionada, o hash de trust é calculado sobre a identidade normaliza
 
 O trust do hook não equivale ao aceite de requisitos do SpecMD. O primeiro autoriza executar uma integração; o segundo deve registrar concordância com uma versão específica do contrato. O adaptador precisa preservar essa diferença, permitir devolver o controle enquanto aguarda o usuário e manter a verificação protegida no CI como garantia independente.
 
-## Tentativas de runtime: bloqueio antes de hooks ou modelo
+## Histórico inicial: runtime impedido pelo filesystem
 
-O núcleo e o adaptador local já têm implementação experimental. O ensaio de dispatch pelo Codex instalado foi tentado, mas **não conseguiu inicializar o host neste ambiente**. Isso é diferente de um teste de hook que passou ou falhou após executar seu conteúdo.
+As primeiras tentativas de `codex app-server --stdio` e `codex exec` não conseguiram inicializar o host por filesystem somente leitura. As evidências originais permanecem em [runtime-discovery-failure.json](evidence/runtime-discovery-failure.json) e [runtime-startup-attempt.json](evidence/runtime-startup-attempt.json). Essas tentativas não produziram dispatch de hooks nem respostas de modelo.
 
-Primeiro, o harness [probe_runtime.py](probe_runtime.py) tentou iniciar `codex app-server --stdio` e usar somente `initialize` e `hooks/list`, sem criar thread ou turno. A primeira tentativa retornou erro ao inicializar SQLite sob `/run/codex-environment/codex-home`. O schema da versão permite `sqlite_home` e `log_dir`; apontar apenas esses dados operacionais para `/tmp`, sem alterar `HOME`, `CODEX_HOME` ou a localização da autenticação, ainda resultou em `Read-only file system (os error 30)` antes da resposta a `initialize`.
+Foi tentado redirecionar somente SQLite e logs operacionais, sem alterar `HOME`, `CODEX_HOME` ou a localização da autenticação, mas isso não eliminou a necessidade de escrita no diretório original. A fonte também resolve um arquivo `installation_id` com escrita; a mensagem observada não identifica o syscall exato que falhou. Os hashes candidatos daquela primeira tentativa vieram da leitura da fonte, não de uma resposta nativa de `hooks/list`; a proveniência continua registrada no JSON histórico.
 
-Foi então tentado `codex exec` com `--ignore-user-config`, `--ephemeral`, `--json`, sandbox `read-only`, fixture sem segredos e apenas os handlers síncronos `SessionStart` e `Stop` apontando para `/workspace/specmd/.venv/bin/python /workspace/specmd/scripts/codex_hook.py`. `--ignore-user-config` deixa de carregar a configuração de usuário, mas preserva o Codex home para autenticação; `--ephemeral` não torna todos os arquivos operacionais opcionais.
+Depois de o ambiente tornar-se gravável, a descoberta nativa e os ensaios abaixo foram possíveis. As falhas antigas não descrevem o estado atual e não foram reescritas como resultados positivos.
 
-Esse comando retornou código `1`:
+## Descoberta nativa e tentativa com serviço de modelo real
 
-```text
-Error: failed to initialize in-process app-server client: Read-only file system (os error 30)
-```
+O harness [probe_runtime.py](probe_runtime.py) passou a receber uma listagem real de `hooks/list`, sem criar thread ou turno na etapa de descoberta. A resposta usa uma lista plana com metadados camelCase. Os comandos e hashes concretos estão em [runtime-discovery.json](evidence/runtime-discovery.json); esse arquivo não concede trust por si só.
 
-O comando completo, stderr e limites da observação estão em [runtime-startup-attempt.json](evidence/runtime-startup-attempt.json). As tentativas de descoberta estão registradas em [runtime-discovery-failure.json](evidence/runtime-discovery-failure.json).
+O ensaio autorizado usou confiança restrita à sessão e a conferiu pela listagem nativa. O harness transmite o mapa de estado de trust de forma que preserve as chaves completas retornadas pelo host; não depende de interpretar essas chaves como caminhos TOML pontuados. A configuração persistente de trust não foi alterada.
 
-Como `hooks/list` não ficou disponível, os dois hashes candidatos da tentativa de `exec` foram calculados a partir do algoritmo da fonte oficial fixada: identidade normalizada do evento e handler, conversão para TOML/JSON ordenado e SHA-256. A proveniência está explícita na evidência: **esses valores não vieram de uma resposta de `hooks/list` e não foram validados por um dispatch bem-sucedido**. Foram solicitados somente por `-c hooks.state.<key>.trusted_hash`, sem persistir configuração global ou conceder aceite contratual.
+Na tentativa com o serviço de modelo configurado, o host iniciou a thread e executou `SessionStart`, mas recebeu `401 Unauthorized` com mensagem de que a autenticação não pôde ser interpretada. Não houve resposta de modelo nem chamada de `Stop`. [runtime-results.json](evidence/runtime-results.json) registra falha das expectativas do ensaio; [runtime-hook-events.jsonl](evidence/runtime-hook-events.jsonl) registra o evento inicial observado, sem copiar transcrições privadas.
 
-A fonte do app-server também contém uma exigência de escrita no diretório original: [lib.rs:787](https://github.com/openai/codex/blob/83086188ae0614bd882818ff1aa23f3194962012/codex-rs/app-server/src/lib.rs#L787) resolve `installation_id`, e [installation_id.rs:19–30](https://github.com/openai/codex/blob/83086188ae0614bd882818ff1aa23f3194962012/codex-rs/core/src/installation_id.rs#L19-L30) abre esse arquivo com leitura, escrita e criação. Isso mostra por que redirecionar somente SQLite não estabelece compatibilidade com um Codex home somente leitura. A última mensagem de erro não identifica o syscall exato que falhou; não se atribui a ela um rastreamento de filesystem que não foi obtido.
+Isso é uma falha de autenticação da tentativa real, não evidência de que o ciclo do hook passou com um LLM. Não foram lidos ou substituídos arquivos de autenticação para contorná-la.
 
-As tentativas foram interrompidas nesse limite. Não foram alterados permissões, mounts, credenciais, `HOME` ou `CODEX_HOME`. Todos os processos iniciados por esse harness foram aguardados e encerrados. **Não há payload nativo de `SessionStart`/`Stop`, ciclo real de retry ou resposta de modelo comprovados por essas tentativas.** Os testes offline do adaptador são uma evidência separada e não substituem esse resultado ausente.
-
-### Como completar o ensaio em uma máquina com Codex home gravável
-
-O harness contém duas etapas deliberadamente separadas:
+O harness mantém descoberta e execução separadas:
 
 ```sh
-# Lista somente os dois handlers concretos do probe; não executa hooks nem modelo.
+# Descobre os handlers concretos sem executar hooks ou modelo.
 .venv/bin/python research/codex/probe_runtime.py --discover
 
-# Após revisar o comando, os scripts e os hashes de runtime-discovery.json,
-# e autorizar explicitamente esses handlers para o ensaio:
+# Após revisar e autorizar esses handlers específicos para o ensaio:
 .venv/bin/python research/codex/probe_runtime.py --run \
   --reviewed-hooks research/codex/evidence/runtime-discovery.json
 ```
 
-O modo de descoberta exige que o app-server possa iniciar. Não existe neste ambiente um `runtime-discovery.json` bem-sucedido, portanto o segundo comando não foi executado pelo harness aqui. Ele inicia duas sessões reais e deve ser usado somente após essa revisão e autorização. Não altera configuração global nem usa bypass de trust; passa confiança restrita aos handlers revisados por flags da invocação e mantém `may_complete=false` como estado do SpecMD.
+A execução depende de um serviço de modelo funcional e pode gerar uso cobrado. O guia normal de instalação continua pedindo revisão pela interface `/hooks`; as flags restritas deste harness são um mecanismo explícito de ensaio, sem representar uma ação de UI humana realizada.
 
-Para registrar a forma dos payloads sem armazenar mensagens ou transcrições privadas, esse probe usa [record_hook.py](record_hook.py), que encaminha a chamada ao mesmo `specmd.codex.handle_hook` do pacote. Esse comando instrumentado difere do comando direto usado na tentativa de startup acima e precisa de sua própria revisão. Os hashes de fontes são conferidos antes de solicitar confiança. O modo de execução pretende verificar `blocked → feedback → stop_hook_active=true → devolver controle` e `waiting_human_review → devolver controle` nos [fixtures](fixtures/runtime), mas **esses resultados de runtime continuam não obtidos**.
+## Controle do host com respostas determinísticas
 
-Pela fonte, `decision: "block"` com razão não vazia injeta continuação para o agente. Já `continue: false` encerra esse processamento; não aprova a tarefa. O adaptador persiste o estado pendente separadamente porque o término de um turno do Codex não é uma autorização de conclusão do SpecMD. As regras e o guard contra loop foram testados offline; a interação da sessão real precisa ser completada no ambiente gravável.
+O [probe_native_fixture.py](probe_native_fixture.py) iniciou o **executável real do Codex** com um endpoint HTTP local que devolve eventos da Responses API e texto fixo. Não houve inferência de modelo. O endpoint registrou somente metadados necessários, sem inspecionar cabeçalhos de autenticação ou armazenar o conteúdo dos requests.
 
-## Próxima prova necessária
+O primeiro ensaio usou handlers instrumentados por flags da sessão, encaminhando payloads nativos ao mesmo adaptador SpecMD. A instrumentação permitiu contar os eventos, como registrado em [native-fixture-results.json](evidence/native-fixture-results.json) e [native-fixture-hook-events.jsonl](evidence/native-fixture-hook-events.jsonl):
 
-O pacote e o adaptador experimental existem. Antes de anunciar integração funcional no host, será necessário escolher um ambiente de instalação gravável e verificar:
+| Caso | `SessionStart` | `Stop` | Requisições ao backend simulado | Estado final |
+| --- | --- | --- | --- | --- |
+| `blocked` | 1 | 2 | 2 | `blocked`, `may_complete: false` |
+| `waiting` | 1 | 1 | 1 | `waiting_human_review`, `may_complete: false` |
 
-1. Instalação do pacote pelo marketplace local, além da descoberta já comprovada.
-2. Revisão humana do trust sem usar mecanismos que o dispensem.
-3. Disparo real de eventos com payloads e saídas registrados.
-4. Bloqueio de conclusão com razão útil e espera humana sem loop.
-5. Invalidação após mudanças e distinção entre trust do hook e aceite do contrato.
+O bloqueio solicitou uma continuação; a segunda parada devolveu o controle. A espera humana devolveu o controle na primeira parada. Terminar o turno do Codex não liberou a tarefa no estado do SpecMD. Os fixtures permaneceram inalterados, exceto pelo cache observado.
 
-Essas cinco etapas de integração continuam pendentes neste relatório. A descoberta de disponibilidade foi comprovada separadamente.
+O host emitiu aviso de ausência de metadados para o identificador fictício `specmd-fixture` e uso de metadados de fallback. Esse aviso está na evidência; não representa descoberta nem execução de um modelo LLM real.
+
+## Dispatch do plugin instalado
+
+Um segundo ensaio, [probe_installed_dispatch.py](probe_installed_dispatch.py), usou o pacote **instalado no cache do Codex**, sem declarar handlers inline. A listagem reconheceu os três hooks do plugin e confirmou a confiança somente da sessão. Os hashes do cache correspondiam às fontes canônicas.
+
+[installed-dispatch.json](evidence/installed-dispatch.json) registra sucesso nos três casos. Nos casos de bloqueio e espera, a primeira requisição continha o marcador de contexto do `SessionStart`; houve duas requisições no bloqueio e uma na espera humana. O último evento salvo pelo próprio plugin foi `Stop`, e o estado continuou com `may_complete: false`. O host retornou código `0`, que significa término do ensaio, não aprovação contratual.
+
+No terceiro caso, o backend simulado emitiu uma chamada de função e o Codex executou a ferramenta real `exec_command` para alterar um contrato em diretório temporário descartável. Antes da resposta seguinte, `PostToolUse` registrou `modified: contract.md` e o novo hash. A parada final manteve `waiting_human_review` e `may_complete: false`. Assim, os três eventos declarados foram exercitados pelo plugin instalado, sem atribuir raciocínio de modelo às respostas fixas.
+
+O backend continuou sendo local e determinístico. Esse resultado comprova a conexão entre instalação, dispatch nativo e adaptador para os caminhos exercitados; não demonstra que um LLM interpretou as instruções, que a UX de trust foi usada ou que houve aceite humano de contrato. A instalação persistiu marketplace/plugin habilitado; a confiança dos hooks foi somente de sessão, sem alteração do trust persistente.
+
+## Provas que permanecem pendentes
+
+- Trust humano pela tela `/hooks`, distinto da confiança restrita ao ensaio.
+- Fluxo completo com o serviço de modelo real, impedido nesta tentativa pelo `401`.
+- Experiência de retomada e correção de documentos em trabalho real.
+- Autoridade humana separada, execução BDD integrada e gate protegido de CI, que não existem neste incremento.
+
+A instalação real e os testes controlados não removem essas limitações. A evidência deve permanecer separada por camada, em vez de usar “funcionou no Codex” como substituto de todas elas.
 
 ## Fontes oficiais fixadas
 
