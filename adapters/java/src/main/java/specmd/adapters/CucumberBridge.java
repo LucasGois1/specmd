@@ -33,11 +33,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
-import java.util.regex.Pattern;
 
 /** Experimental JSON bridge. Executes real Cucumber steps, not human acceptance. */
 public final class CucumberBridge {
-    private static final Pattern ID = Pattern.compile("SMD-(?:[A-Za-z0-9]+-)*SCN-[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*");
     private static final Gson JSON = new GsonBuilder().disableHtmlEscaping().serializeNulls().create();
     private record Origin(String id, String path, int block, int line) {}
     private record Declaration(Origin origin, URI uri, int steps) {}
@@ -62,19 +60,22 @@ public final class CucumberBridge {
     }
     private static Origin origin(JsonObject object) {
         Origin result = new Origin(text(object,"id"),text(object,"path"),integer(object,"block"),integer(object,"line"));
-        if (!ID.matcher(result.id()).matches() || result.block()<1 || result.line()<1)
-            throw new IllegalArgumentException("Invalid scenario identity/origin");
+        if (result.block()<1 || result.line()<1) throw new IllegalArgumentException("Invalid scenario origin");
         return result;
     }
+    /** Scenarios are matched by their place in the Markdown; IDs are opaque. */
+    private static String key(String path,int block,int line){return path+"#"+block+":"+line;}
 
     private static Prepared prepare(JsonObject input) throws Exception {
         if (integer(input,"schema") != 1) throw new IllegalArgumentException("Only bridge schema 1 is supported");
         JsonArray blocks=array(input,"features"), expected=array(input,"expected_scenarios");
         if (blocks.isEmpty() || expected.isEmpty()) throw new IllegalArgumentException("Features and expected scenarios must be nonempty");
         Map<String,Origin> wanted=new LinkedHashMap<>();
+        Map<String,Boolean> ids=new LinkedHashMap<>();
         for (JsonElement value:expected) {
             Origin item=origin(value.getAsJsonObject());
-            if (wanted.putIfAbsent(item.id(),item)!=null) throw new IllegalArgumentException("Duplicate expected ID: "+item.id());
+            if (wanted.putIfAbsent(key(item.path(),item.block(),item.line()),item)!=null || ids.putIfAbsent(item.id(),true)!=null)
+                throw new IllegalArgumentException("Duplicate expected scenario: "+item.id());
         }
         List<Feature> features=new ArrayList<>();
         Map<String,Declaration> declarations=new LinkedHashMap<>();
@@ -100,8 +101,6 @@ public final class CucumberBridge {
                 foundAst=true;
                 var ast=envelope.getGherkinDocument().get().getFeature().get();
                 var dialect=GherkinDialects.getDialect(ast.getLanguage()).orElseThrow();
-                for (var tag:ast.getTags()) if (ID.matcher(tag.getName().replaceFirst("^@","")).matches())
-                    throw new IllegalArgumentException("Scenario IDs must be own scenario tags");
                 int backgrounds=ast.getChildren().stream().flatMap(child->child.getBackground().stream())
                     .mapToInt(background->background.getSteps().size()).sum();
                 for (var child:ast.getChildren()) {
@@ -110,15 +109,12 @@ public final class CucumberBridge {
                     var scenario=child.getScenario().get();
                     if (!scenario.getExamples().isEmpty() || dialect.getScenarioOutlineKeywords().contains(scenario.getKeyword()))
                         throw new IllegalArgumentException("Unsupported: Scenario Outline requires concrete instance evidence");
-                    List<String> ids=scenario.getTags().stream().map(tag->tag.getName().replaceFirst("^@",""))
-                        .filter(tag->ID.matcher(tag).matches()).toList();
-                    if (ids.size()!=1 || scenario.getSteps().isEmpty())
-                        throw new IllegalArgumentException("Each simple scenario requires one own ID and steps");
-                    String id=ids.getFirst();
-                    Origin actual=new Origin(id,path,index,Math.toIntExact(scenario.getLocation().getLine()));
-                    if (!actual.equals(wanted.get(id))) throw new IllegalArgumentException("Unknown ID or origin mismatch: "+id);
-                    if (declarations.putIfAbsent(id,new Declaration(actual,uri,backgrounds+scenario.getSteps().size()))!=null)
-                        throw new IllegalArgumentException("Duplicate scenario ID: "+id);
+                    if (scenario.getSteps().isEmpty()) throw new IllegalArgumentException("Each simple scenario requires steps");
+                    int scenarioLine=Math.toIntExact(scenario.getLocation().getLine());
+                    Origin actual=wanted.get(key(path,index,scenarioLine));
+                    if (actual==null) throw new IllegalArgumentException("Unexpected scenario at "+path+":"+scenarioLine);
+                    if (declarations.putIfAbsent(actual.id(),new Declaration(actual,uri,backgrounds+scenario.getSteps().size()))!=null)
+                        throw new IllegalArgumentException("Duplicate scenario: "+actual.id());
                 }
             }
             if (!foundAst) throw new IllegalArgumentException("No Gherkin AST for "+uri);
@@ -138,7 +134,11 @@ public final class CucumberBridge {
         final List<Map<String,Object>> scenarios=new ArrayList<>();
         final Map<String,Declaration> declared;
         final List<String> errors=new ArrayList<>();
-        Listener(Map<String,Declaration> declared){this.declared=declared;}
+        final Map<String,String> byLocation=new LinkedHashMap<>();
+        Listener(Map<String,Declaration> declared){
+            this.declared=declared;
+            declared.forEach((id,declaration)->byLocation.put(declaration.uri()+":"+declaration.origin().line(),id));
+        }
         public void setEventPublisher(EventPublisher publisher) {
             publisher.registerHandlerFor(TestStepFinished.class,event->{
                 if (!(event.getTestStep() instanceof PickleStepTestStep step)) return;
@@ -149,10 +149,9 @@ public final class CucumberBridge {
             });
             publisher.registerHandlerFor(TestCaseFinished.class,event->{
                 var testCase=event.getTestCase();
-                var ids=testCase.getTags().stream().map(tag->tag.replaceFirst("^@",""))
-                    .filter(tag->ID.matcher(tag).matches()).toList();
-                if (ids.size()!=1) {errors.add("Runtime scenario lacks one stable ID");return;}
-                String id=ids.getFirst();Declaration declaration=declared.get(id);
+                String id=byLocation.get(testCase.getUri()+":"+testCase.getLocation().getLine());
+                if (id==null) {errors.add("Runtime scenario has no expected origin");return;}
+                Declaration declaration=declared.get(id);
                 if (declaration==null || !declaration.uri().equals(testCase.getUri())
                     || declaration.origin().line()!=testCase.getLocation().getLine()) {
                     errors.add("Runtime origin mismatch: "+id);return;

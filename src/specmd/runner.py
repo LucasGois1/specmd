@@ -38,8 +38,8 @@ def _inside(root: Path, relative: str) -> Path:
     return current
 
 
-def _features(root: Path, inspection: dict) -> tuple[list[dict], list[dict]]:
-    """Use the scanner's fresh, inventory-checked in-memory extraction."""
+def _features(root: Path, inspection: dict, wip_tags: set[str] = frozenset()) -> tuple[list[dict], list[dict]]:
+    """Use the scanner's inventory-checked in-memory extraction; skip work-in-progress scenarios."""
     from .core import extract_features
 
     documents = inspection.get("documents")
@@ -49,8 +49,6 @@ def _features(root: Path, inspection: dict) -> tuple[list[dict], list[dict]]:
     for document in documents:
         if not isinstance(document, dict):
             raise ValueError("Documento inválido na inspeção.")
-        if document.get("kind") not in {"behavioral", "mixed"}:
-            continue
         relative = document.get("path")
         if not isinstance(relative, str):
             raise ValueError("Documento sem caminho válido.")
@@ -66,6 +64,8 @@ def _features(root: Path, inspection: dict) -> tuple[list[dict], list[dict]]:
                 raise ValueError("Cenário sem identidade estável: " + relative)
             if type(scenario.get("line")) is not int or type(scenario.get("block")) is not int:
                 raise ValueError("Cenário sem origem válida: " + relative)
+            if wip_tags & set(scenario.get("tags", [])):
+                continue
             expected.append({**scenario, "path": relative})
     if len({item["id"] for item in expected}) != len(expected):
         raise ValueError("Identidades de cenário duplicadas na inspeção.")
@@ -78,6 +78,25 @@ def _features(root: Path, inspection: dict) -> tuple[list[dict], list[dict]]:
             raise ValueError("Extração de Gherkin sem o padding de origem esperado.")
         features.append({**feature, "content": feature["content"][len(padding):]})
     return features, expected
+
+
+def _python_for(root: Path, runner: dict) -> str:
+    """The project's interpreter when it can import behave, otherwise the plugin's."""
+    candidates = [runner.get("python"), os.environ.get("VIRTUAL_ENV") and str(Path(os.environ["VIRTUAL_ENV"]) / "bin/python"),
+                  str(root / ".venv/bin/python"), str(root / "venv/bin/python")]
+    for candidate in candidates:
+        if not candidate:
+            continue
+        path = Path(candidate) if Path(candidate).is_absolute() else root / candidate
+        if not path.is_file():
+            continue
+        try:
+            probe = subprocess.run([str(path), "-c", "import behave"], capture_output=True, timeout=20)
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        if probe.returncode == 0:
+            return str(path)
+    return sys.executable
 
 
 def _matches(path: str, patterns: list[str] | None) -> bool:
@@ -160,8 +179,11 @@ def execute_project(root: Path, inspection: dict, config: dict) -> dict:
         root = Path(root).resolve(strict=True)
         if not root.is_dir() or not isinstance(config, dict):
             raise ValueError("Raiz/configuração inválida para execução.")
-        features, expected = _features(root, inspection)
+        features, expected = _features(root, inspection, set(config.get("wip_tags", ["wip"])))
         if not expected:
+            if any(document.get("scenarios") for document in inspection.get("documents", [])):
+                result["passed"] = True  # Only work-in-progress scenarios: nothing is demanded.
+                return result
             raise ValueError("Nenhum cenário encontrado na documentação.")
         runners = config.get("runners")
         if not isinstance(runners, list) or not runners:
@@ -193,19 +215,18 @@ def execute_project(root: Path, inspection: dict, config: dict) -> dict:
                 # Resolve alongside this exact runner copy: a plugin bootstrap's
                 # sys.path is not inherited by a fresh Python subprocess, and
                 # -m could otherwise load a different editable installation.
-                command = [sys.executable, str(Path(__file__).with_name("behave_worker.py")),
+                command = [_python_for(root, runner), str(Path(__file__).with_name("behave_worker.py")),
                            "--root", str(root), "--steps", steps]
             if not isinstance(command, list) or not command or any(not isinstance(arg, str) or not arg for arg in command):
                 raise ValueError("Runner exige command como lista de argumentos, sem shell.")
-            selected = [item for item in expected if _matches(item["path"], patterns)]
+            taken = {item["id"] for _, _, _, _, items in normalized for item in items}
+            selected = [item for item in expected if item["id"] not in taken and _matches(item["path"], patterns)]
             normalized.append((identifier, language, timeout, command, selected))
-        assigned = [item["id"] for _, _, _, _, items in normalized for item in items]
-        if len(assigned) != len(set(assigned)):
-            raise ValueError("Um cenário foi atribuído a mais de um runner.")
-        if set(assigned) != {item["id"] for item in expected}:
-            raise ValueError("Existem cenários sem runner atribuído.")
-        if any(not items for _, _, _, _, items in normalized):
-            raise ValueError("Runner sem cenários atribuídos; execução vazia é recusada.")
+        assigned = {item["id"] for _, _, _, _, items in normalized for item in items}
+        missing = sorted({item["path"] for item in expected if item["id"] not in assigned})
+        if missing:
+            raise ValueError("Nenhum runner cobre os cenários de: " + ", ".join(missing[:5]))
+        normalized = [entry for entry in normalized if entry[4]]
     except (OSError, ValueError, TypeError) as error:
         findings.append(_finding("runner_configuration_invalid", str(error)))
         return result
@@ -214,7 +235,7 @@ def execute_project(root: Path, inspection: dict, config: dict) -> dict:
     for identifier, language, timeout, command, selected in normalized:
         selected_blocks = {(item["path"], item["block"]) for item in selected}
         payload = {"schema": 1, "features": [item for item in features if (item["path"], item["block"]) in selected_blocks],
-                   "expected_scenarios": selected}
+                   "expected_scenarios": selected, "language": config.get("gherkin_language")}
         row = {"id": identifier, "language": language, "passed": False,
                "expected_scenarios": [item["id"] for item in selected]}
         try:

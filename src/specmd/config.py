@@ -1,4 +1,4 @@
-"""Strict, versioned configuration loading for the experimental SpecMD core."""
+"""Configuration loading for specmd.toml; every key is optional."""
 
 from __future__ import annotations
 
@@ -55,24 +55,35 @@ def _keys(value: dict, allowed: set[str], label: str) -> None:
         raise ConfigError(f"Campos não suportados em {label}: {', '.join(sorted(unknown))}.")
 
 
+# Keys from the earlier audit design are accepted and ignored.
+_LEGACY_KEYS = {"project_id", "repository_id", "traceability", "evidence"}
+
+
 def parse_config(data: bytes) -> dict[str, Any]:
-    """Validate one exact TOML snapshot; returned values are not approval."""
+    """Validate specmd.toml; every key is optional and an empty file is valid."""
     try:
         config = tomllib.loads(data.decode("utf-8"))
     except (UnicodeDecodeError, tomllib.TOMLDecodeError) as exc:
         raise ConfigError(f"Configuração TOML inválida: {exc}") from exc
-    schema = config.get("schema")
-    if type(schema) is not int or schema not in {1, 2}:
-        raise ConfigError("schema deve ser o inteiro 1 ou 2.")
-    if schema == 1:
-        if set(config) != {"schema"}:
-            raise ConfigError("A configuração schema 1 aceita somente schema = 1, sem outras opções.")
-        return config
+    _keys(config, {"schema", "gherkin_language", "wip_tags", "run", "runners"} | _LEGACY_KEYS, "specmd.toml")
+    if "schema" in config and (type(config["schema"]) is not int or config["schema"] not in {1, 2}):
+        raise ConfigError("schema, quando presente, deve ser o inteiro 1 ou 2.")
+    if "gherkin_language" in config:
+        _text(config["gherkin_language"], "gherkin_language")
+    wip_tags = config.get("wip_tags", ["wip"])
+    if not isinstance(wip_tags, list):
+        raise ConfigError("wip_tags deve ser uma lista de textos.")
+    for tag in wip_tags:
+        _text(tag, "wip_tags")
+    run = config.get("run", {})
+    if not isinstance(run, dict):
+        raise ConfigError("run deve ser uma tabela.")
+    _keys(run, {"on_stop", "timeout"}, "run")
+    if "on_stop" in run and type(run["on_stop"]) is not bool:
+        raise ConfigError("run.on_stop deve ser booleano.")
+    if "timeout" in run and (type(run["timeout"]) is not int or run["timeout"] <= 0):
+        raise ConfigError("run.timeout deve ser um inteiro positivo.")
 
-    _keys(config, {"schema", "project_id", "repository_id", "runners", "traceability", "evidence"}, "schema 2")
-    _text(config.get("project_id"), "project_id")
-    if "repository_id" in config:
-        _text(config["repository_id"], "repository_id")
     runners = config.get("runners", [])
     if not isinstance(runners, list):
         raise ConfigError("runners deve ser uma lista de tabelas.")
@@ -81,7 +92,7 @@ def parse_config(data: bytes) -> dict[str, Any]:
         label = f"runners[{index}]"
         if not isinstance(runner, dict):
             raise ConfigError(f"{label} deve ser uma tabela.")
-        _keys(runner, {"id", "language", "command", "steps", "timeout", "paths"}, label)
+        _keys(runner, {"id", "language", "command", "steps", "timeout", "paths", "python"}, label)
         identifier = _text(runner.get("id"), f"{label}.id")
         _text(runner.get("language"), f"{label}.language")
         if identifier in identifiers:
@@ -99,36 +110,16 @@ def parse_config(data: bytes) -> dict[str, Any]:
             else:
                 for item in sequence:
                     _text(item, f"{label}.{key}")
-        if "steps" in runner:
-            _text(runner["steps"], f"{label}.steps")
+        for key in ("steps", "python"):
+            if key in runner:
+                _text(runner[key], f"{label}.{key}")
         if "timeout" in runner and (type(runner["timeout"]) is not int or runner["timeout"] <= 0):
             raise ConfigError(f"{label}.timeout deve ser um inteiro positivo.")
-
-    traceability = config.get("traceability", {})
-    if not isinstance(traceability, dict):
-        raise ConfigError("traceability deve ser uma tabela.")
-    _keys(traceability, {"map", "policy"}, "traceability")
-    if "map" in traceability:
-        _text(traceability["map"], "traceability.map")
-    policy = traceability.get("policy", "strict")
-    if not isinstance(policy, str) or policy not in {"strict", "off"}:
-        raise ConfigError("traceability.policy deve ser strict ou off.")
-
-    evidence = config.get("evidence", {})
-    if not isinstance(evidence, dict):
-        raise ConfigError("evidence deve ser uma tabela.")
-    _keys(evidence, {"allow_mock", "max_age_seconds"}, "evidence")
-    if "allow_mock" in evidence and type(evidence["allow_mock"]) is not bool:
-        raise ConfigError("evidence.allow_mock deve ser booleano.")
-    if "max_age_seconds" in evidence and (
-        type(evidence["max_age_seconds"]) is not int or evidence["max_age_seconds"] <= 0
-    ):
-        raise ConfigError("evidence.max_age_seconds deve ser um inteiro positivo.")
     return config
 
 
 def load_config(root: Path) -> dict[str, Any]:
-    """Load schema 1 or 2 from root/specmd.toml, raising ConfigError on failure."""
+    """Load root/specmd.toml, raising ConfigError on failure."""
     try:
         return parse_config(read_regular_file(Path(root) / "specmd.toml"))
     except OSError as exc:

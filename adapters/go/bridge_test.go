@@ -54,7 +54,7 @@ func TestAssertionFailureAndUndefinedAreNotSuccess(t *testing.T) {
 func TestMissingExtraOriginAndZeroFailClosed(t *testing.T) {
 	for _, mutate := range []func(*Input){
 		func(i *Input) { i.ExpectedScenarios = nil },
-		func(i *Input) { i.ExpectedScenarios[0].ID = "SMD-SCN-OTHER" },
+		func(i *Input) { i.ExpectedScenarios[0].ID = "" },
 		func(i *Input) { i.ExpectedScenarios[0].Line++ },
 		func(i *Input) { i.Features = nil },
 	} {
@@ -64,6 +64,16 @@ func TestMissingExtraOriginAndZeroFailClosed(t *testing.T) {
 		if report.Passed || len(report.Errors) == 0 {
 			t.Fatalf("invalid input was credited: %+v", report)
 		}
+	}
+}
+
+func TestOpaqueIDMatchesScenarioByOrigin(t *testing.T) {
+	input := fixture(5)
+	input.Features[0].Content = strings.Replace(input.Features[0].Content, "  @SMD-SCN-001\n", "\n", 1)
+	input.ExpectedScenarios[0].ID = "docs/soma.md::Somar"
+	report := Run(input, sumSteps)
+	if !report.Passed || len(report.Scenarios) != 1 || report.Scenarios[0].ID != "docs/soma.md::Somar" {
+		t.Fatalf("untagged scenario was not matched by origin: %+v", report)
 	}
 }
 

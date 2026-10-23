@@ -42,10 +42,14 @@ def main(argv=None):
         if not root.is_dir():
             raise ValueError("A raiz precisa ser um diretório existente.")
         if args.command == "init":
-            from .demo import initial_config
+            from .demo import DEFAULT_IGNORE, initial_config
             with (root / "specmd.toml").open("x", encoding="utf-8") as stream:
-                stream.write(initial_config(root.name or "specmd-project"))
-            result = {"status": "initialized", "root": str(root),
+                stream.write(initial_config())
+            created = ["specmd.toml"]
+            if not (root / ".specmdignore").exists():
+                (root / ".specmdignore").write_text(DEFAULT_IGNORE, encoding="utf-8")
+                created.append(".specmdignore")
+            result = {"status": "initialized", "root": str(root), "created": created,
                       "message": "SpecMD ativado. Documente o comportamento em Markdown com cenários Gherkin."}
             _print(result)
             return 0
