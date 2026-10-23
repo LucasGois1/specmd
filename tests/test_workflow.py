@@ -36,7 +36,7 @@ class WorkflowTests(unittest.TestCase):
         from specmd.authority import initialize_authority
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
-        self.base = Path(self.temporary.name)
+        self.base = Path(self.temporary.name).resolve()
         self.root = self.base / "project"
         self.root.mkdir()
         (self.root / "specmd.toml").write_text('schema = 2\nproject_id = "test"\n[[runners]]\nid="python"\nlanguage="python"\n')

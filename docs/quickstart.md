@@ -32,6 +32,8 @@ export SPECMD_PYTHON="$SPECMD_SOURCE/.venv/bin/python"
 
 Mantenha `SPECMD_PYTHON` como caminho absoluto ao iniciar um agente que usará hooks.
 
+O CI instala as dependências a partir de `pylock.toml`, com versões e hashes fixados e somente wheels. Para reproduzir esse ambiente, use `uv pip install --require-hashes --only-binary :all: -r pylock.toml`. Ao mudar as dependências do `pyproject.toml`, regenere o lock com o comando registrado no cabeçalho do arquivo.
+
 Para executar toda a validação local sem conta de modelo, use `"$SPECMD_PYTHON" scripts/test_local.py`. O relatório separa agente/navegador simulados de assinaturas, HTTP e testes Python reais. As decisões automáticas ficam apenas nas fixtures descartáveis.
 
 ## Criar uma demonstração
@@ -126,7 +128,15 @@ Um vínculo torna a origem revisável; não prova equivalência semântica ou fo
 
 ## Hooks e CI
 
-Para Codex, gere o bundle, instale e revise os handlers pela UX normal em `/hooks`, seguindo [o guia](experimental-codex.md). Trust do hook e aceite contratual são decisões diferentes. Claude possui testes de protocolo, sem comprovação de execução nativa no host.
+Para Codex, gere o bundle, instale e revise os handlers pela UX normal em `/hooks`, seguindo [o guia](experimental-codex.md). Trust do hook e aceite contratual são decisões diferentes. Para Claude Code, gere o mesmo bundle e carregue-o somente na sessão, a partir do projeto alvo:
+
+```sh
+cd /caminho/do/projeto
+SPECMD_PYTHON="$SPECMD_PYTHON" SPECMD_TRUST_STORE=/caminho/externo/trust.json \
+  claude --plugin-dir /caminho/do/specmd/dist/codex-plugin
+```
+
+O diálogo de confiança do workspace e a revisão dos hooks em `/hooks` continuam sendo decisões da pessoa. O dispatch nativo foi observado em modo headless ([evidência](../research/claude/README.md)); a experiência interativa ainda precisa de ensaio.
 
 O comando protegido é:
 

@@ -74,9 +74,12 @@ def _diff(previous: str | None, current: str, path: str) -> str:
     )
     rendered = []
     for line in lines:
-        kind = "added" if line.startswith("+") and not line.startswith("+++") else (
-            "removed" if line.startswith("-") and not line.startswith("---") else "context"
-        )
+        if line.startswith("+") and not line.startswith("+++"):
+            kind = "added"
+        elif line.startswith("-") and not line.startswith("---"):
+            kind = "removed"
+        else:
+            kind = "context"
         rendered.append(f'<span class="{kind}">{_escape(line)}</span>')
     if not rendered:
         return "<p>Documento vazio; nenhuma linha de diff.</p>"
@@ -384,7 +387,7 @@ class _Handler(BaseHTTPRequestHandler):
             decision = data.get("decision", "accept")
             if decision not in ("accept", "reject"):
                 raise ValueError("A decisão precisa ser accept ou reject.")
-        except (ValueError, UnicodeDecodeError, OSError) as error:
+        except (ValueError, OSError) as error:
             self._send_json(400, {"error": str(error)})
             return
         workflow = _workflow()

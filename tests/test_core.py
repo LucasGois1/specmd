@@ -44,7 +44,7 @@ class InspectProjectTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory(prefix="specmd-core-test-")
         self.addCleanup(self.temporary.cleanup)
-        self.root = Path(self.temporary.name)
+        self.root = Path(self.temporary.name).resolve()
 
     def activate(self, text: str = "schema = 1\n") -> None:
         (self.root / "specmd.toml").write_text(text, encoding="utf-8")

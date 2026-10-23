@@ -85,7 +85,7 @@ bash prepare-dependencies.sh
 bash run.sh
 ```
 
-O primeiro comando precisa de rede para Maven Central. Se Maven não estiver instalado, baixa Maven 3.9.9 para `/tmp/specmd-java-tools` (ou `SPECMD_JAVA_CACHE`), verifica o SHA-512 publicado e configura o proxy de sessão quando presente. Não escreve nem imprime credenciais. O Maven configura timeouts de conexão/leitura; em ambientes restritos, a autorização de rede deve ser concedida pelo mecanismo do ambiente antes da execução.
+O primeiro comando precisa de rede para Maven Central. Se Maven não estiver instalado, baixa Maven 3.9.9 por HTTPS para `.work/tools` (ou `SPECMD_JAVA_CACHE`), verifica o SHA-512 publicado e configura o proxy de sessão quando presente. Não escreve nem imprime credenciais. O Maven configura timeouts de conexão/leitura; em ambientes restritos, a autorização de rede deve ser concedida pelo mecanismo do ambiente antes da execução.
 
 Depois de preparados os jars, `run.sh` compila e executa sem baixar dependências. Usa `java -m jdk.compiler/com.sun.tools.javac.Main` porque o ambiente observado contém o módulo de compilação, mas não o binário `javac` no `PATH`. Os arquivos `.work/` e os caches estão ignorados no Git. O script atualiza as evidências sanitizadas desta pasta.
 

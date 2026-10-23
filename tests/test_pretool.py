@@ -12,7 +12,7 @@ class PretoolTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
+        self.root = Path(temporary.name).resolve()
         (self.root / "docs").mkdir()
         self.pending = {"status": "waiting_human_review", "may_complete": False}
 
@@ -107,13 +107,12 @@ class PretoolTests(unittest.TestCase):
             self.assertEqual(self.decision("exec_command", {"cmd": "python app.py"}, result), {})
         self.denied(self.decision("Write", {"file_path": "src/app.py"}, {"may_complete": "true", "approval": {"valid": "true"}}))
 
-    def test_hook_packages_declare_same_pretool_command(self):
+    def test_hook_package_declares_same_pretool_command(self):
         repository = Path(__file__).resolve().parents[1]
-        for relative in ("hooks/hooks.json", "integrations/claude/hooks.json"):
-            data = json.loads((repository / relative).read_text())
-            pretool = data["hooks"]["PreToolUse"][0]["hooks"][0]
-            original = data["hooks"]["PostToolUse"][0]["hooks"][0]
-            self.assertEqual(pretool, original)
+        data = json.loads((repository / "hooks/hooks.json").read_text())
+        pretool = data["hooks"]["PreToolUse"][0]["hooks"][0]
+        original = data["hooks"]["PostToolUse"][0]["hooks"][0]
+        self.assertEqual(pretool, original)
 
 
 if __name__ == "__main__":

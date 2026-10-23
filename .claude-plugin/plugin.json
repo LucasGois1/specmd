@@ -1,6 +1,5 @@
 {
   "name": "specmd",
   "version": "0.2.0",
-  "description": "Contratos Markdown, revisão por versão e evidência de testes. Integração experimental.",
-  "hooks": "./integrations/claude/hooks.json"
+  "description": "Contratos Markdown, revisão por versão e evidência de testes. Integração experimental."
 }

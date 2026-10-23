@@ -54,7 +54,7 @@ class RunnerTests(unittest.TestCase):
     def setUp(self):
         directory = tempfile.TemporaryDirectory(prefix="specmd-runner-")
         self.addCleanup(directory.cleanup)
-        self.root = Path(directory.name)
+        self.root = Path(directory.name).resolve()
         (self.root / "specmd.toml").write_text("schema = 1\n")
         self.write("contract.md", CONTRACT)
         self.write("application.py", "from pathlib import Path\ndef add(a,b):\n Path('calls.txt').open('a').write('called\\n')\n return a+b\n")

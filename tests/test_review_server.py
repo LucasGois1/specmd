@@ -16,7 +16,7 @@ from specmd.review_server import build_server
 class ReviewServerTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
-        self.root = Path(self.temporary.name)
+        self.root = Path(self.temporary.name).resolve()
         self.authority = self.root / "external-demo-authority"
         self.trust = self.root / "trust.json"
         self.proposal = {
@@ -110,7 +110,7 @@ class ReviewServerTests(unittest.TestCase):
     def test_get_status_does_not_accept_or_expose_token(self):
         status, _, body = self.request("GET", "/api/status")
         self.assertEqual(status, 200)
-        self.assertEqual(json.loads(body)["may_complete"], False)
+        self.assertIs(json.loads(body)["may_complete"], False)
         self.assertNotIn(self.server.review_token, body)
         self.workflow.check_project.assert_called_once_with(self.root, trust_path=self.trust)
         self.workflow.accept_review.assert_not_called()

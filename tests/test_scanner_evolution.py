@@ -57,7 +57,7 @@ class SchemaTwoTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve()
         self.config = self.root / "specmd.toml"
         self.config.write_text('schema = 2\nproject_id = "example-project"\n', encoding="utf-8")
 

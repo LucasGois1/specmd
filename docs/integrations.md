@@ -50,7 +50,7 @@ O JSON também expõe `may_complete`. Em `demo_passed`, esse campo vale no conte
 
 ## Codex e Claude Code
 
-O pacote Codex declara `SessionStart`, `PreToolUse`, `PostToolUse` e `Stop`. Início e pós-ferramenta apresentam o estado; pré-ferramenta consulta autorização; a parada fornece feedback ou devolve o controle. O [guia do Codex](experimental-codex.md) cobre build, instalação e revisão dos handlers em `/hooks`.
+O pacote declara `SessionStart`, `PreToolUse`, `PostToolUse` e `Stop` em um único `hooks/hooks.json`, compartilhado por Codex e Claude Code. O comando resolve a raiz por `PLUGIN_ROOT`, injetada pelo Codex, ou por `CLAUDE_PLUGIN_ROOT`, injetada pelo Claude Code. Início e pós-ferramenta apresentam o estado; pré-ferramenta consulta autorização; a parada fornece feedback ou devolve o controle. O [guia do Codex](experimental-codex.md) cobre build, instalação e revisão dos handlers em `/hooks`.
 
 No CLI `0.163.0`, ensaios com executável e pacote instalados observaram dispatch, alteração por ferramenta e retomada após bloqueio. As respostas vieram de backend HTTP determinístico simulado. O serviço de modelo real retornou `401`; interpretação por LLM e concessão humana de trust pela UX ainda exigem provas próprias. Evidências identificam seus bundles; mudanças no lifecycle precisam ser revalidadas.
 
@@ -58,7 +58,7 @@ As provas nativas anteriores cobrem `SessionStart`, `PostToolUse` e `Stop`. O no
 
 Confiar o hook e aceitar o contrato são decisões distintas. O plugin não deve conceder seu próprio aceite. O hash nativo do handler não garante automaticamente os bytes de todo script chamado.
 
-Claude Code possui manifesto e adaptação de protocolo com testes locais. Eles não comprovam instalação ou dispatch no produto. Payloads efetivos, trust, retomada e alcance do bloqueio precisam de ensaio no host; não se presume equivalência com o Codex.
+No Claude Code 2.1.309, sessões headless com modelo real e o plugin carregado por `--plugin-dir` despacharam os quatro eventos; o `PreToolUse` negou edição de código antes do aceite e o `Stop` devolveu o controle ([evidência](../research/claude/README.md)). O Claude Code carrega `hooks/hooks.json` da raiz do plugin mesmo quando o manifesto aponta outro arquivo, por isso o manifesto Claude não declara um segundo caminho. Diálogo de trust, UX interativa, instalação por marketplace e convivência com hooks do usuário continuam sem ensaio; não se presume equivalência com o Codex.
 
 ## Revisão no navegador
 

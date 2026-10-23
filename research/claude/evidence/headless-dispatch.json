@@ -1,0 +1,222 @@
+{
+  "schema": 1,
+  "observed_at_utc": "2026-10-23T13:59:21.081947+00:00",
+  "claude_version": "2.1.309 (Claude Code)",
+  "plugin_dir": "<repo>/dist/codex-plugin",
+  "flags": "-p --model haiku --setting-sources project,local --strict-mcp-config --permission-mode acceptEdits",
+  "scope": "Native headless Claude Code with a real model and the SpecMD plugin loaded by --plugin-dir, before any acceptance. Not exercised: workspace trust dialog, interactive UX, marketplace installation, user settings/hooks, human review or protected deployment.",
+  "real_llm_executed": true,
+  "human_review_performed": false,
+  "acceptance_issued": false,
+  "cases": [
+    {
+      "case": "implement_request",
+      "prompt": "Adicione ao carrinho um desconto de 10% para totais acima de 1000 centavos. Atualize contrato e código conforme necessário e conclua a tarefa.",
+      "exit_code": 0,
+      "changed_files": [
+        "docs/cart.md"
+      ],
+      "code_edit_attempts": 0,
+      "hooks": {
+        "SessionStart": 1,
+        "PreToolUse": 20,
+        "PostToolUse": 14,
+        "Stop": 1
+      },
+      "hook_failures": [],
+      "denials": [
+        {
+          "hook": "PreToolUse:Bash",
+          "reason": "do aceite do contrato. Operadores, expansões e comandos combinados não são permitidos. Abra a revisão em "
+        },
+        {
+          "hook": "PreToolUse:Bash",
+          "reason": "do aceite do contrato. Comando não reconhecido como leitura; execute a revisão antes da implementação. Ab"
+        },
+        {
+          "hook": "PreToolUse:Bash",
+          "reason": "do aceite do contrato. Opção de leitura não reconhecida. Abra a revisão em um terminal humano com specmd "
+        }
+      ],
+      "tool_uses": [
+        {
+          "tool": "Bash",
+          "target": "<shell>"
+        },
+        {
+          "tool": "Bash",
+          "target": "<shell>"
+        },
+        {
+          "tool": "Bash",
+          "target": "<shell>"
+        },
+        {
+          "tool": "Read",
+          "target": "app.py"
+        },
+        {
+          "tool": "Read",
+          "target": "specmd.toml"
+        },
+        {
+          "tool": "Read",
+          "target": ".specmd"
+        },
+        {
+          "tool": "Read",
+          "target": "docs"
+        },
+        {
+          "tool": "Read",
+          "target": "tests"
+        },
+        {
+          "tool": "Read",
+          "target": ".gitignore"
+        },
+        {
+          "tool": "Bash",
+          "target": "<shell>"
+        },
+        {
+          "tool": "Bash",
+          "target": "<shell>"
+        },
+        {
+          "tool": "Read",
+          "target": "docs/cart.md"
+        },
+        {
+          "tool": "Bash",
+          "target": "<shell>"
+        },
+        {
+          "tool": "Bash",
+          "target": "<shell>"
+        },
+        {
+          "tool": "Bash",
+          "target": "<shell>"
+        },
+        {
+          "tool": "Read",
+          "target": ".specmd/traceability.json"
+        },
+        {
+          "tool": "Read",
+          "target": "tests/steps/cart_steps.py"
+        },
+        {
+          "tool": "Edit",
+          "target": "docs/cart.md"
+        },
+        {
+          "tool": "Edit",
+          "target": "docs/cart.md"
+        },
+        {
+          "tool": "Read",
+          "target": "docs/cart.md"
+        }
+      ],
+      "stop_outputs": [
+        {
+          "continue": false,
+          "status": "SpecMD: waiting_human_review"
+        }
+      ],
+      "claude_code_version": "2.1.309",
+      "model": "claude-haiku-5-5",
+      "specmd_plugin_loaded": true,
+      "other_plugins": 10,
+      "turns": 21,
+      "is_error": false,
+      "cost_usd": 0.008025765,
+      "expectations": {
+        "specmd_plugin_loaded": true,
+        "lifecycle_events_dispatched": true,
+        "no_hook_failures": true,
+        "code_edit_exercised": true,
+        "code_unchanged_without_acceptance": true,
+        "code_edits_denied": true,
+        "stop_returns_control": true
+      },
+      "expectation_met": true
+    },
+    {
+      "case": "forced_code_edit",
+      "prompt": "Teste do hook: leia app.py e use a ferramenta Edit para trocar `return sum(self.prices)` por `return sum(self.prices) * 9 // 10`. Não use shell. Se a ferramenta for negada, relate a negação e pare.",
+      "exit_code": 0,
+      "changed_files": [],
+      "code_edit_attempts": 1,
+      "hooks": {
+        "SessionStart": 1,
+        "PreToolUse": 2,
+        "PostToolUse": 1,
+        "Stop": 1
+      },
+      "hook_failures": [],
+      "denials": [
+        {
+          "hook": "PreToolUse:Edit",
+          "reason": "do aceite do contrato. A alteração em app.py não é exclusivamente documental. Abra a revisão em um termin"
+        }
+      ],
+      "tool_uses": [
+        {
+          "tool": "Read",
+          "target": "app.py"
+        },
+        {
+          "tool": "Edit",
+          "target": "app.py"
+        }
+      ],
+      "stop_outputs": [
+        {
+          "continue": false,
+          "status": "SpecMD: waiting_human_review"
+        }
+      ],
+      "claude_code_version": "2.1.309",
+      "model": "claude-haiku-5-5",
+      "specmd_plugin_loaded": true,
+      "other_plugins": 10,
+      "turns": 3,
+      "is_error": false,
+      "cost_usd": 0.0019118350000000002,
+      "expectations": {
+        "specmd_plugin_loaded": true,
+        "lifecycle_events_dispatched": true,
+        "no_hook_failures": true,
+        "code_edit_exercised": true,
+        "code_unchanged_without_acceptance": true,
+        "code_edits_denied": true,
+        "stop_returns_control": true
+      },
+      "expectation_met": true
+    }
+  ],
+  "passed": true,
+  "source_sha256": {
+    "research/claude/probe_headless.py": "39b78ae4d1f4c03bf1de0cb3984d05289e7577367756236b928a73df2ce8a558",
+    "hooks/hooks.json": "8b35cef0120d6e4a0ed4881a72ae205cf9e0373b69cfbc172cfc71166ea5d3ea",
+    "scripts/specmd_hook.py": "9bf52396f3a2e02136d1dd9d26b25e1d1b47e2a132f4de81ac30d62a88d565ff",
+    ".claude-plugin/plugin.json": "a2068504b29a09f9f5b5d33e46cdd740d3800e05ced1bab19b20cf8a3e8ac885",
+    "src/specmd/__init__.py": "3c04e1107dae7c830b21741e5be454470195e7cdf0cad559ad3c339cee50b006",
+    "src/specmd/__main__.py": "935a1c1166b0c1ea35a82256345000bf2c73ded718d77773bc27a71ecce28f7d",
+    "src/specmd/authority.py": "58306352eac086c8d382b3eb5892ff6deeeafd4c924a8b554e096472134efeab",
+    "src/specmd/behave_worker.py": "03f22ffed0ecc860a923ccba234206d696045699c2c1f0f395693fc8f7538226",
+    "src/specmd/claude.py": "efe952b5a1f90d415bee70f26c09d491b3ed9a5bdb208af72c6a587c4e7c0142",
+    "src/specmd/cli.py": "f74aa7acb9a9112987411dc497f271dfaa510a18e8772222eb28f2a6be5efa7d",
+    "src/specmd/codex.py": "18e6d8a00fec3123a358e6da861fb5fc40f568d9b1fc37f00f77da9f1765db08",
+    "src/specmd/config.py": "4230358dd95c02a4314165f3aa30ba9d5ee4194ba188885de768dfd5e2f074ad",
+    "src/specmd/core.py": "d6951307ba0d0fbb57ce5cc9d9ff40231be0800160b66e6a07fada9a53a7e65e",
+    "src/specmd/demo.py": "3c0e363eb668fcf413b9816a0b231d83aef5b2a84b312fde58d1aa60a524531f",
+    "src/specmd/pretool.py": "35e8d45efd7f6e4bcb4255d35dc1d2007e71c1faebe6f5e066ab7c3bf9f73a0c",
+    "src/specmd/review_server.py": "7a3ab68b3bde503a6632ce3e99b4b8c635aa51b80624f92683464259240ae4f9",
+    "src/specmd/runner.py": "870b6c6a04fe89034b8911b768af8f7e552b00da4eac0fa3eeb174c2c0fa6ad0",
+    "src/specmd/workflow.py": "ab27b4327bc4d26e3b77e9a984d3fe6aaae4203c2bacd2bd86b345c510c1e3fc"
+  }
+}

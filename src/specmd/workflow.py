@@ -17,6 +17,7 @@ from typing import Any
 
 from .core import _read_regular_file, inspect_project, _PRUNED_DIRECTORIES
 
+APPROVALS = ".specmd/approvals"
 SOURCE_SUFFIXES = {".py", ".java", ".go", ".js", ".jsx", ".ts", ".tsx", ".rs", ".rb", ".cs", ".cpp", ".c", ".h", ".sh", ".sql", ".kt", ".swift", ".scala", ".php", ".vue", ".svelte"}
 
 
@@ -163,16 +164,20 @@ def _inspection(root: Path) -> tuple[dict, dict]:
     return result, config
 
 
+def _approval_files(root: Path) -> list[Path]:
+    directory = root / APPROVALS
+    if directory.is_symlink():
+        raise ValueError("Recibos não podem atravessar links simbólicos.")
+    return sorted(directory.glob("*.json")) if directory.exists() else []
+
+
 def _previous_review(root, config, trust_path):
     from .authority import verify_approval, _validate_proposal
     trust = _trust_path(root, trust_path)
     if trust is None:
         return {}
     accepted = []
-    directory = root / ".specmd/approvals"
-    if directory.is_symlink():
-        raise ValueError("Recibos não podem atravessar links simbólicos.")
-    for path in directory.glob("*.json") if directory.exists() else []:
+    for path in _approval_files(root):
         try:
             envelope = _read_json(root, str(path.relative_to(root)))
             payload = envelope["payload"]
@@ -278,12 +283,9 @@ def _approval(root, inspection, config, trust_path):
     from .authority import verify_approval
     if trust_path is None:
         return None, [{"kind": "authority_not_configured", "message": "Informe SPECMD_TRUST_STORE ou --trust apontando para confiança externa ao projeto."}]
-    directory = root / ".specmd/approvals"
-    if directory.is_symlink():
-        raise ValueError("Recibos não podem atravessar links simbólicos.")
     valid = []
     rejected = []
-    for path in sorted(directory.glob("*.json")) if directory.exists() else []:
+    for path in _approval_files(root):
         try:
             receipt = _read_json(root, str(path.relative_to(root)))
             verified = verify_approval(receipt, trust_path, {
@@ -397,10 +399,7 @@ def audit_project(root: Path, trust_path=None) -> dict:
     root = Path(root).resolve(strict=True)
     trust = _trust_path(root, trust_path)
     records = []
-    directory = root / ".specmd/approvals"
-    if directory.is_symlink():
-        raise ValueError("Recibos não podem atravessar links simbólicos.")
-    for path in sorted(directory.glob("*.json")) if directory.exists() else []:
+    for path in _approval_files(root):
         row = {"path": str(path.relative_to(root)), "valid": False}
         try:
             envelope = _read_json(root, row["path"])
