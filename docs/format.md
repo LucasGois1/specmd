@@ -60,7 +60,7 @@ Funcionalidade: Estorno
 ## Linguagem e cenários em andamento
 
 - `# language: pt` no bloco define o idioma do Gherkin; `gherkin_language = "pt"` no `specmd.toml` define o padrão do projeto.
-- Cenários com uma tag de `wip_tags` (padrão `@wip`) aparecem na documentação mas não são executados nem cobrados.
+- Cenários com uma tag de `wip_tags` (padrão `@wip`) aparecem na documentação mas não são executados nem cobrados. Marcar `@wip` é decisão do dev; o agente é orientado a não marcar por conta própria.
 
 ## specmd.toml
 

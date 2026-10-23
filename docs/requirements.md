@@ -66,18 +66,25 @@ Funcionalidade: Documentação sem cenários
 
 ## SMD-REQ-022 — Cenários novos aguardam o dev
 
-Cenários novos ou alterados desde a última mensagem do dev ainda não foram vistos por ele. O agente é orientado a mostrá-los e pedir confirmação antes de implementar; ao concluir, a execução desses cenários não é cobrada e o dev vê um aviso de que há cenários aguardando sua confirmação. A confirmação é a próxima mensagem do dev, sem assinatura nem registro formal.
+Cenários novos ou alterados desde a última mensagem do dev podem não ter sido vistos por ele. O agente é orientado a mostrá-los e pedir confirmação antes de implementar. Quando só a documentação mudou, os cenários não são executados ao concluir e o dev vê um aviso de que há cenários aguardando sua confirmação. Quando o código também mudou, os cenários são executados (ver SMD-REQ-023) e o feedback lembra o agente de confirmá-los, caso ainda não tenha feito. A confirmação é uma mensagem do dev, sem assinatura nem registro formal; marcar cenários como `@wip` também é decisão do dev.
 
 ```gherkin
 # language: pt
 Funcionalidade: Confirmação do dev
 
   @SMD-REQ-022 @SMD-SCN-106
-  Cenário: Cenário novo não é cobrado antes da confirmação
-    Dado que o agente escreveu um cenário novo no turno atual
+  Cenário: Documentação nova aguarda a confirmação
+    Dado que o agente escreveu um cenário novo sem alterar o código
     Quando o agente conclui
     Então os cenários não são executados
     E o dev é avisado de que há cenários aguardando sua confirmação
+
+  @SMD-REQ-022 @SMD-SCN-117
+  Cenário: Cenário escrito junto com o código é verificado
+    Dado que o dev confirmou no chat os cenários propostos pelo agente
+    Quando o agente escreve os cenários e o código no turno seguinte e conclui
+    Então os cenários são executados
+    E o feedback lembra de confirmar com o dev os cenários que mudaram no turno
 
   @SMD-REQ-022 @SMD-SCN-107
   Cenário: Mensagem do dev torna os cenários vistos
@@ -88,7 +95,7 @@ Funcionalidade: Confirmação do dev
 
 ## SMD-REQ-023 — Execução após mudança de código e feedback acionável
 
-Quando arquivos que não são Markdown mudaram desde a última execução e os cenários já foram vistos pelo dev, a conclusão executa os cenários. Cada cenário que não passa volta ao agente com o caminho, a linha, o passo, a mensagem de erro e, para passos sem implementação, um trecho pronto para começar. Sem mudança de código na sessão, nenhuma execução é cobrada.
+Quando arquivos que não são Markdown mudaram desde a última execução, a conclusão executa os cenários, inclusive os escritos no mesmo turno. Cada cenário que não passa volta ao agente com o caminho, a linha, o passo, a mensagem de erro e, para passos sem implementação, um trecho pronto para começar. Sem mudança de código na sessão, nenhuma execução é cobrada.
 
 ```gherkin
 # language: pt

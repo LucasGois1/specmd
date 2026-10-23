@@ -16,6 +16,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shlex
 import sys
 from typing import Any
 
@@ -38,8 +39,9 @@ CONVENTIONS = (
     "3. Um Markdown que não descreve comportamento do sistema (README, guia de setup, notas) vai para o "
     "`.specmdignore` na raiz, com padrões no estilo .gitignore. Se for claramente o caso, adicione você mesmo; "
     "em dúvida, pergunte ao dev se ele precisa de cenários.\n"
-    "4. Ao concluir uma implementação, o SpecMD executa os cenários e devolve o que falta ou falha. "
-    "Cenários marcados com @wip não são cobrados."
+    "4. Ao concluir uma implementação, o SpecMD executa os cenários e devolve o que falta ou falha.\n"
+    "5. Cenários marcados com @wip não são cobrados, e marcar @wip é decisão do dev. Não marque por conta "
+    "própria para evitar a cobrança: cenários que aguardam a confirmação do dev já não são cobrados."
 )
 GAP_GUIDANCE = (
     "Para cada documento: se ele descreve comportamento do sistema, confirme os requisitos com o dev e "
@@ -152,6 +154,17 @@ def _block_once(root: Path, signature: str, reason: str, summary: str) -> dict[s
     return {"decision": "block", "reason": reason}
 
 
+def _commands(root: Path) -> str:
+    """Exact commands to inspect and run the scenarios, with this plugin's own interpreter."""
+    cli = Path(__file__).resolve().parents[2] / "scripts" / "specmd_cli.py"
+    base = [sys.executable, str(cli)] if cli.is_file() else [sys.executable, "-m", "specmd"]
+    command = " ".join(shlex.quote(part) for part in base)
+    project = shlex.quote(str(root))
+    return ("Para conferir a qualquer momento, sem instalar nada:\n"
+            f"- pendências e última execução: `{command} check --root {project}`\n"
+            f"- executar os cenários: `{command} run --root {project}`")
+
+
 def _session_start(root: Path) -> dict[str, Any]:
     from .workflow import check_project, fingerprint_code, scenario_count
 
@@ -178,6 +191,7 @@ def _session_start(root: Path) -> dict[str, Any]:
         freshness = "" if run.get("current") else " (o código ou os cenários mudaram depois)"
         lines.append(f"- Última execução: {run.get('scenarios')} cenários, {state_text}{freshness}.")
     lines.append(CONVENTIONS)
+    lines.append(_commands(root))
     return {"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": "\n".join(lines)}}
 
 
@@ -225,8 +239,8 @@ def _post_tool(root: Path) -> dict[str, Any]:
         lines.extend(_format_findings(findings))
         lines.append(GAP_GUIDANCE)
     elif spec_changed:
-        lines.append("Requisitos ou cenários mudaram. Mostre os cenários novos ou alterados ao dev e peça "
-                     "confirmação antes de implementar.")
+        lines.append("Requisitos ou cenários mudaram. Se o dev ainda não confirmou estes cenários, mostre-os e "
+                     "peça confirmação antes de implementar.")
     else:
         return {}
     return {"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": "\n".join(lines)}}
@@ -252,6 +266,14 @@ def _current_run(root: Path, result: dict[str, Any], state: dict[str, Any]) -> t
     return run_project(root).get("run"), False
 
 
+def _pending_confirmation(state: dict[str, Any], result: dict[str, Any]) -> list[str]:
+    """Documents whose requirements or scenarios changed after the developer's last message."""
+    seen = state.get("spec_at_prompt")
+    if not isinstance(seen, dict):
+        return []
+    return sorted(path for path, digest in _spec_map(result).items() if seen.get(path) != digest)
+
+
 def _stop(root: Path) -> dict[str, Any]:
     from .core import inspect_project
     from .workflow import scenario_count
@@ -266,22 +288,24 @@ def _stop(root: Path) -> dict[str, Any]:
         return _block_once(root, _digest(["docs", findings]), reason,
                            f"SpecMD: {len(findings)} pendências na documentação continuam abertas.")
     state = hook_state.load(root)
-    seen = state.get("spec_at_prompt")
-    current_spec = _spec_map(result)
-    if isinstance(seen, dict) and seen != current_spec:
-        pending = sorted(path for path, digest in current_spec.items() if seen.get(path) != digest)
-        return {"systemMessage": "SpecMD: cenários novos ou alterados aguardando sua confirmação em "
-                                 + ", ".join(pending[:6]) + "."}
+    pending = _pending_confirmation(state, result)
+    awaiting = ({"systemMessage": "SpecMD: cenários novos ou alterados aguardando sua confirmação em "
+                                  + ", ".join(pending[:6]) + "."} if pending else {})
     if not scenario_count(result) or not _runs_on_stop(root):
-        return {}
+        return awaiting
     run, fresh = _current_run(root, result, state)
     if run is None:
-        return {}
+        # Only documentation changed in this session: wait for the developer.
+        return awaiting
+    reminder = ("\nOs cenários de " + ", ".join(pending[:6]) + " mudaram depois da última mensagem do dev; "
+                "se ele ainda não os confirmou, mostre-os antes de seguir.") if pending else ""
     if run.get("passed"):
-        return {} if fresh else {"systemMessage": f"SpecMD: {run.get('scenarios')} cenários passando."}
+        if fresh and not pending:
+            return {}
+        return {"systemMessage": f"SpecMD: {run.get('scenarios')} cenários passando." + reminder}
     signature = _digest(["run", [(item.get("id"), item.get("status"), [step.get("error") for step in item.get("steps", [])])
                                  for item in run.get("failures", [])], run.get("findings")])
-    return _block_once(root, signature, _format_failures(run),
+    return _block_once(root, signature, _format_failures(run) + reminder,
                        f"SpecMD: {len(run.get('failures', []))} cenários ainda não passam.")
 
 
