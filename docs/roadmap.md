@@ -1,6 +1,6 @@
 # Plano de implementação
 
-> Rascunho de planejamento. Nenhum marco abaixo representa funcionalidade implementada, suporte de plataforma verificado ou aceite humano do contrato final.
+> Planejamento de referência. O [estado da implementação](implementation-status.md) descreve a versão experimental atual; critérios de produção não ficam atendidos apenas pela existência de código ou de testes simulados.
 
 Este plano transforma a [proposta de produto](product.md) e os [requisitos](requirements.md) em entregas verificáveis. Alterações de comportamento descobertas durante a implementação devem voltar ao contrato para revisão; o backlog não deve se tornar uma segunda fonte de requisitos.
 
@@ -12,17 +12,17 @@ O Markdown é a fonte canônica. O usuário não mantém arquivos `.feature`, e 
 
 O agente pode propor contratos, cenários e dispensas. A autoridade de aceite permanece separada de suas credenciais. Hooks locais orientam e controlam o fluxo conforme a capacidade real da plataforma; uma checagem protegida aplica a política de integração.
 
-## Próximo experimento proposto
+## Experimento implementado e próxima validação
 
-A [pesquisa dos runners](runner-feasibility.md) já produziu evidências iniciais de execução em Java, Python e Go. O próximo experimento deve integrar o fluxo em um caso pequeno, como cancelamento de pedido, com poucos requisitos e cenários no mesmo Markdown.
+A [pesquisa dos runners](runner-feasibility.md) produziu evidências iniciais de execução em Java, Python e Go. O fluxo local agora integra contrato, revisão no navegador, decisão assinada, execução e hooks; `specmd demo` cria um carrinho com dois cenários para experimentar. Os testes automáticos usam decisões sintéticas identificadas como fixtures.
 
-A recomendação para a primeira fatia é reutilizar Go/Godog, cuja API pública de conteúdo em memória funcionou no protótipo. Isso não remove Java e Python do MVP nem estabiliza automaticamente o formato ou a stack do núcleo. O primeiro ambiente de agentes deve ser escolhido após verificar seus hooks; o canal real de aceite precisa manter a autoridade humana fora das permissões do agente.
+O núcleo experimental usa Python e Behave, com bridges Java/Cucumber-JVM e Go/Godog. Codex é o primeiro host exercitado; Claude possui adaptador e testes de protocolo. A validação humana no ambiente do usuário, a autoridade autenticada isolada e o piloto comparativo continuam necessários.
 
 A demonstração deve permitir concluir com contrato aceito e cenários executados com sucesso; pedir novo aceite após mudança contratual; invalidar evidências pertinentes após mudança de código; e recusar cenários obrigatórios ausentes, filtrados, indefinidos ou ignorados. Deve também permitir aguardar revisão humana e retomar o trabalho sem declarar uma conclusão indevida. A checagem protegida permanece necessária para avaliar tentativas de contornar os controles locais.
 
 Incluir uma tarefa em que o agente inventa uma regra, escreve testes verdes e propõe documentá-la depois. Avaliar se a revisão expõe essa decisão e permite ao humano rejeitá-la, sem prometer detecção automática infalível. Comparar as tarefas com revisão humana e CI bem configurados, medindo desalinhamentos, esforço de revisão e bloqueios indevidos conforme o [plano de validação](validation-plan.md).
 
-Esse experimento deve demonstrar o funcionamento conjunto e iniciar a avaliação de utilidade. O [primeiro preflight experimental](experimental-codex.md) já implementa inventário, parsing e tradução de hooks, mas ainda não integra aceite humano, execução ou gate protegido. A recomendação não representa aceite humano de uma nova versão contratual.
+O experimento automatizado demonstra funcionamento conjunto com ator de agente simulado e testes reais de aplicação. O [guia de integração](experimental-codex.md) separa protocolo, instalação e execução com modelo real. Um template de CI e o modo `verify --require-real` não instalam fronteiras de permissões, regras de branch ou uma identidade humana autenticada. A implementação não representa aceite humano de uma nova versão contratual nem valida utilidade do produto.
 
 ## Marcos e dependências
 

@@ -3,6 +3,7 @@ import io
 import json
 from pathlib import Path
 import tempfile
+import types
 import unittest
 from unittest.mock import patch
 
@@ -86,6 +87,54 @@ class HookTests(unittest.TestCase):
         before = {"documents": [{"path": "old.md", "sha256": "a"}, {"path": "changed.md", "sha256": "b"}]}
         after = {"documents": [{"path": "new.md", "sha256": "a"}, {"path": "changed.md", "sha256": "c"}]}
         self.assertEqual(observed_changes(before, after), [{"kind": "added", "path": "new.md"}, {"kind": "modified", "path": "changed.md"}, {"kind": "removed", "path": "old.md"}])
+
+    def successful(self, demo=False):
+        return {"protocol_version": 1, "status": "demo_passed" if demo else "passed", "may_complete": True,
+                "verification_mode": "demo" if demo else "real", "assurance": "local_demo" if demo else "protected",
+                "manifest": {"documents": []}, "findings": []}
+
+    def test_only_consistent_verified_success_allows_normal_stop(self):
+        for demo in (False, True):
+            result = self.successful(demo)
+            self.assertEqual(handle_hook(self.payload(), lambda _: result), {})
+            state = json.loads((self.root / ".specmd/local/status.json").read_text())
+            self.assertTrue(state["may_complete"])
+            self.assertEqual(state["assurance"], result["assurance"])
+
+    def test_demo_context_explicitly_warns_that_it_is_not_real_verification(self):
+        reply = handle_hook(self.payload("SessionStart"), lambda _: self.successful(True))
+        message = reply["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("may_complete=true", message)
+        self.assertIn("SIMULADA", message)
+        self.assertIn("Não constitui garantia protegida", message)
+
+    def test_awaiting_evidence_is_repairable_and_does_not_approve(self):
+        reply = handle_hook(self.payload(), lambda _: self.result("awaiting_evidence"))
+        self.assertEqual(reply["decision"], "block")
+        self.assertIn("may_complete=false", reply["reason"])
+
+    def test_contradictory_completion_claims_are_rejected(self):
+        for change in (
+            {"status": "blocked"},
+            {"verification_mode": "demo"},
+            {"assurance": "local_demo"},
+            {"findings": [{"kind": "missing_test", "message": "Há pendências."}]},
+            {"may_complete": False},
+            {"may_complete": 1},
+            {"findings": None},
+        ):
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                handle_hook(self.payload(), lambda _: {**self.successful(), **change})
+
+    def test_default_checker_is_the_workflow_not_the_legacy_preflight(self):
+        from unittest.mock import Mock
+        check = Mock(return_value=self.result("waiting_human_review"))
+        workflow = types.ModuleType("specmd.workflow")
+        workflow.check_project = check
+        with patch.dict("sys.modules", {"specmd.workflow": workflow}):
+            response = handle_hook(self.payload())
+        check.assert_called_once_with(self.root)
+        self.assertFalse(response["continue"])
 
 
 if __name__ == "__main__":

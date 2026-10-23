@@ -1,4 +1,8 @@
-"""Translate local preflight into the synchronous Codex hook protocol."""
+"""Translate the workflow result into the synchronous Codex hook protocol.
+
+Hook approval does not grant contract approval. The persisted status is only an
+observation; check_project is responsible for verifying authority and evidence.
+"""
 
 import json
 import os
@@ -7,7 +11,7 @@ import sys
 import tempfile
 
 
-SUPPORTED_EVENTS = {"SessionStart", "PostToolUse", "Stop"}
+SUPPORTED_EVENTS = {"SessionStart", "PreToolUse", "PostToolUse", "Stop"}
 
 
 def find_root(cwd):
@@ -57,7 +61,7 @@ def save_status(root, result, payload):
                 previous = {}
         except (ValueError, OSError):
             previous = {}  # Reconstructible cache, not approval authority.
-    state = {**result, "state_kind": "observed_local_preflight",
+    state = {**result, "state_kind": "observed_workflow_check",
              "hook_event": payload["hook_event_name"],
              "observed_changes": observed_changes(previous.get("manifest", {}), result.get("manifest", {}))}
     with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=directory, delete=False) as stream:
@@ -75,7 +79,14 @@ def save_status(root, result, payload):
 
 
 def describe(result):
-    lines = [f"SpecMD: {result['status']}; may_complete=false."]
+    complete = str(result["may_complete"]).lower()
+    lines = [f"SpecMD: {result['status']}; may_complete={complete}."]
+    if result["status"] == "demo_passed":
+        lines.append("Modo DEMONSTRAÇÃO LOCAL: garantia SIMULADA, sem autoridade isolada. Não constitui garantia protegida.")
+        if result.get("test_mode"):
+            lines.append(f"Modo de execução dos testes: {result['test_mode']}.")
+    elif result["status"] == "passed":
+        lines.append("Modo real: a conclusão foi autorizada pela verificação atual do workflow.")
     for finding in result.get("findings", [])[:8]:
         location = finding.get("path", "")
         if finding.get("line"):
@@ -83,6 +94,25 @@ def describe(result):
         lines.append(f"- {location + ': ' if location else ''}{finding['message']}")
     lines.append("O estado em .specmd/local/status.json é uma observação, não um aceite humano.")
     return "\n".join(lines)
+
+
+def validate_result(result):
+    """Reject contradictory results instead of treating truthy values as proof."""
+    if not isinstance(result, dict) or type(result.get("may_complete")) is not bool:
+        raise ValueError("O workflow precisa informar may_complete como booleano.")
+    findings = result.get("findings")
+    if not isinstance(findings, list) or any(not isinstance(item, dict) or not isinstance(item.get("message"), str) for item in findings):
+        raise ValueError("Os diagnósticos do workflow precisam ser uma lista válida.")
+    successful = {"passed": ("real", "protected"), "demo_passed": ("demo", "local_demo")}
+    status = result.get("status")
+    if result["may_complete"]:
+        if status not in successful or findings:
+            raise ValueError("O workflow não pode autorizar conclusão com estado ou pendências inconsistentes.")
+        mode, assurance = successful[status]
+        if result.get("verification_mode") != mode or result.get("assurance") != assurance:
+            raise ValueError("A autorização de conclusão precisa identificar o modo e o nível de garantia corretos.")
+    elif status not in {"waiting_human_review", "awaiting_evidence", "blocked", "error"}:
+        raise ValueError("Estado incompatível com a conclusão pendente.")
 
 
 def error_response(message):
@@ -105,25 +135,32 @@ def handle_hook(payload, inspect=None):
     if root is None:
         return {}
     if inspect is None:
-        from .core import inspect_project
-        inspect = inspect_project
+        from .workflow import check_project
+        inspect = check_project
     result = inspect(root)
     if result["status"] == "inactive":
         result = {"protocol_version": 1, "stage": "completion", "status": "error", "may_complete": False,
                   "findings": [{"kind": "configuration_removed", "message": "A configuração do projeto anteriormente ativado foi removida."}]}
-    if result.get("may_complete") is not False:
-        raise ValueError("Este protótipo não pode conceder conclusão ou aceite.")
+    validate_result(result)
     save_status(root, result, payload)
     message = describe(result)
+    if event == "PreToolUse":
+        from .pretool import pretool_decision
+        return pretool_decision(root, payload, result)
     if event != "Stop":
-        context = (message + "\nNão declare a tarefa concluída. Corrija as pendências locais; quando aguardar revisão humana, "
-                   "explique a pendência e devolva o controle. Este protótipo não oferece emissão de aceite ou gate protegido.")
+        if result["may_complete"]:
+            context = message
+        else:
+            context = (message + "\nNão declare a tarefa concluída. Corrija as pendências; quando aguardar revisão humana, "
+                       "explique a pendência e devolva o controle.")
         return {"hookSpecificOutput": {"hookEventName": event, "additionalContext": context}}
+    if result["may_complete"]:
+        return {}
     if result["status"] == "waiting_human_review":
         return {"continue": False, "stopReason": message + "\nAguardando revisão humana; devolvendo o controle sem liberar a tarefa.",
                 "systemMessage": message}
-    if result["status"] not in {"blocked", "error"}:
-        raise ValueError("Estado inesperado do preflight.")
+    if result["status"] not in {"awaiting_evidence", "blocked", "error"}:
+        raise ValueError("Estado inesperado do workflow.")
     if payload["stop_hook_active"]:
         return {"continue": False, "stopReason": message + "\nPendências persistem após o feedback; devolvendo o controle para evitar um ciclo.",
                 "systemMessage": message}

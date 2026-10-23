@@ -7,19 +7,21 @@ This increment never authorizes task completion and never executes scenarios.
 from __future__ import annotations
 
 import hashlib
+from importlib.metadata import version
 import json
 import os
 from pathlib import Path
 import re
-import stat
-import tomllib
+import tempfile
 from typing import Any
 
-from behave.model import ScenarioOutline
+from behave.model import Rule, ScenarioOutline
 from behave.parser import ParserError, parse_feature
 from markdown_it import MarkdownIt
 import yaml
 from yaml.constructor import ConstructorError
+
+from .config import ConfigError, parse_config, read_regular_file as _read_regular_file
 
 
 _PRUNED_DIRECTORIES = frozenset({
@@ -29,6 +31,9 @@ _PRUNED_DIRECTORIES = frozenset({
 })
 _MARKDOWN_SUFFIXES = frozenset({".md", ".markdown"})
 _KINDS = frozenset({"behavioral", "reference", "mixed"})
+_CACHE_PARSER = "scanner-2|" + "|".join(
+    f"{name}={version(name)}" for name in ("behave", "markdown-it-py", "PyYAML")
+)
 _REQUIREMENT_ID = re.compile(
     r"SMD-(?:[A-Za-z0-9]+-)*REQ-[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*"
 )
@@ -91,36 +96,6 @@ def _result(status: str, may_complete: bool | None,
     }
 
 
-def _read_regular_file(path: Path) -> bytes:
-    """Read a regular file, rejecting final-component symlinks and replacements."""
-    before = path.lstat()
-    if not stat.S_ISREG(before.st_mode):
-        raise OSError("O caminho deve ser um arquivo regular, sem link simbólico")
-    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
-    descriptor = os.open(path, flags)
-    try:
-        opened = os.fstat(descriptor)
-        if (opened.st_dev, opened.st_ino) != (before.st_dev, before.st_ino):
-            raise OSError("O arquivo mudou durante a abertura; repita a inspeção")
-        chunks = []
-        while True:
-            chunk = os.read(descriptor, 65536)
-            if not chunk:
-                break
-            chunks.append(chunk)
-        after = os.fstat(descriptor)
-        current = path.lstat()
-        signature = lambda value: (
-            value.st_dev, value.st_ino, value.st_size,
-            value.st_mtime_ns, value.st_ctime_ns,
-        )
-        if signature(opened) != signature(after) or signature(after) != signature(current):
-            raise OSError("O arquivo mudou durante a leitura; repita a inspeção")
-        return b"".join(chunks)
-    finally:
-        os.close(descriptor)
-
-
 def _frontmatter(text: str, path: str,
                  findings: list[dict[str, Any]]) -> tuple[dict[str, Any] | None, str]:
     lines = text.splitlines(keepends=True)
@@ -173,7 +148,7 @@ def _frontmatter(text: str, path: str,
 
 
 def _inspect_document(data: bytes, path: str,
-                      findings: list[dict[str, Any]]) -> dict[str, Any]:
+                      findings: list[dict[str, Any]], *, advanced: bool = False) -> dict[str, Any]:
     document: dict[str, Any] = {
         "path": path,
         "sha256": hashlib.sha256(data).hexdigest(),
@@ -211,6 +186,11 @@ def _inspect_document(data: bytes, path: str,
         if token.type == "fence" and token.info.strip().split(maxsplit=1)
         and token.info.strip().split(maxsplit=1)[0].casefold() == "gherkin"
     ]
+    if document["kind"] == "reference" and (document["requirements"] or fences):
+        findings.append(_finding(
+            "classification_conflict",
+            "Documento reference declara requisitos ou blocos Gherkin; revise a classificação em vez de autoisentar o conteúdo.", path,
+        ))
     if document["kind"] in {"behavioral", "mixed"}:
         if not document["requirements"]:
             findings.append(_finding(
@@ -236,25 +216,13 @@ def _inspect_document(data: bytes, path: str,
         if feature is None:
             findings.append(_finding("gherkin_invalid", "Bloco sem funcionalidade Gherkin.", path, first_line))
             continue
-        if getattr(feature, "rules", None):
-            findings.append(_finding(
-                "gherkin_unsupported", "Rule/Regra ainda não é suportada pelo scanner inicial.", path, feature.line,
-            ))
-        plain_scenarios = []
-        for scenario in feature.scenarios:
-            if isinstance(scenario, ScenarioOutline):
-                findings.append(_finding(
-                    "gherkin_unsupported", "Scenario Outline/Esquema do Cenário ainda não é suportado.", path, scenario.line,
-                ))
-            else:
-                plain_scenarios.append(scenario)
-        if not plain_scenarios:
-            findings.append(_finding(
-                "scenarios_missing", "Bloco sem cenários simples verificáveis pelo scanner inicial.", path, feature.line,
-            ))
-        for scenario in plain_scenarios:
-            tags = {str(tag) for tag in feature.tags} | {str(tag) for tag in scenario.tags}
-            scenario_ids = sorted({str(tag) for tag in scenario.tags if _SCENARIO_ID.fullmatch(str(tag))})
+        initial_count = len(document["scenarios"])
+
+        def add_scenario(scenario: Any, inherited: set[str], template: Any = None,
+                         position: tuple[int, int] | None = None) -> None:
+            tags = inherited | {str(tag) for tag in scenario.tags}
+            identity_source = template if template is not None else scenario
+            scenario_ids = sorted({str(tag) for tag in identity_source.tags if _SCENARIO_ID.fullmatch(str(tag))})
             if not scenario_ids:
                 findings.append(_finding(
                     "scenario_id_missing", "Cenário exige uma tag SMD-…-SCN-… estável.", path, scenario.line,
@@ -268,18 +236,71 @@ def _inspect_document(data: bytes, path: str,
                 findings.append(_finding(
                     "requirement_missing", "Cenário sem vínculo com requisito SMD-…-REQ-….", path, scenario.line,
                 ))
-            if not scenario.steps:
+            background = getattr(scenario, "background", None)
+            step_count = len(scenario.steps) + len(getattr(background, "steps", []))
+            if not step_count:
                 findings.append(_finding(
                     "scenario_steps_missing", "Cenário sem passos não fornece comportamento verificável.", path, scenario.line,
                 ))
-            document["scenarios"].append({
-                "id": scenario_ids[0] if len(scenario_ids) == 1 else None,
+            identity = scenario_ids[0] if len(scenario_ids) == 1 else None
+            item = {
+                "id": f"{identity}:row:{position[0]}:{position[1]}" if identity and position else identity,
                 "name": scenario.name,
                 "line": scenario.line,
                 "requirements": requirement_ids,
                 "block": block,
-                "steps": len(scenario.steps),
-            })
+                "steps": step_count,
+            }
+            if template is not None:
+                item.update({
+                    "template_id": identity,
+                    "definition_line": template.line,
+                    "example_index": position[0],
+                    "row_index": position[1],
+                })
+            document["scenarios"].append(item)
+
+        def visit(container: Any, inherited: set[str]) -> None:
+            for scenario in getattr(container, "run_items", container.scenarios):
+                if isinstance(scenario, Rule):
+                    if not advanced:
+                        findings.append(_finding(
+                            "gherkin_unsupported", "Rule/Regra exige configuração schema 2.", path, scenario.line,
+                        ))
+                    else:
+                        visit(scenario, inherited | {str(tag) for tag in scenario.tags})
+                elif isinstance(scenario, ScenarioOutline):
+                    if not advanced:
+                        findings.append(_finding(
+                            "gherkin_unsupported", "Scenario Outline/Esquema do Cenário exige configuração schema 2.", path, scenario.line,
+                        ))
+                        continue
+                    positions = [
+                        (example_index, row_index)
+                        for example_index, example in enumerate(scenario.examples, start=1)
+                        if example.table is not None
+                        for row_index, _ in enumerate(example.table.rows, start=1)
+                    ]
+                    try:
+                        concrete = list(scenario.scenarios)
+                    except (LookupError, ValueError, TypeError, AssertionError) as exc:
+                        findings.append(_finding("gherkin_invalid", str(exc), path, scenario.line))
+                        continue
+                    if not positions or len(concrete) != len(positions):
+                        findings.append(_finding(
+                            "scenarios_missing", "Esquema do Cenário exige linhas de Exemplos concretas e mapeáveis.", path, scenario.line,
+                        ))
+                        continue
+                    for instance, position in zip(concrete, positions):
+                        add_scenario(instance, inherited, scenario, position)
+                else:
+                    add_scenario(scenario, inherited)
+
+        visit(feature, {str(tag) for tag in feature.tags})
+        if len(document["scenarios"]) == initial_count:
+            findings.append(_finding(
+                "scenarios_missing", "Bloco sem cenários concretos verificáveis pelo scanner.", path, feature.line,
+            ))
     return document
 
 
@@ -287,6 +308,7 @@ def _validate_links(documents: list[dict[str, Any]], findings: list[dict[str, An
     seen_documents: dict[str, str] = {}
     requirements: dict[str, tuple[str, int]] = {}
     scenarios: dict[str, tuple[str, int]] = {}
+    templates: dict[str, tuple[str, int]] = {}
     for document in documents:
         path = document["path"]
         document_id = document["id"]
@@ -310,6 +332,15 @@ def _validate_links(documents: list[dict[str, Any]], findings: list[dict[str, An
             identifier = scenario["id"]
             if identifier is None:
                 continue
+            template = scenario.get("template_id", identifier)
+            declaration = (path, scenario.get("definition_line", scenario["line"]))
+            if template in templates and templates[template] != declaration:
+                earlier = templates[template]
+                findings.append(_finding(
+                    "scenario_id_duplicate", f"Identidade de cenário {template} também declarada em {earlier[0]}:{earlier[1]}.", path, declaration[1],
+                ))
+            else:
+                templates[template] = declaration
             if identifier in scenarios:
                 earlier = scenarios[identifier]
                 findings.append(_finding(
@@ -335,11 +366,60 @@ def _validate_links(documents: list[dict[str, Any]], findings: list[dict[str, An
             ))
 
 
-def inspect_project(root: Path) -> dict[str, Any]:
+def _cache_snapshot(root: Path, schema: int, document: dict[str, Any],
+                    findings: list[dict[str, Any]]) -> None:
+    """Write an advisory parse snapshot, never a trusted validation result.
+
+    Local cache files can be edited by the agent. Consequently the scanner
+    always reparses source before deciding; these records are an incremental
+    index foundation, not yet a trusted semantic parse-reuse optimization.
+    """
+    cache_root = root / ".specmd"
+    cache_dir = cache_root / "cache"
+    temporary: str | None = None
+    try:
+        if cache_root.is_symlink() or cache_dir.is_symlink():
+            return
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        key = {
+            "sha256": document["sha256"], "path": document["path"],
+            "parser": _CACHE_PARSER, "config_schema": schema,
+        }
+        digest = hashlib.sha256(json.dumps(key, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        target = cache_dir / f"{digest}.json"
+        payload = {"schema": 1, "key": key, "document": document, "findings": findings, "authority": False}
+        encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        if target.is_symlink():
+            return
+        if target.exists():
+            try:
+                if _read_regular_file(target) == encoded:
+                    return
+            except OSError:
+                return
+        descriptor, temporary = tempfile.mkstemp(prefix=".parse-", suffix=".tmp", dir=cache_dir)
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(encoded)
+        os.replace(temporary, target)
+        temporary = None
+    except (OSError, UnicodeError, ValueError):
+        # A cache failure must not change the actual scan or create approval.
+        return
+    finally:
+        if temporary is not None:
+            try:
+                os.unlink(temporary)
+            except OSError:
+                pass
+
+
+def inspect_project(root: Path, use_cache: bool = False) -> dict[str, Any]:
     """Inspect an explicitly opted-in project without changing any project file.
 
-    ``specmd.toml`` opts in with exactly ``schema = 1``. Valid syntax is not
-    approval: this increment always leaves active projects unable to complete.
+    Schema 1 preserves the original simple-scenario scanner. Schema 2 enables
+    project identity, runner configuration, Rule and concrete outline rows.
+    Valid syntax is not approval: active projects cannot complete here.
+    Default inspection writes nothing; use_cache only writes advisory records.
     """
     root = Path(root).absolute()
     config_path = root / "specmd.toml"
@@ -351,10 +431,8 @@ def inspect_project(root: Path) -> dict[str, Any]:
         return _result("inactive", None)
     try:
         config_bytes = _read_regular_file(config_path)
-        config = tomllib.loads(config_bytes.decode("utf-8"))
-        if set(config) != {"schema"} or type(config["schema"]) is not int or config["schema"] != 1:
-            raise ValueError("A configuração inicial aceita somente schema = 1, sem outras opções.")
-    except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError, ValueError) as exc:
+        config = parse_config(config_bytes)
+    except (OSError, ConfigError) as exc:
         return _result("error", False, [_finding("config_invalid", str(exc), "specmd.toml")])
 
     findings: list[dict[str, Any]] = []
@@ -400,7 +478,11 @@ def inspect_project(root: Path) -> dict[str, Any]:
                 complete_snapshot = False
                 findings.append(_finding("read_error", "Não foi possível ler um documento regular e estável.", relative))
                 continue
-            documents.append(_inspect_document(raw, relative, findings))
+            start = len(findings)
+            document = _inspect_document(raw, relative, findings, advanced=config["schema"] == 2)
+            documents.append(document)
+            if use_cache:
+                _cache_snapshot(root, config["schema"], document, findings[start:])
 
     documents.sort(key=lambda item: item["path"])
     _validate_links(documents, findings)
@@ -424,3 +506,44 @@ def inspect_project(root: Path) -> dict[str, Any]:
         result["manifest"] = manifest
         result["manifest_sha256"] = hashlib.sha256(encoded).hexdigest()
     return result
+
+
+def extract_features(root: Path, inspection: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    """Return in-memory Gherkin blocks padded to their original Markdown lines.
+
+    A supplied inspection is checked against a fresh inventory, including new
+    and removed documents. Extraction never creates .feature files or approval.
+    Callers must still enforce human acceptance and runtime evidence policies.
+    """
+    root = Path(root).absolute()
+    current = inspect_project(root, use_cache=False)
+    if current["status"] == "inactive":
+        return []
+    if current["status"] == "error" or current["manifest_sha256"] is None:
+        raise ValueError("Não foi possível obter um snapshot contratual completo para extração.")
+    if inspection is not None and inspection.get("manifest_sha256") != current["manifest_sha256"]:
+        raise ValueError("O contrato mudou desde a inspeção; execute uma nova revisão.")
+    features: list[dict[str, Any]] = []
+    for document in current["documents"]:
+        if document["kind"] not in {"behavioral", "mixed"}:
+            continue
+        raw = _read_regular_file(root / document["path"])
+        if hashlib.sha256(raw).hexdigest() != document["sha256"]:
+            raise ValueError("O documento mudou durante a extração; repita a inspeção.")
+        text = raw.decode("utf-8")
+        _, body = _frontmatter(text, document["path"], [])
+        block = 0
+        for token in MarkdownIt().parse(body):
+            language = token.info.strip().split(maxsplit=1)
+            if token.type != "fence" or not language or language[0].casefold() != "gherkin":
+                continue
+            block += 1
+            first_line = token.map[0] + 2
+            features.append({
+                "path": document["path"], "block": block, "line": first_line,
+                "content": "\n" * (first_line - 1) + token.content,
+            })
+    config_raw = _read_regular_file(root / "specmd.toml")
+    if hashlib.sha256(config_raw).hexdigest() != current["manifest"]["config_sha256"]:
+        raise ValueError("A configuração mudou durante a extração; repita a inspeção.")
+    return features

@@ -1,8 +1,8 @@
 # Inventário e análise incremental
 
-> Estado: proposta inicial para revisão. O índice descrito aqui ainda não foi implementado. Classificações e exemplos não constituem aceite humano.
+> Estado: inventário determinístico e snapshots locais implementados experimentalmente. O cache é consultivo e a fonte sempre é reanalisada. Reutilização confiável de parsing, análise semântica incremental e ganhos de desempenho ainda não foram demonstrados. Consulte o [estado de implementação](implementation-status.md).
 
-O SpecMD precisa descobrir os documentos do projeto e manter seu estado sem reinterpretar todo o repositório a cada interação. O inventário fornece os caminhos e relações; o processamento incremental reutiliza resultados que continuam válidos.
+O SpecMD descobre os documentos do projeto e produz um inventário de caminhos, conteúdo e relações declaradas. A evolução pretendida é evitar reinterpretações desnecessárias; o incremento atual prioriza reconstrução e conferência da fonte antes de qualquer decisão.
 
 O objetivo é economizar leitura, parsing, chamadas a modelos e execução de verificações, preservando a detecção de novos documentos e mudanças que exigem revisão.
 
@@ -12,7 +12,7 @@ O objetivo é economizar leitura, parsing, chamadas a modelos e execução de ve
 | --- | --- | --- |
 | Inventário | Caminhos, conteúdo observado, classificação declarada e relações conhecidas. | Descreve o estado encontrado; pode ser reconstruído. |
 | Aceite | Identidade autenticada, escopo e versão exata aprovados pelo humano. | Vem do mecanismo protegido de aprovação. |
-| Cache de análise | AST, requisitos extraídos, diagnósticos e resultados associados às entradas utilizadas. | Acelera análises; nunca concede aceite. |
+| Cache de análise | Atualmente, snapshots dos documentos extraídos e diagnósticos com identidade de fonte/parser. | Consultivo: não é usado para omitir a validação da fonte nem para conceder aceite. |
 
 Um documento analisado pode continuar sem aprovação. Um documento aprovado pode precisar de nova análise porque uma dependência ou política mudou. Apagar ou editar o índice local não pode transformar uma pendência em aprovação.
 
@@ -20,7 +20,16 @@ Os contratos de confiança são detalhados em [Aceite e confiança](approval-and
 
 ## Descoberta e escopo
 
-A política inicial deve definir quais arquivos Markdown próprios do projeto pertencem ao inventário e quais caminhos estão excluídos. A seleção precisa ser aprovada e protegida: o agente não pode excluir um caminho para esconder uma alteração.
+O scanner só é ativado quando existe `specmd.toml` na raiz. A configuração schema 1 preserva o preflight simples e aceita somente `schema = 1`. A configuração schema 2 exige `project_id`, aceita `repository_id` opcional e acrescenta runners, rastreabilidade e política de evidências. O frontmatter de cada documento permanece `specmd.schema: 1`; são esquemas distintos, descritos em [Formato documental](format.md).
+
+No incremento atual, a descoberta usa `os.walk` ordenado, considera `.md` e `.markdown` sem distinguir caixa na extensão e inclui arquivos locais ainda não adicionados ao Git. Não existem exclusões configuráveis pelo agente. São podados os diretórios de nomes fixos:
+
+```text
+.git .hg .svn .venv venv node_modules target __pycache__ .specmd
+.pytest_cache .mypy_cache .ruff_cache build dist
+```
+
+Links simbólicos de documentos e diretórios dentro do escopo são recusados e não seguidos. Essas podas fazem parte da implementação e precisam entrar na revisão do verificador; não são uma política dinâmica de exclusões já aprovada por um humano.
 
 O inventário deve considerar:
 
@@ -30,30 +39,34 @@ O inventário deve considerar:
 - Remoções e renomeações.
 - Mudanças na política de descoberta e nas exclusões.
 
-Dependências vendorizadas, diretórios de pacotes e documentação gerada podem ser excluídos por política explícita. Não é necessário percorrer todos os arquivos de uma dependência excluída a cada hook. A política registra o caminho, a justificativa e a versão da exclusão; o gate confere que a política em vigor é autorizada.
+Uma política configurável de exclusões com caminho, justificativa, versionamento e aceite é uma evolução de desenho. Ela não está disponível como mecanismo para retirar arquivos da análise neste incremento.
 
-O `.gitignore` serve ao fluxo do Git e não substitui a política do SpecMD. Ignorar um documento no Git não deve conceder uma dispensa contratual. O tratamento de arquivos Markdown não versionados e ignorados dentro de caminhos próprios precisa ser definido na política e verificado no protótipo.
+O `.gitignore` serve ao fluxo do Git e não substitui a descoberta do SpecMD. Markdown próprio em diretórios não podados é encontrado mesmo quando não está versionado ou foi ignorado pelo Git. Ignorar um documento no Git não concede dispensa contratual.
 
-O MVP pode começar com `.md`. Suporte a outras extensões Markdown, normalização de caminhos, links simbólicos e diferenças de caixa entre sistemas de arquivos são decisões explícitas de implementação; não devem ampliar ou reduzir silenciosamente o universo protegido.
+Os caminhos do manifesto são relativos e usam separador `/`. O caminho participa do digest: remover ou renomear um documento muda a identidade do conjunto, mesmo se seus bytes permanecerem iguais. Não há uma promessa de equivalência entre caminhos que diferem apenas em caixa em sistemas de arquivos distintos.
 
 ## Classificação e custo de análise
 
 | Situação | Monitoramento | Análise necessária |
 | --- | --- | --- |
-| Comportamental, aceito e inalterado | Conferir identidade e relações relevantes. | Reutilizar resultados compatíveis. |
+| Comportamental, aceito e inalterado | Conferir identidade e relações relevantes. | O scanner atual refaz o parsing; reutilização confiável é uma evolução. |
 | Comportamental alterado | Registrar a nova versão e invalidar o aceite aplicável. | Reanalisar obrigações, cenários e relações afetadas. |
-| Informativo com dispensa aceita, inalterado | Continuar verificando a identidade do conteúdo. | Dispensar reinterpretação semântica enquanto as entradas continuarem válidas. |
+| Informativo com dispensa aceita, inalterado | Continuar verificando a identidade do conteúdo. | Não exige Gherkin; o scanner ainda confere metadados e conteúdo explícito. Não há análise semântica por IA implementada. |
 | Informativo alterado | Tornar a nova versão pendente. | Reavaliar classificação e justificativa; o texto pode ter adquirido regras de comportamento. |
 | Novo ou sem classificação | Adicionar ao inventário como pendente. | Propor classificação e submeter a decisão ao usuário. |
-| Fora do escopo por política autorizada | Conferir a validade da política de exclusão. | Não analisar o conteúdo excluído. |
+| Fora do escopo pelas podas fixas atuais | A política está na versão do verificador. | Não percorrer o conteúdo podado. Exclusões configuráveis aceitas ainda são desenho futuro. |
 
 A dispensa de Gherkin não equivale à exclusão do inventário. Um guia informativo aceito continua monitorado, pois uma edição futura pode introduzir uma regra de negócio.
 
 Documentos mistos exigem vínculos para suas partes comportamentais. A classificação do arquivo inteiro não pode esconder uma obrigação contida em uma seção. O formato dessas declarações é proposto em [Formato documental](format.md).
 
+Um documento `reference` com cabeçalho explícito de requisito ou cerca Gherkin produz conflito de classificação e bloqueio estrutural. O aceite da dispensa integra o fluxo versionado de revisão e assinatura, não uma propriedade autoatribuída no índice.
+
 ## Entrada de inventário
 
-Uma entrada deve permitir recuperar, pelo menos:
+Uma entrada implementada pelo scanner contém caminho, SHA-256, ID, classificação, requisitos com linhas e cenários com IDs, blocos, linhas, vínculos e contagem de passos. Essa contagem não indica execução. No schema 2, Outline gera instâncias `<base_id>:row:<exemplo>:<linha de dados>`; cada uma mantém sua identidade-base e a linha da declaração, além da linha concreta da tabela. Requisitos herdados por Rule e Examples continuam explícitos nos registros.
+
+O lifecycle associa separadamente aceites e evidências. A evolução do inventário pretende permitir recuperar também:
 
 - Identificador estável do documento e caminho observado.
 - Hash do conteúdo observado e referência ao snapshot de origem.
@@ -67,13 +80,25 @@ Referências a aceites são resolvidas no mecanismo confiável; um campo local c
 
 ## Identidade do conteúdo
 
-A identidade contratual deve seguir a regra descrita em [Aceite e confiança](approval-and-trust.md). Para revisões Git, a referência recomendada é o conteúdo exato do snapshot, evitando que conversões de finais de linha do checkout produzam decisões diferentes entre máquinas.
+A identidade contratual segue a regra descrita em [Aceite e confiança](approval-and-trust.md). A implementação calcula SHA-256 dos bytes efetivamente lidos do checkout, sem normalizar finais de linha ou reinterpretar o significado do Markdown. O manifesto do scanner tem `schema: 1`, `config_sha256` e a lista ordenada de pares `path`/`sha256`, serializada como JSON UTF-8 com chaves ordenadas e separadores compactos.
+
+No schema 2, o workflow inclui ainda `traceability_sha256`, vinculado ao mapa por padrão em `.specmd/traceability.json`. A pasta `.specmd` fica fora da descoberta de Markdown, mas esse mapa é lido explicitamente pelo lifecycle: sua alteração muda a versão contratual e invalida as evidências correspondentes. O caminho pode ser definido em `traceability.map`; a política estrita exige vínculos de código/testes com requisitos e cenários conhecidos.
+
+`repository_id` permite vincular os recibos a uma identidade lógica estável entre checkouts, sem usar o caminho absoluto como identidade principal. Esse campo não comprova propriedade do repositório nem torna um cache confiável.
 
 Data de modificação, tamanho do arquivo e eventos do sistema podem reduzir trabalho durante uma sessão, mas são indícios. O gate protegido precisa conferir identidades de conteúdo sobre o snapshot efetivo, sem depender exclusivamente desses metadados.
 
-Uma renomeação pode reaproveitar o parsing do conteúdo, mas altera caminho e possivelmente escopo. Reutilizar o AST não significa reutilizar automaticamente o aceite.
+Uma renomeação altera caminho e possivelmente escopo. Mesmo uma futura reutilização de parsing por conteúdo não poderá reutilizar automaticamente o aceite.
 
-## Invalidação do cache
+## Cache implementado e seus limites
+
+`inspect_project(root)` não escreve cache. A opção explícita `use_cache=True` permite snapshots em `.specmd/cache`. A chave atual inclui SHA-256 do documento, caminho, schema da configuração e fingerprint da versão do scanner/Behave/MarkdownIt/PyYAML.
+
+Esses arquivos são editáveis localmente pelo agente. Por isso, o scanner **sempre lê e reanalisa a fonte** antes de decidir. Conteúdo adulterado ou JSON inválido no cache não remove diagnósticos, não concede aprovação e não marca cenários como executados. O snapshot é atualizado quando difere da análise reconstruída; falhas de cache não mudam o resultado da inspeção. Diretórios de cache simbólicos não são usados para escrita.
+
+Esse mecanismo fornece registros derivados para evolução incremental, mas **não entrega ainda o ganho de evitar parsing**. Não há cache semântico por IA, dependências inferidas, watcher persistente ou limpeza automática de entradas antigas implementados como otimização.
+
+## Invalidação planejada para reutilização confiável
 
 Cada tipo de análise deve declarar suas entradas. Uma chave conceitual pode incluir:
 
@@ -92,11 +117,13 @@ Isso não fixa um esquema de serialização. A implementação deve documentar q
 | Política ou versão de analisador | Resultados calculados sob a versão anterior, conforme suas entradas. |
 | Código, steps, fixtures ou configuração de execução | Evidências de teste afetadas, mesmo que os documentos estejam intactos. |
 
-No MVP, invalidar todo o cache semântico após uma mudança de política é uma escolha conservadora aceitável. Otimizações posteriores precisam preservar a mesma decisão do processamento completo.
+Quando houver reutilização confiável, invalidar todo o cache semântico após uma mudança de política é uma escolha conservadora aceitável. Otimizações posteriores precisam preservar a mesma decisão do processamento completo; a versão atual evita esse risco reanalisando a fonte.
 
 O cache de parsing documental e o cache de execução de testes são distintos. Um documento inalterado não torna atual um resultado de teste executado contra outra versão do código, ambiente ou runner.
 
-## Ciclo incremental
+## Ciclo incremental pretendido
+
+O fluxo abaixo descreve a evolução desejada, não uma otimização já demonstrada:
 
 1. Descobrir diferenças desde o último estado observado.
 2. Atualizar inventário, removendo entradas obsoletas e adicionando arquivos novos.
@@ -107,20 +134,20 @@ O cache de parsing documental e o cache de execução de testes são distintos. 
 
 Watchers são gatilhos úteis, mas eventos podem ser perdidos. Uma escrita por shell, outra ferramenta ou outro agente também pode modificar o projeto. Por isso, inicialização, fechamento da tarefa e CI exigem reconciliação com o estado real do escopo.
 
-A reconciliação completa é do inventário protegido. Ela não exige executar novamente toda análise semântica: resultados compatíveis podem continuar sendo reutilizados depois da conferência de identidade.
+A implementação atual reconcilia o inventário e refaz o parsing estrutural. Antes da extração para execução, `extract_features` confere uma inspeção fresca, rejeita um manifesto anterior que ficou desatualizado e entrega os blocos em memória com linhas preenchidas para preservar a origem no `.md`.
 
 ## Determinismo e assistência por IA
 
 São verificações determinísticas: descobrir arquivos pela política, comparar hashes, validar referências e IDs, conferir sintaxe Gherkin e relacionar evidências aos snapshots declarados.
 
-São análises heurísticas: sugerir classificação, encontrar possíveis requisitos em prosa, apontar lacunas entre texto e cenários e sugerir relações de impacto. Essas sugestões apoiam a revisão, sem estabelecer automaticamente a completude do contrato ou conceder dispensa.
+São análises heurísticas planejadas: sugerir classificação, encontrar possíveis requisitos em prosa, apontar lacunas entre texto e cenários e sugerir relações de impacto. O scanner atual não executa um modelo para realizar essas inferências. Quando disponíveis, tais sugestões apoiarão a revisão, sem estabelecer automaticamente a completude do contrato ou conceder dispensa.
 
 Markdown permanece a fonte canônica. Parsing e indexação não devem exigir arquivos `.feature`, inclusive como etapa temporária obrigatória da execução. O índice pode guardar uma representação derivada dos blocos Gherkin em memória ou cache reconstruível, mantendo a origem no `.md`.
 
 ## Medição e evolução
 
-O protótipo deve comparar processamento completo e incremental sobre os mesmos snapshots. A decisão de aprovação/bloqueio precisa ser equivalente para as verificações determinísticas.
+Uma otimização futura deve comparar processamento completo e incremental sobre os mesmos snapshots. A decisão de aprovação/bloqueio precisa ser equivalente para as verificações determinísticas. Os testes atuais verificam que o cache adulterado não muda a decisão e que conteúdo novo, alterado, removido ou renomeado muda o inventário quando aplicável; não constituem um benchmark de performance.
 
 Medir tempo de descoberta, leitura e parsing, taxa de reutilização, chamadas a modelos evitadas, duração de reconciliação e divergências entre as duas formas de processamento. Casos de teste e experimentos estão em [Plano de validação](validation-plan.md).
 
-O MVP pode usar um índice local simples. O formato persistido e a necessidade de banco local devem ser escolhidos após observar volume, concorrência e custo de reconstrução. São dados derivados; a história contratual e os aceites precisam continuar recuperáveis sem esse cache.
+O formato de uma reutilização confiável e a necessidade de banco local devem ser escolhidos após observar volume, concorrência e custo de reconstrução. São dados derivados; a história contratual e os aceites precisam continuar recuperáveis sem esse cache. O [estado de implementação](implementation-status.md) registra os limites operacionais do lifecycle e dos verificadores atuais.

@@ -1,0 +1,80 @@
+name: SpecMD
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests-and-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: python -m pip install -e .
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Verify opted-in contracts with external authority
+        if: ${{ hashFiles('specmd.toml') != '' }}
+        env:
+          SPECMD_TRUST_STORE_JSON: ${{ vars.SPECMD_TRUST_STORE_JSON }}
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import sys
+
+          raw = os.environ.get("SPECMD_TRUST_STORE_JSON", "")
+          if not raw.strip():
+              sys.exit("SPECMD_TRUST_STORE_JSON must contain the externally managed trust store.")
+          try:
+              store = json.loads(raw)
+          except ValueError:
+              sys.exit("SPECMD_TRUST_STORE_JSON is not valid JSON.")
+          destination = Path(os.environ["RUNNER_TEMP"]) / "specmd-trust.json"
+          destination.write_text(json.dumps(store), encoding="utf-8")
+          destination.chmod(0o600)
+          PY
+          specmd verify --root . --require-real --trust "${RUNNER_TEMP}/specmd-trust.json"
+
+  native-bridges:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.0"
+          cache-dependency-path: adapters/go/go.sum
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install Python bridge caller
+        run: python -m pip install -e .
+      - name: Test and build Godog bridge
+        working-directory: adapters/go
+        run: |
+          go test ./...
+          go build -o "${RUNNER_TEMP}/specmd-go-example" ./cmd/specmd-example
+      - name: Build Cucumber-JVM bridge
+        working-directory: adapters/java
+        run: |
+          bash prepare.sh
+          bash build.sh
+      - name: Real native engines through the core
+        run: |
+          python research/workflow/probe_bridges.py \
+            --go-executable "${RUNNER_TEMP}/specmd-go-example" \
+            --java-runner adapters/java/run.sh \
+            --output "${RUNNER_TEMP}/native-bridges.json"

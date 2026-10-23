@@ -47,7 +47,7 @@ def run_probe(hook_bootstrap=None):
 
         _, inactive = hook("unconfigured_noop")
         assert inactive is None
-        exit_code, initialized = cli("initialize", "init")
+        exit_code, initialized = cli("initialize", "init", "--legacy")
         assert exit_code == 0 and initialized["may_complete"] is False
         (project / "unclassified.md").write_text("# Uma regra ainda não classificada\n", encoding="utf-8")
         exit_code, blocked = cli("unclassified_document", "check")

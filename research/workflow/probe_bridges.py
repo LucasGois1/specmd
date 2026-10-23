@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+"""Exercise real native bridges through SpecMD's strict runner protocol."""
+from datetime import datetime, timezone
+import argparse
+import hashlib
+import json
+from pathlib import Path
+import sys
+import tempfile
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "src"))
+from specmd.core import inspect_project
+from specmd.runner import execute_project
+
+
+CONTRACT = '''---
+specmd:
+  schema: 1
+  id: SMD-NATIVE-DOC-001
+  kind: behavioral
+---
+
+# Integração de execução
+## SMD-NATIVE-REQ-001 — Somar valores
+O resultado deve ser a soma dos valores informados.
+
+```gherkin
+# language: pt
+@SMD-NATIVE-REQ-001
+Funcionalidade: Soma
+  @SMD-NATIVE-SCN-001
+  Cenário: Somar com a aplicação
+    Dado os números 2 e 3
+    Quando a aplicação somar os números
+    Então o resultado deve ser 5
+```
+'''
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--go-executable", type=Path)
+    parser.add_argument("--java-runner", type=Path)
+    parser.add_argument("--output", type=Path, default=ROOT / ".specmd/local/native-bridges.json")
+    args = parser.parse_args()
+    commands = []
+    if args.go_executable:
+        commands.append(("go", [str(args.go_executable.resolve(strict=True))]))
+    if args.java_runner:
+        commands.append(("java", ["bash", str(args.java_runner.resolve(strict=True)), "--glue", "specmd.example"]))
+    if not commands:
+        parser.error("Informe ao menos um executável real já compilado.")
+    cases = []
+    with tempfile.TemporaryDirectory(prefix="specmd-native-bridge-") as temporary:
+        root = Path(temporary)
+        (root / "specmd.toml").write_text('schema = 2\nproject_id = "native-bridge-probe"\n')
+        document = root / "contract.md"
+        for language, command in commands:
+            for case, text, expected in (
+                ("passes", CONTRACT, True),
+                ("assertion_failure", CONTRACT.replace("ser 5", "ser 999"), False),
+                ("undefined_step", CONTRACT.replace("a aplicação somar os números", "um passo não implementado"), False),
+            ):
+                document.write_text(text, encoding="utf-8")
+                report = execute_project(root, inspect_project(root), {"runners": [
+                    {"id": language, "language": language, "command": command, "timeout": 60}]})
+                cases.append({"language": language, "case": case, "expected_passed": expected,
+                              "expectation_met": report["passed"] == expected, "report": report})
+        no_feature_files = not list(root.rglob("*.feature"))
+    report = {"schema": 1, "observed_at_utc": datetime.now(timezone.utc).isoformat(),
+              "scope": "Real Java/Go engines through execute_project, with example application steps. No LLM, human acceptance or protected deployment exercised.",
+              "cases": cases, "no_feature_files": no_feature_files,
+              "passed": no_feature_files and all(case["expectation_met"] for case in cases)}
+    sources = [Path(__file__), *sorted((ROOT / "src/specmd").glob("*.py"))]
+    sources += [p for p in (ROOT / "adapters").rglob("*") if p.is_file()
+                and ".work" not in p.parts and p.suffix in {".go", ".java", ".sh", ".xml", ".mod", ".sum"}]
+    report["source_sha256"] = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in sources}
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps({"passed": report["passed"], "cases": [
+        {k: case[k] for k in ("language", "case", "expectation_met")} for case in cases], "output": str(args.output)}, indent=2))
+    return 0 if report["passed"] else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

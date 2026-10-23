@@ -1,6 +1,6 @@
 {
   "name": "specmd",
-  "version": "0.1.0",
-  "description": "Preflight local de contratos Markdown para projetos que optam por SpecMD. Aceite humano e verificação protegida ainda não implementados.",
+  "version": "0.2.0",
+  "description": "Contratos Markdown com revisão por versão, evidências e fluxo experimental para agentes.",
   "hooks": "./hooks/hooks.json"
 }

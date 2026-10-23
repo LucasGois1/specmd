@@ -19,8 +19,11 @@ import tempfile
 REPOSITORY = Path(__file__).resolve().parent.parent
 FIXED_FILES = (
     ".codex-plugin/plugin.json",
+    ".claude-plugin/plugin.json",
     "hooks/hooks.json",
+    "integrations/claude/hooks.json",
     "scripts/codex_hook.py",
+    "scripts/claude_hook.py",
     "pyproject.toml",
 )
 MANIFEST = "bundle-manifest.json"

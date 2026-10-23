@@ -5,213 +5,120 @@ specmd:
   kind: mixed
 ---
 
-# Preflight experimental no Codex
+# Integração experimental com Codex
 
-Este é o primeiro incremento local do SpecMD, versão `0.1.0`: uma CLI Python e um pacote de plugin Codex para inspecionar contratos Markdown em projetos que optam por usá-lo. O preflight verifica estrutura documental e registra mudanças observadas. **Não concede aceite humano, não executa os cenários e não autoriza concluir tarefas.**
+O adaptador apresenta ao agente o estado do fluxo SpecMD: documentação, revisão de uma versão, rastreabilidade e evidências de execução. O [quickstart](quickstart.md) permite experimentar esse ciclo primeiro pela CLI e pelo navegador.
 
-O fluxo completo descrito em [Produto](product.md), [Aceite e confiança](approval-and-trust.md) e [Integrações](integrations.md) continua em desenvolvimento. Os runners executados em [research/](../research/README.md) são experimentos separados; o preflight não os chama.
+O projeto continua experimental. `demo_passed` representa uma demonstração local, sem provar uma autoridade humana isolada. O caminho `passed` exige execução real fresca, confiança externa provisionada como protegida e política estrita. A implantação dessa separação depende do operador e do ambiente; veja [Aceite e confiança](approval-and-trust.md).
 
-## Estado da validação
+## Evidência de integração
 
-| Item | Estado desta revisão |
-| --- | --- |
-| Scanner e tradução de hooks | 49 testes unitários passaram, sem falhas, erros ou skips: 40 do núcleo e 9 do adaptador. |
-| CLI Python instalada e bootstrap do hook | Os mesmos 11 casos de integração com Markdown real passaram usando a fonte e o bundle gerado, sem sessão com modelo ou execução BDD. Não são 22 casos distintos. |
-| Pacote e instalação pelo Codex | Bundle por allowlist instalado e habilitado como `specmd@specmd-local`, versão `0.1.0`; três hooks listados nativamente. |
-| Histórico da instalação | A primeira tentativa falhou por filesystem somente leitura. Com o ambiente posteriormente gravável, a instalação foi concluída, sem alterar `HOME` ou `CODEX_HOME`. |
-| Trust restrito ao ensaio | Listagem nativa confirmou os handlers como confiáveis somente por flags de sessão; trust persistente não foi alterado. |
-| Hooks nativos com backend controlado | CLI Codex real executou `SessionStart` e `Stop`; bloqueio produziu duas paradas e espera humana uma. As respostas vieram de fixture HTTP determinístico, sem modelo LLM real. |
-| Dispatch do plugin instalado | Três casos passaram no CLI real, usando o cache instalado e backend local determinístico. `SessionStart` forneceu contexto, `PostToolUse` registrou alteração feita por ferramenta real e `Stop` preservou a pendência. |
-| Sessão com serviço de modelo configurado | Tentativa retornou `401` por autenticação não interpretada pelo serviço. `SessionStart` ocorreu, mas não houve resposta de modelo nem ciclo de `Stop` completo. |
-| Trust humano pelo `/hooks` | Não demonstrado neste relatório; precisa de ação do usuário na interface. |
-| Aceite de contratos, execução de cenários e gate de CI | Não implementados neste incremento. |
+O Codex CLI `0.163.0` reconheceu, instalou e habilitou `specmd@specmd-local`. Ensaios no executável real observaram `SessionStart`, `PostToolUse` e `Stop`, incluindo uma alteração por ferramenta e a atualização do hash observado. O backend forneceu respostas HTTP determinísticas simuladas. Isso comprova caminhos de dispatch e controle do host; não demonstra raciocínio ou cumprimento das instruções por um LLM.
 
-As interfaces do host foram investigadas no Codex CLI `0.163.0`. Compatibilidade com outras versões, Windows e Claude Code ainda não foi validada.
+As tentativas com o serviço de modelo configurado retornaram `401`. O bloqueio inicial de filesystem somente leitura foi superado quando o ambiente se tornou gravável. A concessão humana de confiança pela interface `/hooks` permanece uma experiência a validar separadamente.
 
-Evidências: [testes unitários](../research/codex/evidence/unit-tests.json), [CLI/bootstrap a partir da fonte](../research/codex/evidence/preflight-integration.json), [mesmos casos usando o bundle](../research/codex/evidence/bundle-integration.json), [instalação real](../research/codex/evidence/installed-plugin.json), [hooks instrumentados com respostas simuladas](../research/codex/evidence/native-fixture-results.json), [dispatch do plugin instalado](../research/codex/evidence/installed-dispatch.json) e [tentativa com serviço de modelo configurado](../research/codex/evidence/runtime-results.json). A [falha inicial de startup](../research/codex/evidence/runtime-startup-attempt.json) permanece como histórico, não como estado atual do ambiente.
+As evidências em [research/codex](../research/codex/README.md) identificam fontes e bundles. Alterações posteriores no lifecycle exigem nova validação; o sucesso de um bundle antigo não comprova automaticamente a revisão atual. Consulte o [estado de implementação](implementation-status.md).
 
-## Preparar o ambiente Python
+## Preparar e instalar
 
-As instruções abaixo usam shell POSIX em Linux ou macOS, Python **3.11 ou superior** e uma instalação do Codex com configuração de usuário gravável. A instalação Python pode precisar baixar dependências.
-
-Enquanto este incremento estiver em revisão, obtenha o código da branch de implementação:
-
-```sh
-git clone --branch feat/codex-preflight https://github.com/LucasGois1/specmd.git
-cd specmd
-```
-
-Defina o caminho absoluto desse clone local:
+Use um clone da revisão desejada, Python 3.11 ou superior e uma instalação do Codex com estado de usuário gravável. A partir do clone:
 
 ```sh
 SPECMD_SOURCE="$PWD"
-python3 --version
 python3 -m venv "$SPECMD_SOURCE/.venv"
 "$SPECMD_SOURCE/.venv/bin/python" -m pip install -e "$SPECMD_SOURCE"
 export SPECMD_PYTHON="$SPECMD_SOURCE/.venv/bin/python"
-"$SPECMD_PYTHON" -m specmd --version
-```
-
-`SPECMD_PYTHON` precisa apontar para o intérprete absoluto da virtualenv **original**, onde estão instaladas as dependências. Inicie o Codex a partir de um processo que herde essa variável. A virtualenv não faz parte do pacote do plugin.
-
-As dependências declaradas para este incremento são `markdown-it-py`, `PyYAML` e `behave`, com versões fixadas em [pyproject.toml](../pyproject.toml). Behave é usado para parsing; nenhum passo de aplicação é executado por esse scanner.
-
-## Gerar o pacote e instalar o plugin
-
-Antes de registrar o marketplace, gere o pacote local por allowlist:
-
-```sh
 "$SPECMD_PYTHON" "$SPECMD_SOURCE/scripts/build_codex_plugin.py"
 codex plugin marketplace add "$SPECMD_SOURCE"
 codex plugin add specmd@specmd-local
 ```
 
-O builder gera `dist/codex-plugin`, usado como source pelo [marketplace local](../.agents/plugins/marketplace.json). O pacote inclui somente os componentes necessários, como metadados, hooks, bootstrap e fonte Python; não inclui `.venv`, `.git` ou os experimentos. O manifesto de conteúdo gerado pelo builder é informativo, não um recibo de aceite ou uma assinatura de distribuição.
+O builder gera `dist/codex-plugin` por allowlist. A virtualenv original fornece as dependências e não é copiada para o pacote. Inicie o Codex a partir de um processo que herde `SPECMD_PYTHON`. Marketplace e instalação persistem estado do Codex. O manifesto do bundle identifica conteúdo, sem conceder confiança.
 
-Essa separação importa porque o instalador do host copia recursivamente a source do plugin. O `.gitignore` do clone não é uma política de empacotamento. Neste incremento, a distribuição é **clone local + build**; instalar diretamente um marketplace Git remoto precisará de uma forma de distribuir o artefato gerado, que não está versionado.
+Depois de alterar a fonte, gere novamente o bundle e atualize a instalação pelo fluxo do host. A cópia instalada não acompanha automaticamente o clone.
 
-Os comandos de marketplace e instalação persistem estado de usuário do Codex. O procedimento precisa ocorrer em um ambiente onde esse estado seja gravável. A primeira falha de instalação e o sucesso posterior estão registrados separadamente em [research/codex](../research/codex/README.md).
+## Revisar os handlers
 
-## Revisar e autorizar os hooks
+Abra o Codex no projeto de teste e use `/hooks`. Confira pacote, comando, intérprete e eventos antes de conceder confiança pela interface normal. Inicie uma nova sessão para observar também o evento de início.
 
-Abra o Codex no projeto em que deseja testar e use a interface `/hooks` para examinar os handlers do SpecMD. Revise os eventos, o comando executado, a origem do pacote e o intérprete selecionado antes de conceder confiança pela UX do host.
-
-O pacote declara três handlers síncronos, cada um com timeout de 30 segundos:
-
-- `SessionStart`: apresenta o estado inicial do preflight.
-- `PostToolUse`: reavalia os documentos depois das ferramentas.
-- `Stop`: traduz pendências para feedback ou devolução do controle ao usuário.
-
-Depois de autorizar os handlers, inicie uma nova sessão para observar também `SessionStart`. Não foi implementada instalação automática de trust. Este guia não pede que o agente escreva `trusted_hash` ou altere a configuração de confiança em nome do usuário.
-
-**Trust do hook e aceite do contrato são decisões diferentes.** O primeiro autoriza a execução do comando do plugin. O segundo precisa expressar concordância com uma versão de requisitos e ainda não existe neste incremento.
-
-## Ativar um projeto explicitamente
-
-O plugin só inspeciona um projeto ativado. Execute na raiz desejada:
-
-```sh
-cd "/caminho/absoluto/do/projeto"
-"$SPECMD_PYTHON" -m specmd init
-"$SPECMD_PYTHON" -m specmd inventory --format json
-"$SPECMD_PYTHON" -m specmd check --stage completion --format json
-```
-
-`init` cria `specmd.toml` com a configuração mínima abaixo e não sobrescreve um arquivo existente:
-
-```toml
-schema = 1
-```
-
-Somente esse campo e valor são aceitos nesta versão. Não há opções configuráveis de exclusão ou de autoaprovação. O opt-in não classifica documentos nem concede aceite.
-
-Para um ensaio isolado, use um projeto de teste novo e copie os [exemplos fictícios](../examples/cancellation.contract.md) para ele. Não copie suas regras de negócio para um projeto real como se fossem requisitos acordados.
-
-Um repositório com Markdown sem metadados ficará bloqueado por pendências estruturais. O scanner não usa IA para classificar esses arquivos, não redige cenários automaticamente e não oferece comando para registrar aceite humano. A classificação precisa ser discutida e escrita no documento; sua declaração ainda não se torna uma dispensa aceita.
-
-## O que a CLI realmente faz
-
-| Comando | Efeito e interpretação |
+| Evento | Ação |
 | --- | --- |
-| `specmd init` | Cria o opt-in. Saída `0` significa que a criação ocorreu, sem aprovação de documento. |
-| `specmd inventory --format json` | Inspeciona documentos, vínculos e hashes. Saída `0` significa que a inspeção foi produzida; o JSON ainda pode indicar pendências. |
-| `specmd check --stage completion --format json` | Retorna `1` para projetos ativos bloqueados ou aguardando revisão; `2` para erro ou projeto inativo. Não retorna sucesso de conclusão neste incremento. |
-| `specmd codex-hook` | Lê um payload de hook pelo stdin e emite JSON do protocolo Codex. Seu código de saída não representa conclusão da tarefa. |
+| `SessionStart` | Consultar o estado e fornecer contexto sobre pendências. |
+| `PreToolUse` | Conferir a autorização antes das ferramentas cobertas pela política. |
+| `PostToolUse` | Reavaliar o projeto e atualizar o estado observado após ferramentas. |
+| `Stop` | Conferir a conclusão e traduzir o resultado para o protocolo do host. |
 
-Os comandos também aceitam `--root /caminho/absoluto` em `init`, `inventory` e `check`. Somente a etapa `completion` é aceita por `check`; `implementation` e `integration` continuam sendo propostas futuras.
+`PreToolUse` foi acrescentado nesta evolução e possui testes de protocolo; não integra as provas nativas anteriores dos três eventos. O alcance da política e os efeitos no host atual precisam de validação própria.
 
-Resultados possíveis da inspeção:
+Enquanto falta aceite, a política local permite leituras e alterações documentais reconhecidas, e nega alterações de código e comandos desconhecidos. Shells combinados são recusados conservadoramente. Abra a revisão em um terminal humano seguindo o quickstart; não dependa de o agente lançar comandos de revisão enquanto o bloqueio estiver ativo. Um aceite válido devolve as ferramentas à política normal do host. Essa heurística pode produzir bloqueios indevidos e precisa ser avaliada no seu fluxo.
 
-- `inactive`: não há configuração de opt-in; não há decisão de conclusão (`may_complete: null`). No hook, um projeto nunca ativado não recebe interferência.
-- `error`: configuração inválida, caminho inadequado ou falha de verificação; conclusão não autorizada.
-- `blocked`: há problemas estruturais, de parsing ou de vínculos; conclusão não autorizada.
-- `waiting_human_review`: a estrutura passou pelas verificações disponíveis, mas falta autoridade de aceite e evidência de execução; conclusão não autorizada.
+Confiar o handler autoriza executar a integração. Aceitar uma proposta SpecMD concorda com uma versão do contrato. Essas decisões têm registros e escopos diferentes. O agente deve aguardar a decisão contratual do usuário.
 
-**Todo resultado de projeto ativo contém `may_complete: false`.** Mesmo o documento informativo perfeitamente declarado ou o contrato com Gherkin válido permanece pendente. Os achados `authority_not_configured` e `evidence_not_executed` explicam essa limitação. Não há modelo de mérito, sinalizador YAML ou comando local que conceda aprovação automática.
+O hash nativo de trust pesquisado identifica a declaração normalizada do handler, incluindo o comando; não cobre necessariamente os bytes de todos os scripts chamados. Integridade do pacote, autoridade e CI exigem controles adicionais.
 
-## Subconjunto documental inspecionado
+## Projeto e estados
 
-O scanner percorre arquivos `.md` e `.markdown`, sem distinguir maiúsculas e minúsculas, incluindo arquivos locais ainda não commitados. Não usa o `.gitignore` como dispensa. Poda nomes conhecidos de diretórios de dependências, build e estado local; essa lista é fixa neste incremento, não uma política de escopo aprovada por usuário.
+O opt-in é `specmd.toml`. O schema 1 conserva o scanner inicial e não oferece um caminho de conclusão. O schema 2 configura identidade, runners, rastreabilidade e evidências. Use o projeto descartável do [quickstart](quickstart.md) antes de configurar um projeto existente.
 
-Documentos exigem frontmatter `specmd.schema: 1`, um ID e `kind` igual a `behavioral`, `reference` ou `mixed`. Referências exigem `exemption_reason`. O scanner calcula hashes do conteúdo e um manifesto determinístico com caminhos e hash da configuração.
+O Markdown contém requisitos e Gherkin canônicos. A execução Python recebe blocos em memória e carrega steps reais; não cria `.feature`. Classificações informativas e justificativas também integram o snapshot sujeito a revisão. Markdown novo, alterado ou removido exige reconciliar essa versão.
 
-Para contratos e documentos mistos, verifica cabeçalhos de requisitos `SMD-…-REQ-…`, blocos cercados `gherkin`, IDs estáveis `SMD-…-SCN-…`, referências e duplicatas. Preserva posições dos cenários no Markdown. O suporte atual é a cenários simples; `Rule` e `Scenario Outline` são recusados explicitamente. Documentos e diretórios simbólicos próprios não são seguidos pelo scanner e geram pendências.
+O hook consulta o estado; a CLI fornece as operações explícitas de preparar revisão, abrir a interface, executar e auditar. O pacote não cria uma autoridade protegida silenciosamente.
 
-MDG nativo, adequação semântica da classificação, força das asserções e execução de steps não são implementados pelo preflight. O baseline de MDG em Cucumber.js continua sendo uma [pesquisa separada](../research/javascript-mdg/README.md).
+Em `waiting_human_review`, o adaptador devolve o controle para a decisão do usuário. Para pendências corrigíveis, o primeiro `Stop` pode produzir feedback de bloqueio; se o host retornar com `stop_hook_active: true`, o adaptador devolve o controle para evitar repetição indefinida. A pendência permanece.
 
-## Comportamento do hook e estado local
+`.specmd/local/status.json` é uma observação reconstruível. `turn.completed` do Codex indica encerramento do turno; não substitui `status`, `may_complete`, `verification_mode` e `assurance` do SpecMD. Um resultado `demo_passed` deve ser apresentado como demonstração. Integração protegida usa `verify --require-real` com autoridade externa e execução fresca.
 
-Nos eventos de início e pós-ferramenta, o adaptador apresenta o resultado como contexto ao agente. Na parada:
+Hooks não impedem todo trabalho de um agente que também pode editar scripts, configuração ou autoridade. O CI precisa executar código de verificação confiável, com regras protegidas pelo operador. A existência de um workflow no repositório não comprova essa implantação.
 
-- Para `blocked` ou `error`, a primeira passagem pode responder `decision: "block"` e pedir correção.
-- Se o host informar `stop_hook_active: true` na próxima passagem, o adaptador devolve o controle com `continue: false`, mantendo a pendência e evitando um ciclo.
-- Para `waiting_human_review`, devolve o controle imediatamente com `continue: false`, sem declarar aprovação ou conclusão.
+## Cenários documentais
 
-Esse limite é uma solicitação de correção por ciclo de `Stop`, conforme o payload do host; não é uma autorização para ignorar a pendência depois da tentativa. O núcleo continua retornando `may_complete: false`.
-
-O hook salva `.specmd/local/status.json` com `state_kind: "observed_local_preflight"`, o evento e diferenças observadas contra o snapshot anterior. O arquivo é cache reconstruível, sem identidade autenticada de aprovador e sem poder para autorizar a tarefa. Na primeira observação, os documentos podem aparecer como adicionados. Se a configuração for removida depois de existir estado local, o adaptador trata isso como pendência, em vez de presumir conclusão.
-
-No projeto alvo, inclua `.specmd/local/` no `.gitignore` para manter esse estado observado fora do versionamento. `init` cria somente a configuração e não altera automaticamente o arquivo de ignore.
-
-## Limites e próximas provas
-
-A configuração do projeto, o cache, o pacote e o ambiente Python são mutáveis. O hash de trust pesquisado no Codex identifica a configuração do handler, não garante os bytes de todo script externo chamado. Portanto, confiar o hook não protege por si só a integridade do código nem resolve bypass por um agente com as mesmas permissões locais.
-
-A instalação persistente e o dispatch de seu pacote foram demonstrados. Um primeiro ensaio instrumentado também contou os eventos do host: `blocked` levou a uma nova resposta e a um segundo `Stop`; `waiting_human_review` devolveu o controle na primeira parada. O ensaio com o plugin instalado confirmou esses caminhos e um terceiro caso: `exec_command` alterou um contrato temporário descartável, e `PostToolUse` recalculou seu hash e registrou a modificação antes da resposta seguinte. O evento final foi `Stop`, com `may_complete: false`.
-
-Ainda precisam de evidência separada: concessão humana de trust pela interface, fluxo completo com modelo LLM real e experiência de retomada. Respostas determinísticas demonstram o controle do host, sem demonstrar que um modelo interpretou ou cumpriu as instruções. Trust por flags de sessão não equivale à revisão humana pelo `/hooks`. A instalação alterou legitimamente o estado de marketplace/plugin do usuário; somente a confiança dos hooks ficou restrita à sessão, sem persistência de trust.
-
-Aceite autenticado, evidências de implementação e gate protegido de CI permanecem fora deste incremento. As capacidades futuras e os critérios completos estão em [Integrações](integrations.md) e [Plano de validação](validation-plan.md).
-
-## Cenários documentais do incremento
-
-Os cenários abaixo registram os comportamentos experimentais descritos neste guia. Não possuem aceite autenticado nem ligação a steps BDD executados. Os testes Python exercitam esses comportamentos diretamente; não devem ser apresentados como execução destes blocos Gherkin.
+Os IDs abaixo preservam o guia anterior. Estes blocos específicos não possuem aceite humano nem ligação demonstrada a steps executados.
 
 ### SMD-PREFLIGHT-REQ-001 — Identificar alterações do contrato
 
-O manifesto identifica caminhos e bytes dos documentos e da configuração. Uma observação anterior não concede aprovação.
+Uma nova observação identifica mudanças nos bytes. O aceite anterior não autoriza automaticamente outra versão.
 
 ```gherkin
 # language: pt
 @SMD-PREFLIGHT-REQ-001
-Funcionalidade: Identidade documental no preflight
+Funcionalidade: Identidade documental
   @SMD-PREFLIGHT-SCN-001
-  Cenário: Alterar um documento depois de uma inspeção
-    Dado um projeto ativado com um contrato Markdown previamente inspecionado
-    Quando os bytes desse contrato forem alterados e uma nova inspeção ocorrer
-    Então o digest do manifesto deve mudar
-    E a conclusão da tarefa deve continuar sem autorização
+  Cenário: Alterar um documento anteriormente aceito
+    Dado um projeto com contrato aceito para uma versão identificada
+    Quando os bytes desse contrato forem alterados
+    Então a versão contratual observada deve mudar
+    E a nova versão deve aguardar revisão antes da conclusão
 ```
 
 ### SMD-PREFLIGHT-REQ-002 — Separar estrutura válida de aprovação
 
-Validar sintaxe e vínculos não concede aceite nem comprova execução. Referências declaradas também permanecem pendentes.
+Classificação declarada e sintaxe válida não registram concordância humana.
 
 ```gherkin
 # language: pt
 @SMD-PREFLIGHT-REQ-002
-Funcionalidade: Ausência de autoridade de aceite no primeiro incremento
+Funcionalidade: Revisão da classificação
   @SMD-PREFLIGHT-SCN-002
-  Cenário: Inspecionar um documento informativo estruturalmente válido
-    Dado um projeto ativado com um documento de referência e justificativa válidos
-    Quando a estrutura documental for inspecionada sem encontrar erros
-    Então o estado deve ser "waiting_human_review"
-    E o campo "may_complete" deve ser falso
+  Cenário: Inspecionar uma referência ainda não aceita
+    Dado um projeto com documento informativo e justificativa válidos
+    E nenhuma decisão válida sobre a versão proposta
+    Quando a estrutura documental for inspecionada
+    Então o fluxo deve aguardar revisão humana
+    E a conclusão deve permanecer sem autorização
 ```
 
 ### SMD-PREFLIGHT-REQ-003 — Devolver controle sem apagar pendências
 
-O adaptador pede uma correção por ciclo de parada e permite devolver o controle ao usuário. Esse retorno não significa que a tarefa foi liberada.
+O retorno ao usuário permite resolver a pendência, sem conceder aprovação.
 
 ```gherkin
 # language: pt
 @SMD-PREFLIGHT-REQ-003
-Funcionalidade: Controle de parada sem repetição indefinida
+Funcionalidade: Controle de parada
   @SMD-PREFLIGHT-SCN-003
-  Cenário: Manter um bloqueio após o feedback de correção
-    Dado um documento com pendências estruturais e uma primeira resposta de bloqueio
-    Quando o host repetir o evento de parada com o hook de parada já ativo
+  Cenário: Manter um bloqueio após feedback
+    Dado um documento com pendências e uma primeira resposta de bloqueio
+    Quando o host repetir a parada com o hook de parada já ativo
     Então o adaptador deve devolver o controle ao usuário
-    E o estado observado deve continuar bloqueado
-    E a conclusão da tarefa deve continuar sem autorização
+    E a tarefa deve continuar pendente
 ```
