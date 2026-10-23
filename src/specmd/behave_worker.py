@@ -20,10 +20,21 @@ from behave.configuration import Configuration
 from behave.model import Rule, ScenarioOutline
 from behave.parser import parse_feature
 from behave.runner import ModelRunner, load_step_modules
+from behave.runner_util import make_undefined_step_snippet
 from behave.step_registry import registry
 
 
 SCENARIO_ID = re.compile(r"SMD-(?:[A-Za-z0-9]+-)*SCN-[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*")
+
+
+def _step(step):
+    """Step status with the text, error tail or ready-to-paste snippet for feedback."""
+    item = {"status": step.status.name, "line": step.line, "text": f"{step.keyword.strip()} {step.name}"}
+    if step.status.name == "failed" and getattr(step, "error_message", None):
+        item["error"] = "\n".join(str(step.error_message).strip().splitlines()[-15:])
+    elif step.status.name == "undefined":
+        item["snippet"] = make_undefined_step_snippet(step)
+    return item
 
 
 def _identity(scenario):
@@ -99,7 +110,7 @@ def execute(root: Path, steps: str, payload: dict) -> dict:
     failed = runner.run_model()
     result["engine_failed"] = bool(failed)
     for scenario, identity, path, block in origins:
-        statuses = [{"status": step.status.name, "line": step.line} for step in scenario.all_steps]
+        statuses = [_step(step) for step in scenario.all_steps]
         result["scenarios"].append({"id": identity, "status": scenario.status.name,
                                     "path": path, "block": block, "line": scenario.line,
                                     "steps_executed": sum(step["status"] in {"passed", "failed"} for step in statuses),
@@ -130,8 +141,8 @@ def main():
     except Exception as error:
         report = {"schema": 1, "mode": "real", "dry_run": False, "engine_failed": True,
                   "scenarios": [], "passed": False, "error": f"{type(error).__name__}: {error}"}
-    # Step output is intentionally discarded, rather than corrupting the protocol
-    # or recording potentially sensitive application data in evidence.
+    # Step stdout is discarded to keep the protocol intact; failing steps carry
+    # their own error tail in the report.
     print(json.dumps(report, ensure_ascii=False))
     return 0 if report["passed"] else 1
 

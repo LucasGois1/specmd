@@ -1,8 +1,8 @@
-"""Run Markdown contracts through explicit subprocess bridges, failing closed.
+"""Run the scenarios embedded in Markdown through subprocess bridges, failing closed.
 
-Runner reports are observations from executable code, not human acceptance or a
-protected authority. External bridges and step definitions must be reviewed as
-code; subprocess isolation does not make hostile project code trustworthy.
+Each failing scenario comes back with the step, line and error message, so the
+agent receives actionable feedback. Subprocess isolation is not a sandbox for
+hostile project code.
 """
 
 from __future__ import annotations
@@ -70,17 +70,7 @@ def _features(root: Path, inspection: dict) -> tuple[list[dict], list[dict]]:
     if len({item["id"] for item in expected}) != len(expected):
         raise ValueError("Identidades de cenário duplicadas na inspeção.")
     features = []
-    extraction_inspection = inspection
-    manifest = inspection.get("manifest")
-    if isinstance(manifest, dict) and "traceability_sha256" in manifest:
-        # Workflow extends the scanner manifest with traceability identity.
-        # Extraction compares only the scanner's config+document manifest;
-        # workflow independently checks the traceability snapshot as well.
-        base_manifest = {key: value for key, value in manifest.items() if key != "traceability_sha256"}
-        encoded = json.dumps(base_manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
-        extraction_inspection = {**inspection, "manifest": base_manifest,
-                                 "manifest_sha256": hashlib.sha256(encoded).hexdigest()}
-    for feature in extract_features(root, extraction_inspection):
+    for feature in extract_features(root, inspection):
         # The core preserves source coordinates by padding its parser input.
         # Bridge protocol carries raw content + first-content line explicitly.
         padding = "\n" * (feature["line"] - 1)
@@ -147,15 +137,24 @@ def _invoke(command: list[str], root: Path, payload: dict, timeout: float):
         raise
 
 
-def execute_project(root: Path, inspection: dict, config: dict) -> dict:
-    """Execute each expected instance exactly once in an assigned runner.
+def _failure(observed: dict, origin: dict | None) -> dict:
+    """Summarize a non-passing scenario with the steps that need attention."""
+    steps = [step for step in observed.get("steps", []) if isinstance(step, dict) and step.get("status") != "passed"]
+    return {
+        "id": observed.get("id"), "name": (origin or {}).get("name"), "path": observed.get("path"),
+        "line": observed.get("line"), "status": observed.get("status"),
+        "steps": [{key: step[key] for key in ("text", "line", "status", "error", "snippet") if key in step}
+                  for step in steps[:5]],
+    }
 
-Python defaults to the packaged Behave worker. Java/Go require an explicit
-bridge command. Mock bridges require evidence.allow_mock=true and always yield
-simulated assurance, even when their protocol-level expectations pass.
+
+def execute_project(root: Path, inspection: dict, config: dict) -> dict:
+    """Execute each expected scenario exactly once in an assigned runner.
+
+    Python defaults to the packaged Behave worker; Java/Go require an explicit
+    bridge command. Non-passing scenarios are listed in ``failures``.
     """
-    result = {"schema": 1, "mode": "real", "assurance": "execution", "runners": [],
-              "scenarios": [], "passed": False, "findings": []}
+    result = {"schema": 1, "runners": [], "scenarios": [], "failures": [], "passed": False, "findings": []}
     findings = result["findings"]
     try:
         root = Path(root).resolve(strict=True)
@@ -163,13 +162,10 @@ simulated assurance, even when their protocol-level expectations pass.
             raise ValueError("Raiz/configuração inválida para execução.")
         features, expected = _features(root, inspection)
         if not expected:
-            raise ValueError("Nenhum cenário esperado; zero execução não é sucesso.")
+            raise ValueError("Nenhum cenário encontrado na documentação.")
         runners = config.get("runners")
         if not isinstance(runners, list) or not runners:
-            raise ValueError("Configure ao menos um runner explícito.")
-        evidence_config = config.get("evidence", {})
-        if not isinstance(evidence_config, dict):
-            raise ValueError("Configuração evidence deve ser um mapa.")
+            raise ValueError("Configure ao menos um runner em specmd.toml.")
         normalized, ids = [], set()
         for runner in runners:
             if not isinstance(runner, dict):
@@ -178,12 +174,8 @@ simulated assurance, even when their protocol-level expectations pass.
             if not isinstance(identifier, str) or not identifier.strip() or identifier in ids:
                 raise ValueError("Runner deve ter identidade única não vazia.")
             ids.add(identifier)
-            if language not in {"python", "java", "go", "mock"}:
+            if language not in {"python", "java", "go"}:
                 raise ValueError("Linguagem de runner não suportada: " + str(language))
-            if language == "mock":
-                if evidence_config.get("allow_mock") is not True:
-                    raise ValueError("Runner mock exige evidence.allow_mock=true explicitamente.")
-                result["mode"], result["assurance"] = "mock", "simulated"
             timeout = runner.get("timeout", 60)
             if type(timeout) not in {int, float} or not math.isfinite(timeout) or timeout <= 0:
                 raise ValueError("Timeout do runner deve ser um número positivo finito.")
@@ -214,16 +206,16 @@ simulated assurance, even when their protocol-level expectations pass.
             raise ValueError("Existem cenários sem runner atribuído.")
         if any(not items for _, _, _, _, items in normalized):
             raise ValueError("Runner sem cenários atribuídos; execução vazia é recusada.")
-    except (OSError, ValueError, TypeError) as error:
+    except (OSError, UnicodeError, ValueError, TypeError) as error:
         findings.append(_finding("runner_configuration_invalid", str(error)))
         return result
 
+    origins = {item["id"]: item for item in expected}
     for identifier, language, timeout, command, selected in normalized:
-        mode = "mock" if language == "mock" else "real"
         selected_blocks = {(item["path"], item["block"]) for item in selected}
         payload = {"schema": 1, "features": [item for item in features if (item["path"], item["block"]) in selected_blocks],
                    "expected_scenarios": selected}
-        row = {"id": identifier, "language": language, "mode": mode, "passed": False,
+        row = {"id": identifier, "language": language, "passed": False,
                "expected_scenarios": [item["id"] for item in selected]}
         try:
             exit_code, stdout = _invoke(command, root, payload, timeout)
@@ -232,21 +224,28 @@ simulated assurance, even when their protocol-level expectations pass.
                 report = json.loads(stdout)
             except (ValueError, TypeError) as error:
                 raise ValueError("Bridge não retornou um único relatório JSON válido.") from error
-            # Preserve useful failed observations but never let them grant pass.
             observed = report.get("scenarios", []) if isinstance(report, dict) else []
             if isinstance(observed, list):
                 row["observed_scenarios"] = observed
-                result["scenarios"].extend({**scenario, "runner_id": identifier, "mode": mode}
-                                           for scenario in observed if isinstance(scenario, dict))
-            if exit_code != 0:
+                for scenario in observed:
+                    if not isinstance(scenario, dict):
+                        continue
+                    result["scenarios"].append({**scenario, "runner_id": identifier})
+                    if scenario.get("status") != "passed":
+                        result["failures"].append(_failure(scenario, origins.get(scenario.get("id"))))
+            if isinstance(report, dict) and report.get("error"):
+                findings.append(_finding("runner_failed", str(report["error"]), identifier))
+            if exit_code != 0 and not result["failures"]:
                 raise ValueError("Processo do runner terminou com código " + str(exit_code))
-            _validate_report(report, selected, mode)
-            row["passed"] = True
+            if exit_code == 0:
+                _validate_report(report, selected, "real")
+                row["passed"] = True
         except subprocess.TimeoutExpired:
             row["timed_out"] = True
             findings.append(_finding("runner_timeout", "O processo do runner excedeu seu timeout.", identifier))
         except (OSError, ValueError, TypeError) as error:
             findings.append(_finding("runner_failed", str(error), identifier))
         result["runners"].append(row)
-    result["passed"] = not findings and len(result["scenarios"]) == len(expected) and all(row["passed"] for row in result["runners"])
+    result["passed"] = (not findings and not result["failures"] and len(result["scenarios"]) == len(expected)
+                        and all(row["passed"] for row in result["runners"]))
     return result

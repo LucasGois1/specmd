@@ -65,26 +65,20 @@ class InspectProjectTests(unittest.TestCase):
         return next(item for item in report["documents"] if item["path"] == path)
 
     def assert_blocked(self, report: dict, kind: str | None = None) -> None:
-        self.assertEqual(report["status"], "blocked", report)
-        self.assertIs(report["may_complete"], False)
+        self.assertEqual(report["status"], "needs_scenarios", report)
         self.assertTrue(report["findings"])
         if kind is not None:
             self.assertIn(kind, {finding["kind"] for finding in report["findings"]}, report)
 
     def assert_pending(self, report: dict) -> None:
-        self.assertEqual(report["protocol_version"], 1)
-        self.assertEqual(report["stage"], "completion")
-        self.assertEqual(report["status"], "waiting_human_review", report)
-        self.assertIs(report["may_complete"], False)
-        kinds = {finding["kind"] for finding in report["findings"]}
-        self.assertIn("authority_not_configured", kinds)
-        self.assertIn("evidence_not_executed", kinds)
+        self.assertEqual(report["protocol_version"], 2)
+        self.assertEqual(report["status"], "ready", report)
+        self.assertEqual(report["findings"], [])
 
     def test_no_configuration_is_inactive_without_inspecting_documents(self) -> None:
         self.write("unknown.md", "# Sem classificação\n")
         report = self.report()
         self.assertEqual(report["status"], "inactive")
-        self.assertIsNone(report["may_complete"])
         self.assertEqual(report["documents"], [])
         self.assertEqual(report["findings"], [])
 
@@ -94,14 +88,12 @@ class InspectProjectTests(unittest.TestCase):
                 self.activate(config)
                 report = self.report()
                 self.assertEqual(report["status"], "error", report)
-                self.assertIs(report["may_complete"], False)
 
     def test_configuration_cannot_add_exclusions(self) -> None:
         self.activate('schema = 1\nexclude = ["**/*.md"]\n')
         self.write("hidden.md", "# Requisito sem classificação\n")
         report = self.report()
         self.assertEqual(report["status"], "error", report)
-        self.assertIs(report["may_complete"], False)
 
     def test_configuration_symlink_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory(prefix="specmd-config-outside-") as outside:
@@ -110,7 +102,6 @@ class InspectProjectTests(unittest.TestCase):
             (self.root / "specmd.toml").symlink_to(target)
             report = self.report()
         self.assertEqual(report["status"], "error", report)
-        self.assertIs(report["may_complete"], False)
         self.assertIn("config_symlink", {finding["kind"] for finding in report["findings"]})
 
     def test_valid_behavior_is_parsed_but_never_approved_or_executed(self) -> None:
@@ -135,15 +126,6 @@ class InspectProjectTests(unittest.TestCase):
         self.assertEqual(document["kind"], "reference")
         self.assertEqual(document["scenarios"], [])
         self.assertNotEqual(document.get("approval_status"), "approved")
-
-    def test_frontmatter_cannot_self_approve(self) -> None:
-        self.activate()
-        content = reference().replace("  kind: reference\n", "  kind: reference\n  approved: true\n")
-        self.write("guide.md", content)
-        report = self.report()
-        self.assertIs(report["may_complete"], False)
-        self.assertNotEqual(report["status"], "completed")
-        self.assertTrue(report["findings"])
 
     def test_reference_requires_nonempty_exemption_reason(self) -> None:
         self.activate()

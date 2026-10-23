@@ -66,10 +66,9 @@ class RunnerTests(unittest.TestCase):
         target.write_text(content, encoding="utf-8")
         return target
 
-    def execute(self, runner=None, *, inspection=None, evidence=None):
+    def execute(self, runner=None, *, inspection=None):
         return execute_project(self.root, inspection or inspect_project(self.root), {
             "schema": 2, "runners": [runner or {"id": "python", "language": "python"}],
-            "evidence": evidence or {},
         })
 
     def bridge(self, transform="", *, exit_code=0):
@@ -84,7 +83,7 @@ class RunnerTests(unittest.TestCase):
     def test_real_behave_steps_call_application_and_preserve_markdown_origin(self):
         result = self.execute()
         self.assertTrue(result["passed"], result)
-        self.assertEqual(result["mode"], "real")
+        self.assertEqual(result["failures"], [])
         self.assertEqual((self.root / "calls.txt").read_text(), "called\n")
         scenario = result["scenarios"][0]
         self.assertEqual((scenario["id"], scenario["path"], scenario["block"], scenario["line"]),
@@ -98,6 +97,12 @@ class RunnerTests(unittest.TestCase):
         self.assertFalse(result["passed"], result)
         self.assertEqual(result["scenarios"][0]["status"], "failed")
         self.assertEqual((self.root / "calls.txt").read_text(), "called\n")
+        failure = result["failures"][0]
+        self.assertEqual((failure["id"], failure["path"], failure["status"]), ("SMD-RUN-SCN-001", "contract.md", "failed"))
+        step = failure["steps"][0]
+        self.assertEqual(step["status"], "failed")
+        self.assertIn("99", step["text"])
+        self.assertIn("ASSERT FAILED", step["error"])
 
     def test_timestamp_valid_old_bytecode_cannot_mask_changed_source(self):
         source = self.root / "application.py"
@@ -126,6 +131,8 @@ class RunnerTests(unittest.TestCase):
         result = self.execute()
         self.assertFalse(result["passed"], result)
         self.assertIn("undefined", {step["status"] for step in result["scenarios"][0]["steps"]})
+        undefined = next(step for step in result["failures"][0]["steps"] if step["status"] == "undefined")
+        self.assertIn("def step_impl(context)", undefined["snippet"])
 
     def test_project_dry_run_and_tag_configuration_are_not_loaded(self):
         self.write("behave.ini", "[behave]\ndry_run = true\ntags = @missing\n")
@@ -167,17 +174,6 @@ Funcionalidade: Soma por linhas
         self.assertFalse(self.execute(inspection=inspection)["passed"])
         self.assertFalse((self.root / "calls.txt").exists())
 
-    def test_workflow_traceability_manifest_extension_preserves_extraction_guard(self):
-        import hashlib
-        inspection = inspect_project(self.root)
-        inspection["manifest"]["traceability_sha256"] = "a" * 64
-        inspection["manifest_sha256"] = hashlib.sha256(json.dumps(
-            inspection["manifest"], sort_keys=True, ensure_ascii=False, separators=(",", ":")
-        ).encode()).hexdigest()
-        self.assertTrue(self.execute(inspection=inspection)["passed"])
-        self.write("contract.md", CONTRACT + "\nAlterado.\n")
-        self.assertFalse(self.execute(inspection=inspection)["passed"])
-
     def test_nonzero_bridge_exit_rejects_claimed_success(self):
         self.assertFalse(self.execute(self.bridge(exit_code=7))["passed"])
 
@@ -206,14 +202,12 @@ Funcionalidade: Soma por linhas
         self.assertFalse(result["passed"])
         self.assertEqual(result["findings"][0]["kind"], "runner_timeout")
 
-    def test_mock_requires_explicit_opt_in_and_preserves_simulated_assurance(self):
-        runner = self.bridge("r['mode']='mock'")
+    def test_mock_language_is_not_a_runner(self):
+        runner = self.bridge()
         runner["language"] = "mock"
-        self.assertFalse(self.execute(runner)["passed"])
-        result = self.execute(runner, evidence={"allow_mock": True})
-        self.assertTrue(result["passed"], result)
-        self.assertEqual((result["mode"], result["assurance"]), ("mock", "simulated"))
-        self.assertEqual(result["scenarios"][0]["mode"], "mock")
+        result = self.execute(runner)
+        self.assertFalse(result["passed"])
+        self.assertEqual(result["findings"][0]["kind"], "runner_configuration_invalid")
 
     def test_changed_markdown_is_rejected_before_application_execution(self):
         inspection = inspect_project(self.root)

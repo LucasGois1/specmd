@@ -11,13 +11,13 @@
         ]
       }
     ],
-    "PreToolUse": [
+    "UserPromptSubmit": [
       {
         "hooks": [
           {
             "type": "command",
             "command": "\"${SPECMD_PYTHON:-python3}\" \"${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/specmd_hook.py\"",
-            "timeout": 30
+            "timeout": 10
           }
         ]
       }
@@ -28,7 +28,7 @@
           {
             "type": "command",
             "command": "\"${SPECMD_PYTHON:-python3}\" \"${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/specmd_hook.py\"",
-            "timeout": 30
+            "timeout": 15
           }
         ]
       }
@@ -39,7 +39,7 @@
           {
             "type": "command",
             "command": "\"${SPECMD_PYTHON:-python3}\" \"${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/specmd_hook.py\"",
-            "timeout": 30
+            "timeout": 300
           }
         ]
       }
