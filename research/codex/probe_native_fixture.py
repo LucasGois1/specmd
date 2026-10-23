@@ -59,7 +59,7 @@ def scrub(value):
 
 
 def hashes():
-    paths = [SELF, REPOSITORY / "scripts/codex_hook.py"]
+    paths = [SELF, REPOSITORY / "scripts/specmd_hook.py"]
     paths += sorted((REPOSITORY / "src/specmd").glob("*.py"))
     return {str(path.relative_to(REPOSITORY)): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths}
 

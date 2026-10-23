@@ -309,7 +309,7 @@ O marketplace aponta para `dist/codex-plugin`; esse artefato é ignorado pelo Gi
 
 O bundle não contém `.venv`, dependências, `.git`, caches ou os builds Java/Go. A virtualenv selecionada fornece dependências. O worker Python é o arquivo adjacente ao runner da mesma cópia, para evitar misturar código de um bundle com outro checkout editável.
 
-Os manifests declaram `SessionStart`, `PreToolUse`, `PostToolUse` e `Stop`. Codex usa `PLUGIN_ROOT`; a declaração Claude usa `CLAUDE_PLUGIN_ROOT`. Hooks shell POSIX e versões específicas do host precisam de validação própria. Consulte [experimental-codex.md](docs/experimental-codex.md) e [integrations.md](docs/integrations.md).
+Os dois manifests usam um único `hooks/hooks.json` com `SessionStart`, `PreToolUse`, `PostToolUse` e `Stop`; o comando resolve a raiz por `PLUGIN_ROOT` (Codex) ou `CLAUDE_PLUGIN_ROOT` (Claude Code), porque o Claude Code também carrega esse arquivo por padrão. Hooks shell POSIX e versões específicas do host precisam de validação própria. Consulte [experimental-codex.md](docs/experimental-codex.md) e [integrations.md](docs/integrations.md).
 
 Enquanto falta aceite, o `PreToolUse` permite leituras/docs reconhecidas e nega implementação e shells desconhecidos/complexos. Por ser conservador, pode barrar comandos legítimos, inclusive o launcher de revisão. Abra a revisão em um terminal humano; registre essa fricção em vez de silenciar o gate. Depois de um aceite válido, as ferramentas voltam à política normal do host.
 
@@ -319,7 +319,7 @@ Para Java: JDK 21 com compilador e Maven; para Go: SDK 1.25.0 no experimento atu
 
 Depois dos builds, o [probe](research/workflow/probe_bridges.py) reproduz os casos positivos e negativos pelo núcleo. Cada runner deve receber seu conjunto de documentos; atribuir o mesmo cenário a dois runners é erro.
 
-Claude possui manifesto e adaptador, mas ainda não há comprovação de instalação/dispatch nativo. Consulte a versão e a documentação do CLI local antes de afirmar suporte. Não deduzir equivalência operacional só porque os formatos JSON dos testes são parecidos.
+Claude possui manifesto e adaptador. Depois deste handoff, sessões headless do Claude Code 2.1.309 com modelo real exercitaram o dispatch nativo ([research/claude](research/claude/README.md)); instalação por marketplace, trust e UX interativa ainda não. Consulte a versão e a documentação do CLI local antes de afirmar suporte. Não deduzir equivalência operacional só porque os formatos JSON dos testes são parecidos.
 
 ## 10. Cenários que queremos validar com Lucas
 

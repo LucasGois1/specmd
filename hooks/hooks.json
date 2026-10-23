@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${SPECMD_PYTHON:-python3}\" \"${PLUGIN_ROOT}/scripts/codex_hook.py\"",
+            "command": "\"${SPECMD_PYTHON:-python3}\" \"${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/specmd_hook.py\"",
             "timeout": 30
           }
         ]
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${SPECMD_PYTHON:-python3}\" \"${PLUGIN_ROOT}/scripts/codex_hook.py\"",
+            "command": "\"${SPECMD_PYTHON:-python3}\" \"${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/specmd_hook.py\"",
             "timeout": 30
           }
         ]
@@ -27,7 +27,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${SPECMD_PYTHON:-python3}\" \"${PLUGIN_ROOT}/scripts/codex_hook.py\"",
+            "command": "\"${SPECMD_PYTHON:-python3}\" \"${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/specmd_hook.py\"",
             "timeout": 30
           }
         ]
@@ -38,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${SPECMD_PYTHON:-python3}\" \"${PLUGIN_ROOT}/scripts/codex_hook.py\"",
+            "command": "\"${SPECMD_PYTHON:-python3}\" \"${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/specmd_hook.py\"",
             "timeout": 30
           }
         ]

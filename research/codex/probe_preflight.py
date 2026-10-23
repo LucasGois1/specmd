@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def run_probe(hook_bootstrap=None):
     cases = []
-    hook_bootstrap = hook_bootstrap or ROOT / "scripts/codex_hook.py"
+    hook_bootstrap = hook_bootstrap or ROOT / "scripts/specmd_hook.py"
     with tempfile.TemporaryDirectory(prefix="specmd-preflight-") as temporary:
         project = Path(temporary)
 
@@ -103,7 +103,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--bundle", type=Path, help="Validate the hook bootstrap copied into a built plugin bundle")
     args = parser.parse_args()
-    result = run_probe(args.bundle / "scripts/codex_hook.py" if args.bundle else None)
+    result = run_probe(args.bundle / "scripts/specmd_hook.py" if args.bundle else None)
     output = Path(__file__).with_name("evidence") / ("bundle-integration.json" if args.bundle else "preflight-integration.json")
     output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"{len(result['cases'])} verificações de integração corresponderam às expectativas.")

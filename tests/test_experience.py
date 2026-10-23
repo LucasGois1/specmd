@@ -117,13 +117,12 @@ class ExperienceTests(unittest.TestCase):
                                    "--trust", str(self.trust)], capture_output=True, text=True, timeout=10)
         self.assertEqual(executed.returncode, 0, executed.stdout)
         repository = Path(__file__).resolve().parents[1]
-        for script in ("codex_hook.py", "claude_hook.py"):
-            env = {**os.environ, "SPECMD_TRUST_STORE": str(self.trust)}
-            stopped = subprocess.run([sys.executable, str(repository / "scripts" / script)],
-                                     input=json.dumps({"hook_event_name": "Stop", "cwd": str(self.root), "stop_hook_active": False}),
-                                     text=True, capture_output=True, env=env, timeout=10)
-            self.assertEqual(stopped.returncode, 0, stopped.stderr)
-            self.assertEqual(json.loads(stopped.stdout), {})
+        env = {**os.environ, "SPECMD_TRUST_STORE": str(self.trust)}
+        stopped = subprocess.run([sys.executable, str(repository / "scripts" / "specmd_hook.py")],
+                                 input=json.dumps({"hook_event_name": "Stop", "cwd": str(self.root), "stop_hook_active": False}),
+                                 text=True, capture_output=True, env=env, timeout=10)
+        self.assertEqual(stopped.returncode, 0, stopped.stderr)
+        self.assertEqual(json.loads(stopped.stdout), {})
         denied = subprocess.run(command + ["--require-real"], capture_output=True, text=True, timeout=10)
         self.assertEqual(denied.returncode, 1)
         self.assertFalse(json.loads(denied.stdout)["may_complete"])

@@ -10,7 +10,7 @@ O relatório padrão fica em `.specmd/local/test-report.json`, reconstruível e 
 
 Os testes usam agente e navegador simulados: nenhum LLM é chamado e nenhuma leitura humana é alegada. Exercitam HTTP de loopback, decisões Ed25519, execução Python/Behave em subprocesso, invalidação, falhas e retomada através dos adaptadores de protocolo. Chaves, recibos e aceites das fixtures são criados em diretórios temporários descartáveis, fora de qualquer contrato real do projeto.
 
-Java e Go possuem validações separadas em [adapters](../../adapters/README.md). Testes de protocolo não comprovam instalação ou dispatch nativo do Claude, confiança humana pela UX do Codex ou isolamento contra outro processo com as mesmas permissões.
+Java e Go possuem validações separadas em [adapters](../../adapters/README.md). Testes de protocolo não comprovam dispatch nativo do Claude (veja [research/claude](../claude/README.md)), confiança humana pela UX do Codex ou isolamento contra outro processo com as mesmas permissões.
 
 Depois de compilar os executáveis de exemplo, é possível reproduzir a integração dos motores reais com o núcleo:
 

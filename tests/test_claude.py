@@ -67,20 +67,36 @@ class ClaudeHookTests(unittest.TestCase):
         self.assertFalse(reply["continue"])
         self.assertIn("erro de verificação", reply["stopReason"])
 
-    def test_declared_shell_command_bootstraps_without_editable_install(self):
+    def test_declared_shell_command_bootstraps_in_either_host_environment(self):
         # Native host dispatch is not claimed: run the declared POSIX command as
-        # a subprocess in a project which has not opted into SpecMD.
+        # a subprocess in a project which has not opted into SpecMD. Codex
+        # injects PLUGIN_ROOT; Claude Code injects only CLAUDE_PLUGIN_ROOT.
         (self.root / "specmd.toml").unlink()
         repository = Path(__file__).resolve().parents[1]
-        declaration = json.loads((repository / "integrations/claude/hooks.json").read_text())
+        declaration = json.loads((repository / "hooks/hooks.json").read_text())
         self.assertEqual(set(declaration["hooks"]), {"SessionStart", "PreToolUse", "PostToolUse", "Stop"})
         command = declaration["hooks"]["Stop"][0]["hooks"][0]["command"]
-        environment = {**os.environ, "CLAUDE_PLUGIN_ROOT": str(repository), "SPECMD_PYTHON": sys.executable}
-        environment.pop("PYTHONPATH", None)
-        result = subprocess.run(["sh", "-c", command], cwd=self.root, env=environment,
-                                input=json.dumps(self.payload()), capture_output=True, text=True, timeout=15)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(json.loads(result.stdout), {})
+        for variable in ("CLAUDE_PLUGIN_ROOT", "PLUGIN_ROOT"):
+            with self.subTest(variable=variable):
+                environment = {key: value for key, value in os.environ.items()
+                               if key not in {"PYTHONPATH", "PLUGIN_ROOT", "CLAUDE_PLUGIN_ROOT"}}
+                environment.update({variable: str(repository), "SPECMD_PYTHON": sys.executable})
+                result = subprocess.run(["sh", "-c", command], cwd=self.root, env=environment,
+                                        input=json.dumps(self.payload()), capture_output=True, text=True, timeout=15)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(json.loads(result.stdout), {})
+
+    def test_plugin_root_has_a_single_hook_declaration(self):
+        # Claude Code loads hooks/hooks.json from the plugin root besides any
+        # manifest path; a second declaration made every hook run twice.
+        repository = Path(__file__).resolve().parents[1]
+        claude = json.loads((repository / ".claude-plugin/plugin.json").read_text())
+        codex = json.loads((repository / ".codex-plugin/plugin.json").read_text())
+        self.assertNotIn("hooks", claude)
+        self.assertEqual(codex["hooks"], "./hooks/hooks.json")
+        declarations = [path.relative_to(repository).as_posix() for path in repository.glob("**/hooks.json")
+                        if not {".git", ".venv", "dist", "research"} & set(path.relative_to(repository).parts)]
+        self.assertEqual(declarations, ["hooks/hooks.json"])
 
 
 if __name__ == "__main__":

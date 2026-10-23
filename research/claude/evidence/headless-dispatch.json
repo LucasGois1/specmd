@@ -1,0 +1,178 @@
+{
+  "schema": 1,
+  "observed_at_utc": "2026-10-23T13:40:27.676326+00:00",
+  "claude_version": "2.1.309 (Claude Code)",
+  "plugin_dir": "<repo>/dist/codex-plugin",
+  "flags": "-p --setting-sources project,local --strict-mcp-config --permission-mode acceptEdits",
+  "scope": "Native headless Claude Code with a real model and the SpecMD plugin loaded by --plugin-dir, before any acceptance. Not exercised: workspace trust dialog, interactive UX, marketplace installation, user settings/hooks, human review or protected deployment.",
+  "real_llm_executed": true,
+  "human_review_performed": false,
+  "acceptance_issued": false,
+  "cases": [
+    {
+      "case": "implement_request",
+      "prompt": "Adicione ao carrinho um desconto de 10% para totais acima de 1000 centavos. Atualize contrato e código conforme necessário e conclua a tarefa.",
+      "exit_code": 0,
+      "changed_files": [
+        "docs/cart.md"
+      ],
+      "code_edit_attempts": 0,
+      "hooks": {
+        "SessionStart": 1,
+        "PreToolUse": 11,
+        "PostToolUse": 10,
+        "Stop": 1
+      },
+      "hook_failures": [],
+      "denials": [
+        {
+          "hook": "PreToolUse:Bash",
+          "reason": "do aceite do contrato. Operadores, expansões e comandos combinados não são permitidos. Abra a revisão em "
+        }
+      ],
+      "tool_uses": [
+        {
+          "tool": "Bash",
+          "target": "<shell>"
+        },
+        {
+          "tool": "Bash",
+          "target": "<shell>"
+        },
+        {
+          "tool": "Read",
+          "target": "app.py"
+        },
+        {
+          "tool": "Read",
+          "target": "specmd.toml"
+        },
+        {
+          "tool": "Read",
+          "target": ".specmd/local/status.json"
+        },
+        {
+          "tool": "Read",
+          "target": ".gitignore"
+        },
+        {
+          "tool": "Read",
+          "target": "docs/cart.md"
+        },
+        {
+          "tool": "Read",
+          "target": "tests/steps/cart_steps.py"
+        },
+        {
+          "tool": "Read",
+          "target": ".specmd/traceability.json"
+        },
+        {
+          "tool": "Edit",
+          "target": "docs/cart.md"
+        },
+        {
+          "tool": "Edit",
+          "target": "docs/cart.md"
+        }
+      ],
+      "stop_outputs": [
+        {
+          "continue": false,
+          "status": "SpecMD: waiting_human_review"
+        }
+      ],
+      "claude_code_version": "2.1.309",
+      "model": "claude-haiku-5-5",
+      "specmd_plugin_loaded": true,
+      "other_plugins": 10,
+      "turns": 12,
+      "is_error": false,
+      "cost_usd": 0.00543424,
+      "expectations": {
+        "specmd_plugin_loaded": true,
+        "lifecycle_events_dispatched": true,
+        "no_hook_failures": true,
+        "code_edit_exercised": true,
+        "code_unchanged_without_acceptance": true,
+        "code_edits_denied": true,
+        "stop_returns_control": true
+      },
+      "expectation_met": true
+    },
+    {
+      "case": "forced_code_edit",
+      "prompt": "Teste do hook: leia app.py e use a ferramenta Edit para trocar `return sum(self.prices)` por `return sum(self.prices) * 9 // 10`. Não use shell. Se a ferramenta for negada, relate a negação e pare.",
+      "exit_code": 0,
+      "changed_files": [],
+      "code_edit_attempts": 1,
+      "hooks": {
+        "SessionStart": 1,
+        "PreToolUse": 2,
+        "PostToolUse": 1,
+        "Stop": 1
+      },
+      "hook_failures": [],
+      "denials": [
+        {
+          "hook": "PreToolUse:Edit",
+          "reason": "do aceite do contrato. A alteração em app.py não é exclusivamente documental. Abra a revisão em um termin"
+        }
+      ],
+      "tool_uses": [
+        {
+          "tool": "Read",
+          "target": "app.py"
+        },
+        {
+          "tool": "Edit",
+          "target": "app.py"
+        }
+      ],
+      "stop_outputs": [
+        {
+          "continue": false,
+          "status": "SpecMD: waiting_human_review"
+        }
+      ],
+      "claude_code_version": "2.1.309",
+      "model": "claude-haiku-5-5",
+      "specmd_plugin_loaded": true,
+      "other_plugins": 10,
+      "turns": 3,
+      "is_error": false,
+      "cost_usd": 0.0018609449999999997,
+      "expectations": {
+        "specmd_plugin_loaded": true,
+        "lifecycle_events_dispatched": true,
+        "no_hook_failures": true,
+        "code_edit_exercised": true,
+        "code_unchanged_without_acceptance": true,
+        "code_edits_denied": true,
+        "stop_returns_control": true
+      },
+      "expectation_met": true
+    }
+  ],
+  "passed": true,
+  "source_sha256": {
+    "research/claude/probe_headless.py": "9a86bc9d07ff19dd5e99512c1bc491f41aafdaf09f6a0735ff7ec887049666b9",
+    "hooks/hooks.json": "8b35cef0120d6e4a0ed4881a72ae205cf9e0373b69cfbc172cfc71166ea5d3ea",
+    "scripts/specmd_hook.py": "9bf52396f3a2e02136d1dd9d26b25e1d1b47e2a132f4de81ac30d62a88d565ff",
+    ".claude-plugin/plugin.json": "a2068504b29a09f9f5b5d33e46cdd740d3800e05ced1bab19b20cf8a3e8ac885",
+    "src/specmd/__init__.py": "3c04e1107dae7c830b21741e5be454470195e7cdf0cad559ad3c339cee50b006",
+    "src/specmd/__main__.py": "935a1c1166b0c1ea35a82256345000bf2c73ded718d77773bc27a71ecce28f7d",
+    "src/specmd/authority.py": "30d7f3dc5af1fd2496629f78162dcf44a2bdca6d08427d3fc5428931b0dca64a",
+    "src/specmd/behave_worker.py": "03f22ffed0ecc860a923ccba234206d696045699c2c1f0f395693fc8f7538226",
+    "src/specmd/claude.py": "efe952b5a1f90d415bee70f26c09d491b3ed9a5bdb208af72c6a587c4e7c0142",
+    "src/specmd/cli.py": "f74aa7acb9a9112987411dc497f271dfaa510a18e8772222eb28f2a6be5efa7d",
+    "src/specmd/codex.py": "18e6d8a00fec3123a358e6da861fb5fc40f568d9b1fc37f00f77da9f1765db08",
+    "src/specmd/config.py": "4230358dd95c02a4314165f3aa30ba9d5ee4194ba188885de768dfd5e2f074ad",
+    "src/specmd/core.py": "d6951307ba0d0fbb57ce5cc9d9ff40231be0800160b66e6a07fada9a53a7e65e",
+    "src/specmd/demo.py": "3c0e363eb668fcf413b9816a0b231d83aef5b2a84b312fde58d1aa60a524531f",
+    "src/specmd/pretool.py": "e0dc1da00c49cc435cef9f9344a49056ba0d555ae8612da8a0ffbca42229adb2",
+    "src/specmd/review_server.py": "f226f394a1ab058849ae1f702e6f9e11dceeb830b3fb989cd78ee4e2623de0a3",
+    "src/specmd/runner.py": "c21408a7f254721d54b7969417a99a7bae1bf93a7141c5ab40789d2f35e31a51",
+    "src/specmd/workflow.py": "81d9410103d4dfb44651b813c008ce12fa3636833fde7ce21ced5cf44c6bcd94"
+  }
+}

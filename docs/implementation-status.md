@@ -25,7 +25,7 @@ Esta branch contém um lifecycle experimental: prepara revisão, registra decis�
 | Lifecycle | Espera de revisão/evidência, bloqueio, `demo_passed` e caminho protegido `passed`. | Sucesso demonstrativo não libera integração produtiva. |
 | CLI | Demonstração, inventário, revisão, execução, checagem, status, auditoria e verificação. | Interface experimental; confira `--help` da revisão instalada. |
 | Codex | Pacote com quatro eventos e adaptador; instalação/dispatch anterior observado no CLI 0.163.0. | Prova nativa dos três eventos anteriores com backend simulado; novo `PreToolUse` testado em protocolo. Serviço real retornou `401`. |
-| Claude | Manifesto e adaptação com testes de protocolo. | Sem comprovação de instalação/dispatch nativo no produto. |
+| Claude | Manifesto, adaptação e dispatch nativo headless dos quatro eventos no Claude Code 2.1.309 com modelo real ([evidência](../research/claude/README.md)). | Diálogo de trust, UX interativa, instalação por marketplace e hooks do usuário sem ensaio. |
 | CI | Workflow de exemplo e `verify --require-real` com execução fresca. | Autoridade, verificador e regras protegidas precisam de provisionamento externo. |
 
 ## Interpretar sucesso
