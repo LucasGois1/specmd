@@ -12,7 +12,7 @@ A documentação Markdown é a fonte canônica das regras de negócio. Os cenár
 - Descreva cada regra num documento. Um requisito pode ter ID no título, com prefixo livre: `## PAG-REQ-001 — Estorno em até 7 dias`.
 - Logo abaixo do requisito, escreva um bloco ```gherkin com cenários concretos (valores reais, casos de borda). Os cenários abaixo de um título de requisito ficam ligados a ele; uma tag `@PAG-REQ-001` muda a ligação.
 - Use `# language: pt` no bloco quando escrever em português.
-- Cenários conhecidos que ainda não devem ser cobrados levam `@wip`.
+- Cenários que ainda não devem ser cobrados levam `@wip`, mas só quando o dev decidir. Não marque `@wip` por conta própria: cenários que aguardam confirmação já não são cobrados.
 
 ## Confirmar com o dev
 
@@ -28,4 +28,4 @@ A documentação Markdown é a fonte canônica das regras de negócio. Os cenár
 
 - Depois de editar Markdown, o SpecMD aponta documentos sem cenários, requisitos sem cenário e Gherkin inválido.
 - Ao concluir uma implementação, ele executa os cenários e devolve o cenário, o passo, a linha, a mensagem de erro e, para passos sem implementação, um trecho para começar. Implemente até ficar verde.
-- `specmd check` e `specmd run` (ou `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/specmd_cli.py" check`) mostram o estado a qualquer momento.
+- Para conferir a qualquer momento, sem instalar nada, use `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/specmd_cli.py" check --root "$(pwd)"` (pendências e última execução) ou `... run --root "$(pwd)"` (executa os cenários). O início da sessão traz o mesmo comando com o caminho completo.

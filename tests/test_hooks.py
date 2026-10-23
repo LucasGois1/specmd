@@ -74,6 +74,9 @@ class HookLifecycleTests(unittest.TestCase):
         context = reply["hookSpecificOutput"]["additionalContext"]
         self.assertIn("1 (2 cenários)", context)
         self.assertIn("mostre-os ao dev e peça confirmação", context)
+        self.assertIn("marcar @wip é decisão do dev", context)
+        self.assertIn("scripts/specmd_cli.py", context)
+        self.assertIn(f"run --root {self.root}", context)
         state = hook_state.load(self.root)
         self.assertIn("code_fp_baseline", state)
         self.assertIn("docs/cart.md", state["spec_at_prompt"])
@@ -93,18 +96,38 @@ class HookLifecycleTests(unittest.TestCase):
         self.assertNotIn("decision", second)
         self.assertNotIn("continue", second)
 
-    def test_new_scenarios_wait_for_the_developer_before_execution(self):
+    def test_documentation_only_changes_wait_for_the_developer(self):
         self.hook("SessionStart")
         (self.root / "docs/cupons.md").write_text(GAP_DOC + SCENARIO)
         context = self.hook("PostToolUse", tool_name="Write")["hookSpecificOutput"]["additionalContext"]
         self.assertIn("peça confirmação antes de implementar", context)
-        self.edit_app("return sum(self.prices)", "return sum(self.prices) + 0")
         reply = self.hook("Stop")
         self.assertIn("aguardando sua confirmação", reply["systemMessage"])
         self.assertNotIn("last_run", hook_state.load(self.root))
-        self.assertEqual(self.hook("UserPromptSubmit"), {})
+
+    def test_code_change_verifies_even_scenarios_written_in_the_same_turn(self):
+        # The agent proposed the scenarios in chat, the developer confirmed, and
+        # the agent wrote them and the code in the following turn.
+        self.hook("SessionStart")
+        self.hook("UserPromptSubmit")
+        (self.root / "docs/cupons.md").write_text(GAP_DOC + SCENARIO)
+        self.edit_app("return sum(self.prices)", "return sum(self.prices) + 0")
         reply = self.hook("Stop")
         self.assertIn("3 cenários passando", reply["systemMessage"])
+        self.assertIn("mudaram depois da última mensagem do dev", reply["systemMessage"])
+        self.assertTrue(hook_state.load(self.root)["last_run"]["passed"])
+        self.hook("UserPromptSubmit")
+        self.assertEqual(self.hook("Stop"), {})
+
+    def test_failing_scenario_written_with_the_code_is_fed_back_with_a_reminder(self):
+        self.hook("SessionStart")
+        self.hook("UserPromptSubmit")
+        (self.root / "docs/cupons.md").write_text(GAP_DOC + SCENARIO.replace("1000 centavos\n```", "900 centavos\n```"))
+        self.edit_app("return sum(self.prices)", "return sum(self.prices) + 0")
+        reply = self.hook("Stop")
+        self.assertEqual(reply["decision"], "block")
+        self.assertIn("Total observado 1000; esperado 900", reply["reason"])
+        self.assertIn("se ele ainda não os confirmou", reply["reason"])
 
     def test_no_code_change_in_the_session_demands_no_execution(self):
         self.hook("SessionStart")
