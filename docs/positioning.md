@@ -18,6 +18,8 @@ A proposta tem antecedentes importantes. Documentação executável em Markdown,
 
 O espaço a investigar é a utilidade de um fluxo integrado: o humano aceita uma versão e um escopo; documentos e dispensas continuam monitorados; mudanças relevantes têm origem reconhecida; evidências dos cenários correspondem ao código atual; o agente recebe uma pendência acionável antes de concluir. Essa é uma hipótese de benefício e experiência de uso, não uma vantagem já demonstrada nem uma afirmação de exclusividade.
 
+Sobreposição conceitual ou funcional não comprova que uma alternativa seja madura, confiável ou adequada ao ambiente pretendido. Também não invalida a utilidade do SpecMD: qualidade da integração, manutenção e custo de uso precisam ser avaliados nos experimentos, separadamente da existência de antecedentes.
+
 ## Markdown with Gherkin oficial
 
 O [documento oficial MDG no commit `0c50fc12112d9400892a760ee7302b232a466cb8`](https://github.com/cucumber/gherkin/blob/0c50fc12112d9400892a760ee7302b232a466cb8/MARKDOWN_WITH_GHERKIN.md) descreve cenários em Markdown renderizável: usa `.feature.md`, cabeçalhos para os elementos Gherkin, listas para passos e tags entre crases. Também descreve renderização com resultados e anexos via Cucumber Messages. Portanto, juntar prosa, cenários e resultados em Markdown tem antecedente direto no próprio ecossistema Cucumber.
@@ -52,6 +54,8 @@ O mesmo documento informa que o AST MDG omite descrições da prosa. Logo, a ide
 
 A [documentação do Tracey consultada](https://github.com/bearcove/tracey/blob/66008a85e22fc3d4e437a8e78fee4f5f99c644b0/README.md#version-tracking) também descreve versões de requisitos e referências de implementação que ficam obsoletas quando o requisito muda. Isso é especialmente próximo do problema de evolução contratual. Uma anotação de verificação, porém, não equivale por si a um recibo de execução atual; as políticas efetivamente disponíveis e sua composição precisam ser verificadas na comparação técnica.
 
+O Tracey é implementado em Rust, mas não é restrito à análise de projetos Rust. No mesmo commit fixado, seu [registro central de linguagens](https://github.com/bearcove/tracey/blob/66008a85e22fc3d4e437a8e78fee4f5f99c644b0/crates/tracey-core/src/languages.rs#L108-L110) inclui explicitamente Go (`.go`), Java (`.java`) e Python (`.py`), com gramáticas e extratores próprios. A lista do README omite Python, portanto não é uma descrição completa desse suporte no fonte. Isso confirma análise e rastreabilidade nessas linguagens no snapshot consultado, sem demonstrar execução BDD/Gherkin ou paridade de recursos entre elas.
+
 O [fluxo de verificação do OpenSpec no snapshot consultado](https://github.com/Fission-AI/OpenSpec/blob/56ef0ac1fd2270e88d276b40da9f23ec0f9c6e96/docs/workflows.md#L331-L374) avalia completude, correção e coerência, incluindo requisitos implementados e cenários cobertos. O próprio fluxo documenta que a verificação não bloqueia o arquivamento. Essa é uma diferença concreta daquele fluxo, sem demonstrar ausência de gates configuráveis ou externos no ecossistema inteiro.
 
 ## A comparação precisa incluir extensões e composições
@@ -60,11 +64,13 @@ O [Spec Kit documenta eventos de runtime por integração](https://github.com/gi
 
 Seu [catálogo comunitário no mesmo commit](https://github.com/github/spec-kit/blob/27d14e20c187c1f2916540ea201ecbdc9f8ed588/extensions/catalog.community.json) serve para descoberta, não como auditoria das capacidades. As entradas consultadas não estavam marcadas como verificadas. As seguintes descrições foram conferidas nas fontes dos próprios mantenedores:
 
-- [spec-gates `v0.4.1`](https://github.com/schwichtgit/spec-gates/blob/v0.4.1/README.md) descreve uma política e um verificador compartilhados nas fronteiras agente, Git e CI, attestations com SHA-256 e critérios executáveis em blocos `accept` de Markdown. É um antecedente próximo inclusive da combinação de política, hooks e evidência. A autoridade efetiva do aceite humano e os caminhos de bypass exigem avaliação específica.
+- [spec-gates `v0.4.1`](https://github.com/schwichtgit/spec-gates/blob/v0.4.1/README.md) descreve uma política e um verificador compartilhados nas fronteiras agente, Git e CI, attestations com SHA-256 e critérios executáveis em blocos `accept` de Markdown. É uma referência secundária de engenharia neste levantamento, com sobreposição documentada; maturidade, manutenção, adoção e confiabilidade operacional não foram avaliadas. A autoridade efetiva do aceite humano e os caminhos de bypass também exigem avaliação específica.
 - [spec-kit-bdd `v1.0.3`](https://github.com/RSginer/spec-kit-bdd/blob/v1.0.3/README.md) descreve relações entre specs e cenários, mas gera arquivos `features/*.feature` e documenta hooks opcionais. A forma documentada não atende diretamente à restrição de execução sem `.feature` do SpecMD; ainda pode fornecer aprendizados ou pontos de adaptação.
 - [plan-review-gate `v1.0.0`](https://github.com/luno/spec-kit-plan-review-gate/blob/v1.0.0/README.md) exige spec/plano integrados por revisão antes das tarefas e documenta uma opção `--skip-review`. É preciso comparar a política desejada e as permissões reais, em vez de equiparar qualquer gate a aceite obrigatório sem bypass pelo agente.
 
 Esses antecedentes tornam inadequado posicionar o SpecMD apenas como “Markdown executável com hooks, hashes e CI”. Também não justificam concluir que uma composição existente já atende a todas as necessidades: isso precisa ser demonstrado, com escopo e configuração equivalentes.
+
+Estrelas de repositório não comprovam qualidade, maturidade ou adequação. Esta comparação não usa uma contagem de estrelas como evidência dessas propriedades.
 
 ## Aceite por versão: reaproveitar antes de reconstruir
 

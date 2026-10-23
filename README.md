@@ -21,7 +21,7 @@ O projeto propõe tornar explícita a relação entre **intenção reconhecida, 
 - Integrar o mecanismo ao trabalho de agentes por adaptadores e hooks, com uma checagem protegida de integração.
 - Manter um inventário incremental para evitar análises repetidas sem ignorar mudanças relevantes.
 
-Gherkin é a linguagem dos cenários; Cucumber é um possível mecanismo de execução. **Não se presume suporte nativo de Cucumber a Markdown.** O primeiro experimento técnico precisa demonstrar a integração por parsing e adaptação em memória, preservando a origem dos cenários no `.md`.
+Gherkin é a linguagem dos cenários; Cucumber é um possível mecanismo de execução. **Não se presume suporte nativo de Cucumber a qualquer Markdown.** Os [protótipos executados](docs/runner-feasibility.md) demonstraram parsing e adaptação em memória nas três linguagens, preservando a origem dos cenários no `.md`; isso ainda não constitui um produto integrado.
 
 O suporte inicial deve contemplar pelo menos Java, Python e Go. Os mecanismos de entrada e execução são pesquisados individualmente; não se presume um parâmetro de CLI comum às três linguagens.
 
@@ -70,6 +70,6 @@ Exemplos de formato: [contrato comportamental](examples/cancellation.contract.md
 
 ## Como começar a implementação
 
-Leia o [plano de implementação](docs/roadmap.md) e a [pesquisa](research/README.md). O primeiro marco é provar a execução de cenários definidos em Markdown sem exigir `.feature` em Java, Python e Go, antes de estabilizar os adaptadores de runner. Stack do núcleo, primeiro adaptador de agente, mecanismo de aprovação e licença permanecem em aberto.
+Leia o [plano de implementação](docs/roadmap.md) e a [pesquisa](research/README.md). A viabilidade inicial de execução sem arquivos `.feature` foi demonstrada em Java, Python e Go. O próximo experimento proposto é um fluxo pequeno de ponta a ponta que una contrato Markdown, aceite humano de uma versão, execução e decisão de conclusão. Stack do núcleo, primeiro adaptador de agente, mecanismo de aprovação e licença permanecem em aberto.
 
 Não há comandos de instalação ou execução do produto nesta etapa. Comandos de experimentos, quando disponíveis, pertencem aos respectivos relatórios de pesquisa.

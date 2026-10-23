@@ -1,6 +1,6 @@
 # Arquitetura proposta
 
-Este documento descreve uma proposta para implementação. Não há runner, plugin, serviço de aceite ou bloqueio implementado ou validado neste repositório. A publicação desta documentação não constitui aceite contratual do seu conteúdo.
+Este documento descreve uma proposta para implementação. Há [protótipos de integração com runners](runner-feasibility.md), mas não há núcleo de produto, plugin, serviço de aceite ou bloqueio protegido implementado ou validado neste repositório. A publicação desta documentação não constitui aceite contratual do seu conteúdo.
 
 Leia também [produto](product.md), [requisitos](requirements.md), [formato](format.md), [aceite e confiança](approval-and-trust.md), [indexação](indexing.md), [integrações](integrations.md), [roadmap](roadmap.md) e [plano de validação](validation-plan.md).
 
@@ -10,7 +10,7 @@ O contrato é escrito, revisado e versionado em Markdown. Seus cenários Gherkin
 
 A execução proposta não depende de arquivos `.feature`, nem mantidos pelo desenvolvedor nem gerados temporariamente como etapa obrigatória. O adaptador deve extrair os blocos do Markdown e fornecer uma representação executável em memória ao mecanismo de execução. Os runners Cucumber usuais não devem ser presumidos capazes de descobrir ou executar Markdown diretamente.
 
-A viabilidade dessa integração é um risco técnico a validar no primeiro protótipo. Se o runner escolhido exigir arquivos `.feature`, essa integração ainda não satisfaz o requisito do produto; o projeto deverá escolher outro ponto de integração, adaptar o executor ou rever a escolha do runner com decisão explícita. Gerar uma segunda especificação editável não é uma solução aceita para esse problema.
+A viabilidade inicial dessa integração foi demonstrada nos protótipos Java, Python e Go; estabilidade das APIs, cobertura da gramática e integração com projetos reais continuam exigindo validação. Se um runner escolhido exigir arquivos `.feature`, essa integração ainda não satisfaz o requisito do produto; o projeto deverá escolher outro ponto de integração, adaptar o executor ou rever a escolha do runner com decisão explícita. Gerar uma segunda especificação editável não é uma solução aceita para esse problema.
 
 As implementações dos passos continuam sendo código de teste. Elas exercitam o software e fazem as asserções descritas nos cenários; não se tornam uma segunda fonte de requisitos em linguagem natural.
 

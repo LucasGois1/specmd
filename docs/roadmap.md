@@ -12,6 +12,18 @@ O Markdown é a fonte canônica. O usuário não mantém arquivos `.feature`, e 
 
 O agente pode propor contratos, cenários e dispensas. A autoridade de aceite permanece separada de suas credenciais. Hooks locais orientam e controlam o fluxo conforme a capacidade real da plataforma; uma checagem protegida aplica a política de integração.
 
+## Próximo experimento proposto
+
+A [pesquisa dos runners](runner-feasibility.md) já produziu evidências iniciais de execução em Java, Python e Go. O próximo experimento deve integrar o fluxo em um caso pequeno, como cancelamento de pedido, com poucos requisitos e cenários no mesmo Markdown.
+
+A recomendação para a primeira fatia é reutilizar Go/Godog, cuja API pública de conteúdo em memória funcionou no protótipo. Isso não remove Java e Python do MVP nem estabiliza automaticamente o formato ou a stack do núcleo. O primeiro ambiente de agentes deve ser escolhido após verificar seus hooks; o canal real de aceite precisa manter a autoridade humana fora das permissões do agente.
+
+A demonstração deve permitir concluir com contrato aceito e cenários executados com sucesso; pedir novo aceite após mudança contratual; invalidar evidências pertinentes após mudança de código; e recusar cenários obrigatórios ausentes, filtrados, indefinidos ou ignorados. Deve também permitir aguardar revisão humana e retomar o trabalho sem declarar uma conclusão indevida. A checagem protegida permanece necessária para avaliar tentativas de contornar os controles locais.
+
+Incluir uma tarefa em que o agente inventa uma regra, escreve testes verdes e propõe documentá-la depois. Avaliar se a revisão expõe essa decisão e permite ao humano rejeitá-la, sem prometer detecção automática infalível. Comparar as tarefas com revisão humana e CI bem configurados, medindo desalinhamentos, esforço de revisão e bloqueios indevidos conforme o [plano de validação](validation-plan.md).
+
+Esse experimento demonstra o funcionamento conjunto e inicia a avaliação de utilidade. Os componentes acima ainda não estão implementados; esta recomendação não representa aceite humano de uma nova versão contratual.
+
 ## Marcos e dependências
 
 | Marco | Objetivo | Dependências | Saída verificável |
