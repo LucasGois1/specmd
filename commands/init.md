@@ -1,16 +1,15 @@
 ---
-description: Prepara este repositório para o SpecMD (specmd.toml, .specmdignore e o plugin no .claude/settings.json)
+description: Habilita o SpecMD para o time neste repositório (marketplace e plugin no .claude/settings.json)
 ---
 
-Prepare este repositório para o SpecMD. Na raiz do projeto, execute:
+Habilite o SpecMD para todo o time neste repositório. Na raiz do projeto, execute:
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/specmd_cli.py" init --root "$(pwd)"
 ```
 
-Depois:
+Isso declara o marketplace do SpecMD e habilita o plugin no `.claude/settings.json`, sem mexer no resto do arquivo. Depois:
 
-1. Mostre ao dev quais arquivos foram criados ou alterados.
-2. Liste os Markdown do projeto e revise o `.specmdignore` com o dev: documentos que não descrevem comportamento do sistema ficam nele; os que descrevem precisam de cenários Gherkin.
-3. Se o projeto tem passos BDD (por exemplo `tests/steps` ou `features/steps`), ajuste o runner no `specmd.toml`; para Java ou Go, aponte o `command` do bridge.
-4. Lembre o dev de fazer commit de `specmd.toml`, `.specmdignore` e `.claude/settings.json`: assim o plugin carrega sozinho para quem abrir o Claude Code no repositório e confiar na pasta.
+1. Mostre ao dev o que mudou e lembre de fazer commit do `.claude/settings.json`: quem abrir o Claude Code no repositório e confiar na pasta recebe o plugin.
+2. Rode `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/specmd_cli.py" check --root "$(pwd)"` e revise com o dev os Markdown sem cenários: os que não descrevem comportamento do sistema vão para um `.specmdignore` na raiz; os que descrevem precisam de cenários Gherkin.
+3. Se os passos BDD não estão em `tests/steps`, `features/steps` ou `steps`, crie um `specmd.toml` com o runner; para Java ou Go, aponte o `command` do bridge.

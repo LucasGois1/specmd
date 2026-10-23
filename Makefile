@@ -26,7 +26,7 @@ help:
 	@echo "  agent   Abre o Claude Code no demo com o plugin SpecMD"
 	@echo "  status  Mostra o estado do demo"
 	@echo "  run     Executa os cenários do demo"
-	@echo "  init    Prepara um repositório seu: make init REPO=/caminho/do/repo"
+	@echo "  init    Habilita o plugin para o time: make init REPO=/caminho/do/repo"
 
 $(STAMP): pyproject.toml
 	$(PYTHON) -m venv "$(VENV)"

@@ -48,23 +48,42 @@ GAP_GUIDANCE = (
 )
 
 
-def find_root() -> Path | None:
-    """Project root from the host environment, never from paths in the payload.
+def plugin_enabled(directory: Path) -> bool:
+    """True when the project's own Claude Code settings enable the specmd plugin.
 
-    Claude Code exports CLAUDE_PROJECT_DIR; otherwise the hook process runs in
-    the session's working directory.
+    Local settings take precedence over the shared project file, as in Claude
+    Code. A user-scope installation alone does not activate a repository.
     """
-    for raw in (os.environ.get("CLAUDE_PROJECT_DIR"), os.getcwd()):
-        if not isinstance(raw, str) or not raw or not Path(raw).is_absolute():
+    for name in ("settings.local.json", "settings.json"):
+        try:
+            settings = json.loads((directory / ".claude" / name).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
             continue
-        start = Path(raw).resolve()
-        if not start.is_dir():
+        plugins = settings.get("enabledPlugins") if isinstance(settings, dict) else None
+        if not isinstance(plugins, dict):
             continue
-        for candidate in (start, *start.parents):
-            if (candidate / "specmd.toml").is_file():
-                return candidate
-            if (candidate / ".git").exists():
-                break
+        values = [value for key, value in plugins.items() if isinstance(key, str) and key.split("@")[0] == "specmd"]
+        if values:
+            return values[0] is True
+    return False
+
+
+def find_root() -> Path | None:
+    """Root of an activated project, from the host environment, never from the payload.
+
+    A project is active with a specmd.toml or when its .claude settings enable
+    the plugin. Claude Code exports CLAUDE_PROJECT_DIR; without it (Codex) the
+    hook process runs in the session's working directory.
+    """
+    raw = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
+    if not Path(raw).is_absolute() or not Path(raw).resolve().is_dir():
+        return None
+    start = Path(raw).resolve()
+    for candidate in (start, *start.parents):
+        if (candidate / "specmd.toml").is_file() or plugin_enabled(candidate):
+            return candidate
+        if (candidate / ".git").exists():
+            break
     return None
 
 
@@ -166,7 +185,7 @@ def _user_prompt(root: Path) -> dict[str, Any]:
     from .core import inspect_project
 
     result = inspect_project(root)
-    if result["status"] in {"inactive", "error"}:
+    if result["status"] == "error":
         return {}
 
     def change(state: dict[str, Any]) -> None:
@@ -181,7 +200,7 @@ def _post_tool(root: Path) -> dict[str, Any]:
     from .core import inspect_project
 
     result = inspect_project(root)
-    if result["status"] in {"inactive", "error"}:
+    if result["status"] == "error":
         return {}
     current, spec_now = _doc_map(result), _spec_map(result)
     seen: dict[str, Any] = {}
@@ -238,8 +257,6 @@ def _stop(root: Path) -> dict[str, Any]:
     from .workflow import scenario_count
 
     result = inspect_project(root)
-    if result["status"] == "inactive":
-        return {}
     if result["status"] == "error":
         return {"systemMessage": "SpecMD: " + "; ".join(item["message"] for item in result["findings"])}
     if result["status"] == "needs_scenarios":

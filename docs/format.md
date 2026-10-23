@@ -8,9 +8,10 @@ Todo Markdown do projeto (`.md` e `.markdown`), inclusive arquivos novos ainda n
 
 - arquivos ignorados pelo Git;
 - diretórios de dependências e builds (`node_modules`, `.venv`, `build`, `dist` e semelhantes) e o estado `.specmd/`;
-- o que casar com o `.specmdignore` na raiz.
+- arquivos de projeto que raramente descrevem comportamento: `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `SUPPORT.md`, `LICENSE*`, `NOTICE*`, `AUTHORS*`, `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.github/`, `.claude/` e `.codex/`;
+- o que casar com o `.specmdignore` na raiz, que é opcional.
 
-O `.specmdignore` usa padrões no estilo `.gitignore`: comentários com `#`, `!` para negar, `/` no fim para diretórios, `/` no início ou no meio para ancorar na raiz, `*`, `?` e `**`. Ele lista o Markdown que não descreve comportamento do sistema:
+Uma linha `!README.md` no `.specmdignore` traz de volta um arquivo ignorado por padrão. O `.specmdignore` usa padrões no estilo `.gitignore`: comentários com `#`, `!` para negar, `/` no fim para diretórios, `/` no início ou no meio para ancorar na raiz, `*`, `?` e `**`. Ele lista o Markdown que não descreve comportamento do sistema:
 
 ```gitignore
 README.md
@@ -19,7 +20,7 @@ docs/setup/
 notes/**/*.md
 ```
 
-`specmd init` cria um `.specmdignore` com os casos óbvios. O agente adiciona entradas quando é claro que o documento não descreve comportamento e pergunta ao dev quando há dúvida.
+O agente cria o arquivo e adiciona entradas quando é claro que o documento não descreve comportamento e pergunta ao dev quando há dúvida.
 
 ## O que um documento precisa ter
 
@@ -63,7 +64,7 @@ Funcionalidade: Estorno
 
 ## specmd.toml
 
-Todas as chaves são opcionais; o arquivo só precisa existir para ativar o SpecMD.
+Opcional. Sem ele valem os padrões abaixo; o SpecMD fica ativo num repositório quando o plugin está habilitado no escopo do projeto ou local (`enabledPlugins` em `.claude/settings.json` ou `.claude/settings.local.json`) ou quando existe um `specmd.toml`.
 
 ```toml
 gherkin_language = "pt"
@@ -80,6 +81,7 @@ steps = "tests/steps"            # environment.py fica no diretório pai
 python = ".venv/bin/python"      # opcional
 ```
 
+- Sem `[[runners]]`, o primeiro diretório existente entre `tests/steps`, `features/steps` e `steps` vira um runner Python.
 - O runner Python usa, nesta ordem: `python` do runner, `$VIRTUAL_ENV`, `.venv` ou `venv` do projeto, desde que consiga importar `behave`. Se nenhum servir, usa o interpretador do plugin.
 - Com vários runners, cada cenário vai para o primeiro cujo `paths` casar com o documento.
 - Java e Go usam `command` com o bridge; veja [adapters](../adapters/README.md).

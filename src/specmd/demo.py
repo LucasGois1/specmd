@@ -7,18 +7,13 @@ from pathlib import Path
 
 def initial_config() -> str:
     return (
-        "# Configuração do SpecMD. Todas as chaves são opcionais.\n"
+        "# Configuração do SpecMD. Todas as chaves são opcionais; sem este arquivo valem os padrões.\n"
         "# gherkin_language = \"pt\"\n"
         "# wip_tags = [\"wip\"]\n\n"
         "[run]\non_stop = true\n\n"
         "[[runners]]\nid = \"python\"\nlanguage = \"python\"\nsteps = \"tests/steps\"\ntimeout = 60\n"
     )
 
-
-DEFAULT_IGNORE = (
-    "# Markdown que não descreve comportamento do sistema (padrões no estilo .gitignore).\n"
-    "README.md\nCHANGELOG.md\nCONTRIBUTING.md\nCODE_OF_CONDUCT.md\nSECURITY.md\nLICENSE*\n.github/\n"
-)
 
 
 APP = '''"""Small cart implementation exercised by the Markdown documentation."""
@@ -106,7 +101,6 @@ def create_demo(destination: Path) -> dict:
         raise ValueError("O destino deve ser novo ou um diretório vazio; nenhum arquivo será sobrescrito.")
     files = {
         "specmd.toml": initial_config(),
-        ".specmdignore": DEFAULT_IGNORE,
         "app.py": APP,
         "docs/cart.md": CONTRACT,
         "tests/steps/cart_steps.py": STEPS,

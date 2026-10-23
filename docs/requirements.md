@@ -22,7 +22,7 @@ Funcionalidade: Documentação como fonte canônica
 
 ## SMD-REQ-002 — Descoberta dos documentos
 
-Qualquer Markdown do projeto entra na análise, inclusive arquivos novos ainda não versionados. Documentos que não descrevem comportamento do sistema (guias de setup, notas) ficam fora da análise pelo `.specmdignore` na raiz, com padrões no estilo `.gitignore`. O agente adiciona entradas quando é claro e pergunta ao dev quando há dúvida.
+Qualquer Markdown do projeto entra na análise, inclusive arquivos novos ainda não versionados. Arquivos de projeto comuns (README, CHANGELOG, LICENSE, instruções de agentes) ficam fora por padrão. Outros documentos que não descrevem comportamento do sistema (guias de setup, notas) ficam fora pelo `.specmdignore` opcional na raiz, com padrões no estilo `.gitignore`. O agente adiciona entradas quando é claro e pergunta ao dev quando há dúvida.
 
 ```gherkin
 # language: pt
@@ -167,7 +167,7 @@ Funcionalidade: Estado local
 
 ## SMD-REQ-026 — Instalação por repositório
 
-O plugin carrega sozinho quando alguém abre o agente no repositório. `specmd init` (ou `/specmd:init`) prepara o projeto, incluindo a configuração do agente que declara o marketplace do SpecMD e habilita o plugin; cada pessoa só precisa aceitar a confiança da pasta. As dependências vêm com o plugin; a máquina precisa de Python 3.11 ou superior.
+Instalar o plugin no escopo do projeto ou local já ativa o SpecMD no repositório, com os padrões; `specmd.toml` e `.specmdignore` são opcionais. `specmd init` (ou `/specmd:init`) declara o marketplace do SpecMD e habilita o plugin na configuração compartilhada do projeto, para que cada pessoa do time só precise aceitar a confiança da pasta. As dependências vêm com o plugin; a máquina precisa de Python 3.11 ou superior.
 
 ```gherkin
 # language: pt

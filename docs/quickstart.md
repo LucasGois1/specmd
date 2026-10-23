@@ -22,19 +22,28 @@ Na raiz do clone:
 | `make status` | Resume o estado do último demo. |
 | `make run` | Executa os cenários do último demo e resume o resultado. |
 | `make test` | Roda a suíte local. |
-| `make init REPO=…` | Prepara um repositório seu para o SpecMD. |
+| `make init REPO=…` | Habilita o plugin para o time num repositório seu. |
 
 `DEMO_HOME` muda a pasta dos demos. `CLAUDE_ARGS` repassa opções ao `claude`, por exemplo `--setting-sources project,local` para não carregar hooks e plugins das suas configurações. Cada `make demo` cria uma pasta nova; demos anteriores não são apagados.
 
 ## No seu repositório
 
-```sh
-make init REPO=/caminho/do/seu/repo
+Dentro do Claude Code, no seu repositório:
+
+```
+/plugin marketplace add LucasGois1/specmd
+/plugin install specmd@specmd        → escopo do projeto ou local
 ```
 
-Isso cria `specmd.toml` e `.specmdignore` (se não existirem), adiciona `.specmd/local/` ao `.gitignore` e declara no `.claude/settings.json` o marketplace do SpecMD com o plugin habilitado, preservando o que já existe. Faça commit desses arquivos. Quem abrir o Claude Code no repositório e confiar na pasta recebe o plugin. Rodar de novo não muda nada.
+Instalado no escopo do projeto ou local, o plugin já está ativo, com os padrões:
+- todo Markdown é analisado, menos `README.md`, `CHANGELOG.md`, `AGENTS.md`, `CLAUDE.md`, `LICENSE*`, `.github/` e semelhantes;
+- os passos Python em `tests/steps`, `features/steps` ou `steps` são usados para executar os cenários.
 
-Sem o clone: dentro do Claude Code no seu repositório, `claude plugin install specmd --marketplace LucasGois1/specmd --scope project` e depois `/specmd:init`.
+Uma instalação só no escopo de usuário não ativa repositórios sozinha.
+
+Para o time: `/specmd:init` (ou `make init REPO=…` a partir deste clone) declara o marketplace e habilita o plugin no `.claude/settings.json` do projeto, sem mexer no resto. Faça commit desse arquivo; quem abrir o Claude Code no repositório e confiar na pasta recebe o plugin.
+
+O estado local fica em `.specmd/local/`, que se ignora sozinho no Git.
 
 ## Um roteiro de teste
 
@@ -57,7 +66,7 @@ Comandos do CLI, todos com `--root` (padrão: diretório atual):
 
 | Comando | Resultado |
 | --- | --- |
-| `specmd init` | Prepara o repositório: `specmd.toml`, `.specmdignore`, `.gitignore` e o plugin no `.claude/settings.json`. |
+| `specmd init` | Declara o marketplace e habilita o plugin no `.claude/settings.json` do projeto. |
 | `specmd inventory` | Documentos, requisitos, cenários e pendências da documentação. |
 | `specmd check` | Pendências e o resultado da última execução, se ainda atual. |
 | `specmd run` | Executa os cenários e guarda o resultado para os hooks. |
@@ -68,7 +77,7 @@ Códigos de saída: 0 sem pendências, 1 documentação pendente ou cenários fa
 
 Um documento só precisa de cenários em blocos ```gherkin; frontmatter é opcional. Requisitos podem ter ID no título (`## PAG-REQ-001 — Estorno`) e os cenários logo abaixo ficam ligados a eles. Markdown que não descreve comportamento vai para o `.specmdignore`. Detalhes em [formato](format.md).
 
-O `specmd.toml` pode ser vazio; para executar cenários Python, declare um runner:
+O `specmd.toml` é opcional. Sem `[[runners]]`, os passos Python em `tests/steps`, `features/steps` ou `steps` são usados; para outro diretório, declare:
 
 ```toml
 [[runners]]

@@ -1,0 +1,5 @@
+# O SpecMD analisa a própria documentação. Os requisitos em docs/requirements.md
+# ainda não têm passos Behave (os testes do projeto são unittest), então a
+# execução dos cenários ao concluir fica desligada.
+[run]
+on_stop = false

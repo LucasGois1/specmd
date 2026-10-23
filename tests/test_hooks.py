@@ -12,6 +12,7 @@ from unittest.mock import patch
 from specmd import hooks
 from specmd import state as hook_state
 from specmd.demo import create_demo
+from specmd.runner import default_runners
 
 REPOSITORY = Path(__file__).resolve().parents[1]
 GAP_DOC = """---
@@ -137,6 +138,14 @@ class HookLifecycleTests(unittest.TestCase):
         self.assertIn("Passo sem implementação", reply["reason"])
         self.assertIn("def step_impl(context)", reply["reason"])
 
+    def test_steps_directory_is_found_without_runner_configuration(self):
+        (self.root / "specmd.toml").write_text("")
+        self.assertEqual(default_runners(self.root), [{"id": "python", "language": "python", "steps": "tests/steps"}])
+        self.hook("SessionStart")
+        self.hook("UserPromptSubmit")
+        self.edit_app("return sum(self.prices)", "return sum(self.prices) + 0")
+        self.assertIn("2 cenários passando", self.hook("Stop")["systemMessage"])
+
     def test_block_cap_lets_the_agent_stop(self):
         for index in range(hooks.MAX_BLOCKS):
             self.assertEqual(hooks._block_once(self.root, f"sig-{index}", "motivo", "resumo")["decision"], "block")
@@ -151,8 +160,22 @@ class HookLifecycleTests(unittest.TestCase):
         os.chdir(self.root / "docs")
         self.addCleanup(os.chdir, previous)
         self.assertEqual(hooks.find_root(), self.root)
-        os.chdir(previous)
+        neutral = tempfile.TemporaryDirectory()
+        self.addCleanup(neutral.cleanup)
+        os.chdir(neutral.name)
         self.assertEqual(hooks.handle_hook({"hook_event_name": "SessionStart", "cwd": str(self.root)}), {})
+
+    def test_project_scope_installation_activates_without_configuration(self):
+        (self.root / "specmd.toml").unlink()
+        self.assertIsNone(hooks.find_root())
+        (self.root / ".claude").mkdir()
+        (self.root / ".claude/settings.json").write_text(json.dumps({"enabledPlugins": {"specmd@specmd": True}}))
+        self.assertEqual(hooks.find_root(), self.root)
+        self.assertIn("SpecMD ativo", self.hook("SessionStart")["hookSpecificOutput"]["additionalContext"])
+        (self.root / ".claude/settings.local.json").write_text(json.dumps({"enabledPlugins": {"specmd@specmd": False}}))
+        self.assertIsNone(hooks.find_root())
+        (self.root / ".claude/settings.local.json").write_text(json.dumps({"enabledPlugins": {"outro@time": True}}))
+        self.assertEqual(hooks.find_root(), self.root)
 
     def test_internal_errors_never_stop_the_session(self):
         for event in ("SessionStart", "UserPromptSubmit", "PostToolUse", "Stop"):

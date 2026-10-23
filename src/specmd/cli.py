@@ -18,7 +18,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(prog="specmd", description="Documentação Markdown canônica com cenários verificáveis.")
     parser.add_argument("--version", action="version", version=f"specmd {__version__}")
     commands = parser.add_subparsers(dest="command", required=True)
-    for name, text in (("init", "Preparar o repositório: specmd.toml, .specmdignore e plugin no Claude Code"),
+    for name, text in (("init", "Habilitar o plugin para o time no .claude/settings.json do projeto"),
                        ("inventory", "Listar documentos, requisitos e cenários"),
                        ("check", "Pendências da documentação e resultado da última execução"),
                        ("status", "Mesmo que check"),
