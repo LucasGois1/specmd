@@ -170,6 +170,12 @@ def _format_failures(run: dict[str, Any]) -> str:
         lines.append(f"- … e mais {len(failures) - MAX_FINDINGS} cenários.")
     for finding in run.get("findings", []):
         lines.append(f"- Execução: {finding.get('message')}")
+    never = [failure for failure in failures if failure.get("id") in set(run.get("never_passed") or [])]
+    if never:
+        names = ", ".join(f'"{failure.get("name") or failure.get("id")}"' for failure in never[:3])
+        lines.append(f"{_plural(len(never), 'cenário nunca passou', 'cenários nunca passaram')} ({names}). "
+                     "Se o código já existia e faz outra coisa, é divergência entre documentação e código: "
+                     "pergunte ao dev qual vale antes de mudar qualquer um dos dois.")
     lines.append("Implemente o comportamento documentado até os cenários passarem. Se um cenário parecer "
                  "errado, confirme com o dev antes de mudá-lo.")
     return "\n".join(lines)[:MAX_REASON]

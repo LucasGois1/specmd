@@ -7,7 +7,7 @@ from pathlib import Path
 from . import __version__
 
 # 0: nothing pending; 1: documentation gaps or failing scenarios; 2: error.
-_EXIT_CODES = {"ready": 0, "passing": 0, "needs_scenarios": 1, "failing": 1}
+_EXIT_CODES = {"ready": 0, "passing": 0, "adoption": 0, "needs_scenarios": 1, "failing": 1}
 
 
 def _print(value):
@@ -22,7 +22,8 @@ def main(argv=None):
                        ("inventory", "Listar documentos, requisitos e cenários"),
                        ("check", "Pendências da documentação e resultado da última execução"),
                        ("status", "Mesmo que check"),
-                       ("run", "Executar todos os cenários da documentação")):
+                       ("run", "Executar todos os cenários da documentação"),
+                       ("adopt", "Listar os documentos que ainda precisam de cenários, para a adoção em legado")):
         command = commands.add_parser(name, help=text)
         command.add_argument("--root", type=Path, default=Path.cwd())
         if name == "run":
@@ -52,6 +53,9 @@ def main(argv=None):
         if args.command == "inventory":
             from .core import inspect_project
             result = inspect_project(root)
+        elif args.command == "adopt":
+            from .workflow import adoption_list
+            result = adoption_list(root)
         elif args.command == "run":
             from .workflow import run_project
             result = run_project(root, affected=args.affected)
