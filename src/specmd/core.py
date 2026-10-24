@@ -283,17 +283,25 @@ def _rule_markers(raw: bytes) -> dict[str, Any]:
     requirements: set[str] = set()
     gherkin = mdg = 0
     for index, token in enumerate(tokens):
-        if token.type == "heading_open" and index + 1 < len(tokens):
-            title = "".join(child.content for child in tokens[index + 1].children or [])
+        if token.type == "heading_open":
+            title = _heading_title(tokens, index)
             match = _REQUIREMENT_HEADING.match(title)
             if match:
                 requirements.add(match.group(1))
             elif _gherkin_headings().match(title):
                 mdg += 1
-        elif token.type == "fence":
-            words = token.info.strip().split(maxsplit=1)
-            gherkin += bool(words and words[0].casefold() == "gherkin")
+        elif _is_gherkin_fence(token):
+            gherkin += 1
     return {"requirements": sorted(requirements), "gherkin": gherkin, "mdg": mdg}
+
+
+def _heading_title(tokens: list[Any], index: int) -> str:
+    return "".join(child.content for child in tokens[index + 1].children or []) if index + 1 < len(tokens) else ""
+
+
+def _is_gherkin_fence(token: Any) -> bool:
+    words = token.info.strip().split(maxsplit=1)
+    return token.type == "fence" and bool(words) and words[0].casefold() == "gherkin"
 
 
 def _gherkin_fences(tokens: list[Any]) -> tuple[list[dict[str, Any]], list[tuple[Any, str | None]]]:
@@ -302,19 +310,14 @@ def _gherkin_fences(tokens: list[Any]) -> tuple[list[dict[str, Any]], list[tuple
     fences: list[tuple[Any, str | None]] = []
     stack: list[tuple[int, str | None]] = []
     for index, token in enumerate(tokens):
-        if token.type == "heading_open" and index + 1 < len(tokens):
+        if token.type == "heading_open":
             level = int(token.tag[1:])
-            title = "".join(child.content for child in tokens[index + 1].children or [])
-            match = _REQUIREMENT_HEADING.match(title)
-            while stack and stack[-1][0] >= level:
-                stack.pop()
-            stack.append((level, match.group(1) if match else None))
+            match = _REQUIREMENT_HEADING.match(_heading_title(tokens, index))
+            stack = [item for item in stack if item[0] < level] + [(level, match.group(1) if match else None)]
             if match:
                 requirements.append({"id": match.group(1), "line": token.map[0] + 1})
-        elif token.type == "fence":
-            words = token.info.strip().split(maxsplit=1)
-            if words and words[0].casefold() == "gherkin":
-                fences.append((token, next((identifier for _, identifier in reversed(stack) if identifier), None)))
+        elif _is_gherkin_fence(token):
+            fences.append((token, next((identifier for _, identifier in reversed(stack) if identifier), None)))
     return requirements, fences
 
 
