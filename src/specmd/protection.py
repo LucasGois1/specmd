@@ -74,22 +74,26 @@ def scenario_changes(baseline: dict[str, Any] | None, inspection: dict[str, Any]
                     for requirement in document.get("requirements", [])}
     changes = []
     for path, old_document in sorted(baseline["documents"].items()):
-        if paths is not None and path not in paths:
-            continue
         document = current_documents.get(path)
-        if document is not None and document.get("spec_sha256") == old_document.get("spec_sha256"):
-            continue
-        for old in old_document.get("scenarios", []):
-            new = current.get(old.get("id"))
-            base = {"id": old.get("id"), "name": old.get("name"), "path": path, "line": old.get("line")}
-            if new is None:
-                changes.append({**base, "kind": "removed"})
-            elif new.get("sha256") != old.get("sha256"):
-                changes.append({**base, "path": new["path"], "line": new.get("line"), **_difference(old, new, wip_tags)})
-        for requirement in old_document.get("requirements", []):
-            if requirement.get("id") not in requirements:
-                changes.append({"kind": "requirement_removed", "id": requirement.get("id"), "path": path,
-                                "line": requirement.get("line")})
+        unchanged = document is not None and document.get("spec_sha256") == old_document.get("spec_sha256")
+        if (paths is None or path in paths) and not unchanged:
+            changes.extend(_document_changes(path, old_document, current, requirements, wip_tags))
+    return changes
+
+
+def _document_changes(path: str, old_document: dict[str, Any], current: dict[str, Any], requirements: set[str],
+                      wip_tags: set[str]) -> list[dict[str, Any]]:
+    changes = []
+    for old in old_document.get("scenarios", []):
+        new = current.get(old.get("id"))
+        base = {"id": old.get("id"), "name": old.get("name"), "path": path, "line": old.get("line")}
+        if new is None:
+            changes.append({**base, "kind": "removed"})
+        elif new.get("sha256") != old.get("sha256"):
+            changes.append({**base, "path": new["path"], "line": new.get("line"), **_difference(old, new, wip_tags)})
+    changes.extend({"kind": "requirement_removed", "id": requirement.get("id"), "path": path,
+                    "line": requirement.get("line")}
+                   for requirement in old_document.get("requirements", []) if requirement.get("id") not in requirements)
     return changes
 
 
@@ -153,8 +157,7 @@ def gained_rules(before: Any, after: dict[str, Any]) -> list[tuple[str, dict[str
     gained = []
     for path, markers in sorted(after.items()):
         old = before.get(path) if isinstance(before.get(path), dict) else {}
-        new_requirements = sorted(set(markers.get("requirements", [])) - set(old.get("requirements", [])))
-        what = list(new_requirements)
+        what = sorted(set(markers.get("requirements", [])) - set(old.get("requirements", [])))
         if markers.get("gherkin", 0) > old.get("gherkin", 0):
             what.append("um bloco Gherkin")
         if markers.get("mdg", 0) > old.get("mdg", 0):

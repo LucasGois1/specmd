@@ -145,15 +145,17 @@ def _passing_message(run: dict[str, Any]) -> str:
             f"{'passando' if executed == 1 else 'todos passando'}{_left_out(run)}.")
 
 
+def _failures_header(run: dict[str, Any]) -> str:
+    failures = len(run.get("failures", []))
+    if not run.get("unselected"):
+        return f"SpecMD: {failures} de {run.get('expected', '?')} cenários da documentação não passaram."
+    executed = _plural(run.get("scenarios", 0), "cenário afetado", "cenários afetados")
+    return f"SpecMD: {failures} de {executed} pela mudança não {'passou' if failures == 1 else 'passaram'}{_left_out(run)}."
+
+
 def _format_failures(run: dict[str, Any]) -> str:
     failures = run.get("failures", [])
-    if run.get("unselected"):
-        executed = run.get("scenarios", 0)
-        header = (f"SpecMD: {len(failures)} de {_plural(executed, 'cenário afetado', 'cenários afetados')} "
-                  f"pela mudança não {'passou' if len(failures) == 1 else 'passaram'}{_left_out(run)}.")
-    else:
-        header = f"SpecMD: {len(failures)} de {run.get('expected', '?')} cenários da documentação não passaram."
-    lines = [header]
+    lines = [_failures_header(run)]
     for failure in failures[:MAX_FINDINGS]:
         name = f' "{failure["name"]}"' if failure.get("name") else ""
         lines.append(f"- {failure.get('path')}:{failure.get('line')} {failure.get('id')}{name} ({failure.get('status')})")
@@ -328,7 +330,7 @@ def _current_run(root: Path, result: dict[str, Any], state: dict[str, Any],
     last = state.get("last_run") if isinstance(state.get("last_run"), dict) else None
     if last and last.get("spec_fp") == result["spec_fp"] and matches_code(root, last, now):
         return last, True
-    ran_in_session = bool(last) and str(last.get("at", "")) >= str(state.get("session_at", "~"))
+    ran_in_session = last is not None and str(last.get("at", "")) >= str(state.get("session_at", "~"))
     if not ran_in_session and code_changes(root, state.get("code_baseline"), now) == set():
         # No code changed in this session: no execution is demanded.
         return None, False

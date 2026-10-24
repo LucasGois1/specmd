@@ -50,6 +50,7 @@ _REQUIREMENT_HEADING = re.compile(r"^((?:[A-Za-z0-9]+-)*REQ-" + _ID_TAIL + r")(?
 _FRONTMATTER = re.compile(r"\A---[ \t]*\r?\n.*?^(?:---|\.\.\.)[ \t]*\r?$\n?", re.DOTALL | re.MULTILINE)
 _GAP_HINT = (" Se descreve comportamento do sistema, confirme os requisitos com o dev e escreva os cenários; "
              "se não descreve, adicione o arquivo ao .specmdignore.")
+CONFIG_FILE = "specmd.toml"
 CACHE_FILE = "inspection-cache.json"
 # A file modified this close to the moment it was read may have been rewritten
 # with the same size and timestamp; such entries are re-read, as Git does.
@@ -470,6 +471,38 @@ def _validate_links(documents: list[dict[str, Any]], findings: list[dict[str, An
             ))
 
 
+def _analyse(relative: str, language: str | None, raw: bytes) -> dict[str, Any]:
+    findings: list[dict[str, Any]] = []
+    document = _inspect_document(raw, relative, findings, language)
+    return {"document": document, "findings": findings}
+
+
+def _add_document(entry: Any, relative: str, findings: list[dict[str, Any]], entries: dict[str, Any],
+                  documents: list[dict[str, Any]]) -> bool:
+    """Collect one analysed document; False when it could not be read."""
+    if entry == "symlink":
+        findings.append(_symlink_finding(relative))
+    elif entry is None:
+        findings.append(_finding("read_error", "Não foi possível ler um documento regular e estável.", relative))
+        return False
+    else:
+        entries[relative] = entry
+        documents.append(entry["data"]["document"])
+        findings.extend(entry["data"]["findings"])
+    return True
+
+
+def _add_ignored(entry: Any, relative: str, defaults: list[tuple[bool, re.Pattern[str]]],
+                 entries: dict[str, Any], markers: dict[str, Any]) -> None:
+    """Remember an ignored document's rule markers when it has any."""
+    if not isinstance(entry, dict):
+        return
+    entries[relative] = entry
+    found = entry["data"]
+    if found["requirements"] or found["gherkin"] or found["mdg"]:
+        markers[relative] = {**found, "default": is_ignored(relative, defaults)}
+
+
 def _analyse_documents(root: Path, rules: list[tuple[bool, re.Pattern[str]]], language: str | None,
                        findings: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], dict[str, Any], bool]:
     """Analyse every discovered document, reusing the cache.
@@ -483,14 +516,6 @@ def _analyse_documents(root: Path, rules: list[tuple[bool, re.Pattern[str]]], la
     cached = stored.get("entries") if fresh and isinstance(stored.get("entries"), dict) else {}
     cached_ignored = stored.get("ignored") if fresh and isinstance(stored.get("ignored"), dict) else {}
     defaults = compile_ignore(list(DEFAULT_IGNORE))
-
-    def analyse(relative: str) -> Callable[[bytes], dict[str, Any]]:
-        def run(raw: bytes) -> dict[str, Any]:
-            document_findings: list[dict[str, Any]] = []
-            document = _inspect_document(raw, relative, document_findings, language)
-            return {"document": document, "findings": document_findings}
-        return run
-
     entries: dict[str, Any] = {}
     ignored_entries: dict[str, Any] = {}
     documents: list[dict[str, Any]] = []
@@ -500,22 +525,10 @@ def _analyse_documents(root: Path, rules: list[tuple[bool, re.Pattern[str]]], la
         for relative in _discover(root, findings):
             if is_ignored(relative, rules):
                 entry = _cached_entry(root, relative, cached_ignored.get(relative), _rule_markers)
-                if isinstance(entry, dict):
-                    ignored_entries[relative] = entry
-                    found = entry["data"]
-                    if found["requirements"] or found["gherkin"] or found["mdg"]:
-                        markers[relative] = {**found, "default": is_ignored(relative, defaults)}
+                _add_ignored(entry, relative, defaults, ignored_entries, markers)
                 continue
-            entry = _cached_entry(root, relative, cached.get(relative), analyse(relative))
-            if entry == "symlink":
-                findings.append(_symlink_finding(relative))
-            elif entry is None:
-                complete = False
-                findings.append(_finding("read_error", "Não foi possível ler um documento regular e estável.", relative))
-            else:
-                entries[relative] = entry
-                documents.append(entry["data"]["document"])
-                findings.extend(entry["data"]["findings"])
+            entry = _cached_entry(root, relative, cached.get(relative), functools.partial(_analyse, relative, language))
+            complete = _add_document(entry, relative, findings, entries, documents) and complete
     if not _same_entries(entries, cached) or not _same_entries(ignored_entries, cached_ignored):
         with contextlib.suppress(OSError, ValueError):
             local_state.write_local(root, CACHE_FILE, {"key": key, "entries": entries, "ignored": ignored_entries})
@@ -532,10 +545,10 @@ def inspect_project(root: Path) -> dict[str, Any]:
     specmd.toml is optional: without it every option takes its default.
     """
     root = Path(root).absolute()
-    config_path = root / "specmd.toml"
+    config_path = root / CONFIG_FILE
     if config_path.is_symlink():
         return _result("error", [_finding(
-            "config_symlink", "specmd.toml não pode ser um link simbólico.", "specmd.toml",
+            "config_symlink", f"{CONFIG_FILE} não pode ser um link simbólico.", CONFIG_FILE,
         )])
     try:
         config_bytes = _read_regular_file(config_path) if config_path.exists() else b""
@@ -543,7 +556,7 @@ def inspect_project(root: Path) -> dict[str, Any]:
         ignore_path = root / IGNORE_FILE
         ignore_bytes = _read_regular_file(ignore_path) if ignore_path.exists() else b""
     except (OSError, ConfigError) as exc:
-        return _result("error", [_finding("config_invalid", str(exc), "specmd.toml")])
+        return _result("error", [_finding("config_invalid", str(exc), CONFIG_FILE)])
 
     findings: list[dict[str, Any]] = []
     rules = compile_ignore([*DEFAULT_IGNORE, *ignore_bytes.decode("utf-8", "replace").splitlines()])
