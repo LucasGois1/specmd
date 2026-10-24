@@ -12,6 +12,7 @@ internal error becomes a warning.
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import hashlib
 import json
 import os
@@ -29,6 +30,11 @@ READ_ONLY_TOOLS = frozenset({
     "Read", "Grep", "Glob", "LS", "WebFetch", "WebSearch", "TodoWrite", "NotebookRead",
     "TaskOutput", "ListMcpResourcesTool", "ReadMcpResourceTool", "view_image",
 })
+# Tools that report the single file they changed. When it is not Markdown nor
+# a file that decides which documents are analysed, the documentation did not
+# change and PostToolUse can skip the analysis.
+FILE_EDIT_TOOLS = frozenset({"Write", "Edit", "MultiEdit", "NotebookEdit"})
+ANALYSIS_FILES = frozenset({".specmdignore", "specmd.toml", ".gitignore"})
 CONVENTIONS = (
     "Como trabalhar com o SpecMD:\n"
     "1. A documentação Markdown é a fonte canônica das regras de negócio. Todo comportamento do sistema "
@@ -166,16 +172,18 @@ def _commands(root: Path) -> str:
 
 
 def _session_start(root: Path) -> dict[str, Any]:
-    from .workflow import check_project, fingerprint_code, scenario_count
+    from .workflow import check_project, code_snapshot, scenario_count
 
-    result = check_project(root)
-    code_fp = fingerprint_code(root)
+    snapshot = code_snapshot(root)
+    result = check_project(root, now=snapshot)
 
     def change(state: dict[str, Any]) -> None:
+        state.pop("code_fp_baseline", None)
         state.setdefault("spec_at_prompt", _spec_map(result))
         state["docs_seen"] = _doc_map(result)
         state["spec_seen"] = _spec_map(result)
-        state["code_fp_baseline"] = code_fp
+        state["code_baseline"] = snapshot
+        state["session_at"] = datetime.now(timezone.utc).isoformat()
         state["stop"] = {"signature": None, "count": 0}
 
     hook_state.update(root, change)
@@ -254,13 +262,14 @@ def _runs_on_stop(root: Path) -> bool:
 
 def _current_run(root: Path, result: dict[str, Any], state: dict[str, Any]) -> tuple[dict[str, Any] | None, bool]:
     """Reuse a run that matches the current code and scenarios, or run when code changed."""
-    from .workflow import fingerprint_code, run_project
+    from .workflow import code_changes, code_snapshot, matches_code, run_project
 
-    code_fp = fingerprint_code(root)
+    now = code_snapshot(root)
     last = state.get("last_run") if isinstance(state.get("last_run"), dict) else None
-    if last and last.get("spec_fp") == result["spec_fp"] and code_fp in last.get("code_fps", []):
+    if last and last.get("spec_fp") == result["spec_fp"] and matches_code(root, last, now):
         return last, True
-    if code_fp == state.get("code_fp_baseline"):
+    ran_in_session = bool(last) and str(last.get("at", "")) >= str(state.get("session_at", "~"))
+    if not ran_in_session and code_changes(root, state.get("code_baseline"), now) == set():
         # No code changed in this session: no execution is demanded.
         return None, False
     return run_project(root).get("run"), False
@@ -309,11 +318,30 @@ def _stop(root: Path) -> dict[str, Any]:
                        f"SpecMD: {len(run.get('failures', []))} cenários ainda não passam.")
 
 
+def _may_change_documentation(payload: dict[str, Any]) -> bool:
+    """False when the tool cannot have changed what the analysis sees.
+
+    The edited path is only a hint to skip work; the project root and the
+    analysed files never come from the payload.
+    """
+    tool = payload.get("tool_name")
+    if tool in READ_ONLY_TOOLS:
+        return False
+    tool_input = payload.get("tool_input")
+    if tool not in FILE_EDIT_TOOLS or not isinstance(tool_input, dict):
+        return True
+    path = tool_input.get("file_path") or tool_input.get("notebook_path")
+    if not isinstance(path, str) or not path:
+        return True
+    name = path.replace("\\", "/").rsplit("/", 1)[-1]
+    return name in ANALYSIS_FILES or name.casefold().endswith((".md", ".markdown"))
+
+
 def handle_hook(payload: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError("O payload do hook precisa ser um objeto JSON.")
     event = payload.get("hook_event_name")
-    if event == "PostToolUse" and payload.get("tool_name") in READ_ONLY_TOOLS:
+    if event == "PostToolUse" and not _may_change_documentation(payload):
         return {}
     handlers = {"SessionStart": _session_start, "UserPromptSubmit": _user_prompt,
                 "PostToolUse": _post_tool, "Stop": _stop}

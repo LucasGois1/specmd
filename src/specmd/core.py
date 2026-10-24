@@ -5,22 +5,28 @@ listed in `.specmdignore` (documents that do not describe system behaviour).
 The scanner reports structural gaps (documents without scenarios,
 requirements without scenarios, invalid Gherkin, duplicate IDs) and never
 executes scenarios.
+
+Each document's analysis is cached in `.specmd/local/`, so a hook in a project
+with thousands of documents only parses what changed. The cache is derived
+data: deleting it is always safe.
 """
 
 from __future__ import annotations
 
+import contextlib
+import functools
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
 import re
+import stat
 import subprocess
-from typing import Any
+import time
+from typing import Any, Iterator
 
-from behave.model import Rule, ScenarioOutline
-from behave.parser import ParserError, parse_feature
-from markdown_it import MarkdownIt
-
+from . import state as local_state
 from .config import ConfigError, parse_config, read_regular_file as _read_regular_file
 
 
@@ -44,6 +50,40 @@ _REQUIREMENT_HEADING = re.compile(r"^((?:[A-Za-z0-9]+-)*REQ-" + _ID_TAIL + r")(?
 _FRONTMATTER = re.compile(r"\A---[ \t]*\r?\n.*?^(?:---|\.\.\.)[ \t]*\r?$\n?", re.DOTALL | re.MULTILINE)
 _GAP_HINT = (" Se descreve comportamento do sistema, confirme os requisitos com o dev e escreva os cenários; "
              "se não descreve, adicione o arquivo ao .specmdignore.")
+CACHE_FILE = "inspection-cache.json"
+# A file modified this close to the moment it was read may have been rewritten
+# with the same size and timestamp; such entries are re-read, as Git does.
+_SETTLE_NS = 2_000_000_000
+
+
+@functools.lru_cache(maxsize=1)
+def _markdown() -> Any:
+    from markdown_it import MarkdownIt
+
+    return MarkdownIt()
+
+
+@functools.lru_cache(maxsize=None)
+def _cache_key(language: str | None) -> str:
+    """Cached analyses are valid only for this analyser, these parsers and this language."""
+    parts = [Path(__file__).read_bytes(), str(language).encode()]
+    for module in ("behave.version", "markdown_it"):
+        spec = importlib.util.find_spec(module)
+        parts.append(Path(spec.origin).read_bytes() if spec and spec.origin else module.encode())
+    return hashlib.sha256(b"\0".join(parts)).hexdigest()
+
+
+@contextlib.contextmanager
+def _fixed_cwd() -> Iterator[None]:
+    """behave resolves the file name of every parsed statement against os.getcwd();
+    with thousands of documents that system call dominated the analysis."""
+    original = os.getcwd
+    current = original()
+    os.getcwd = lambda: current
+    try:
+        yield
+    finally:
+        os.getcwd = original
 
 
 def _finding(kind: str, message: str, path: str | None = None,
@@ -129,10 +169,10 @@ def is_ignored(path: str, rules: list[tuple[bool, re.Pattern[str]]]) -> bool:
     return ignored
 
 
-def _git_listed(root: Path) -> list[str] | None:
+def _git_listed(root: Path, *pathspec: str) -> list[str] | None:
     try:
-        completed = subprocess.run(["git", "-C", str(root), "ls-files", "-z", "-co", "--exclude-standard"],
-                                   capture_output=True, timeout=20)
+        completed = subprocess.run(["git", "-C", str(root), "ls-files", "-z", "-co", "--exclude-standard",
+                                    "--", *pathspec], capture_output=True, timeout=20)
     except (OSError, subprocess.TimeoutExpired):
         return None
     if completed.returncode != 0:
@@ -142,7 +182,7 @@ def _git_listed(root: Path) -> list[str] | None:
 
 def _discover(root: Path, findings: list[dict[str, Any]]) -> list[str]:
     """Relative Markdown paths, honouring .gitignore when Git is available."""
-    listed = _git_listed(root)
+    listed = _git_listed(root, ":(icase)*.md", ":(icase)*.markdown")
     if listed is None:
         listed = []
         for directory, names, filenames in os.walk(root, followlinks=False):
@@ -150,20 +190,70 @@ def _discover(root: Path, findings: list[dict[str, Any]]) -> list[str]:
             names[:] = sorted(name for name in names if name not in _PRUNED_DIRECTORIES
                               and not (base / name).is_symlink())
             listed.extend((base / name).relative_to(root).as_posix() for name in filenames)
+    linked: dict[str, bool] = {}
+
+    def is_link(relative: str) -> bool:
+        if relative not in linked:
+            linked[relative] = (root / relative).is_symlink()
+        return linked[relative]
+
     paths = []
     for relative in sorted(set(listed)):
         parts = relative.split("/")
-        if Path(relative).suffix.casefold() not in _MARKDOWN_SUFFIXES or set(parts[:-1]) & _PRUNED_DIRECTORIES:
+        if os.path.splitext(relative)[1].casefold() not in _MARKDOWN_SUFFIXES or set(parts[:-1]) & _PRUNED_DIRECTORIES:
             continue
-        if (root / relative).is_symlink() or any((root / Path(*parts[:i])).is_symlink() for i in range(1, len(parts))):
-            findings.append(_finding("symlink", "Documentos simbólicos não são lidos pelo scanner.", relative))
+        if any(is_link("/".join(parts[:i])) for i in range(1, len(parts))):
+            findings.append(_symlink_finding(relative))
             continue
         paths.append(relative)
     return paths
 
 
+def _symlink_finding(relative: str) -> dict[str, Any]:
+    return _finding("symlink", "Documentos simbólicos não são lidos pelo scanner.", relative)
+
+
+def _load_cache(root: Path, key: str) -> dict[str, Any]:
+    data = local_state.read_local(root, CACHE_FILE)
+    entries = data.get("entries")
+    return entries if data.get("key") == key and isinstance(entries, dict) else {}
+
+
+def _document_entry(root: Path, relative: str, cached: Any, language: str | None) -> dict[str, Any] | str | None:
+    """The cached analysis when the file is unchanged; otherwise read it and analyse it again.
+
+    Returns "symlink" for a symbolic link and None when the file cannot be read.
+    """
+    try:
+        info = os.lstat(os.path.join(root, relative))
+    except OSError:
+        return None
+    if stat.S_ISLNK(info.st_mode):
+        return "symlink"
+    signature = [info.st_size, info.st_mtime_ns, info.st_ctime_ns, info.st_ino]
+    usable = (isinstance(cached, dict) and isinstance(cached.get("document"), dict)
+              and isinstance(cached.get("findings"), list) and isinstance(cached.get("checked_ns"), int))
+    if (usable and cached.get("stat") == signature
+            and max(info.st_mtime_ns, info.st_ctime_ns) + _SETTLE_NS < cached["checked_ns"]):
+        return cached
+    checked = time.time_ns()
+    try:
+        raw = _read_regular_file(root / relative)
+    except OSError:
+        return None
+    if usable and cached["document"].get("sha256") == hashlib.sha256(raw).hexdigest():
+        document, findings = cached["document"], cached["findings"]
+    else:
+        findings = []
+        document = _inspect_document(raw, relative, findings, language)
+    return {"stat": signature, "checked_ns": checked, "document": document, "findings": findings}
+
+
 def _inspect_document(data: bytes, path: str, findings: list[dict[str, Any]],
                       language: str | None = None) -> dict[str, Any]:
+    from behave.model import Rule, ScenarioOutline
+    from behave.parser import ParserError, parse_feature
+
     document: dict[str, Any] = {
         "path": path,
         "sha256": hashlib.sha256(data).hexdigest(),
@@ -175,7 +265,7 @@ def _inspect_document(data: bytes, path: str, findings: list[dict[str, Any]],
     except UnicodeDecodeError:
         findings.append(_finding("invalid_utf8", "Documento não contém UTF-8 válido.", path))
         return document
-    tokens = MarkdownIt().parse(strip_frontmatter(text))
+    tokens = _markdown().parse(strip_frontmatter(text))
 
     # Each fence belongs to the innermost requirement heading above it.
     fences: list[tuple[Any, str | None]] = []
@@ -332,8 +422,36 @@ def _validate_links(documents: list[dict[str, Any]], findings: list[dict[str, An
             ))
 
 
+def _analyse_documents(root: Path, rules: list[tuple[bool, re.Pattern[str]]], language: str | None,
+                       findings: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], bool]:
+    """Analyse every discovered document, reusing the cache; False when one could not be read."""
+    key = _cache_key(language)
+    cached = _load_cache(root, key)
+    entries: dict[str, Any] = {}
+    documents: list[dict[str, Any]] = []
+    complete = True
+    with _fixed_cwd():
+        for relative in _discover(root, findings):
+            if is_ignored(relative, rules):
+                continue
+            entry = _document_entry(root, relative, cached.get(relative), language)
+            if entry == "symlink":
+                findings.append(_symlink_finding(relative))
+            elif entry is None:
+                complete = False
+                findings.append(_finding("read_error", "Não foi possível ler um documento regular e estável.", relative))
+            else:
+                entries[relative] = entry
+                documents.append(entry["document"])
+                findings.extend(entry["findings"])
+    if entries.keys() != cached.keys() or any(entry is not cached[path] for path, entry in entries.items()):
+        with contextlib.suppress(OSError, ValueError):
+            local_state.write_local(root, CACHE_FILE, {"key": key, "entries": entries})
+    return documents, complete
+
+
 def inspect_project(root: Path) -> dict[str, Any]:
-    """Inspect the project's documentation without changing any file.
+    """Inspect the project's documentation; only the local analysis cache is written.
 
     specmd.toml is optional: without it every option takes its default.
     """
@@ -352,20 +470,8 @@ def inspect_project(root: Path) -> dict[str, Any]:
         return _result("error", [_finding("config_invalid", str(exc), "specmd.toml")])
 
     findings: list[dict[str, Any]] = []
-    documents: list[dict[str, Any]] = []
-    complete_snapshot = True
     rules = compile_ignore([*DEFAULT_IGNORE, *ignore_bytes.decode("utf-8", "replace").splitlines()])
-    for relative in _discover(root, findings):
-        if is_ignored(relative, rules):
-            continue
-        try:
-            raw = _read_regular_file(root / relative)
-        except OSError:
-            complete_snapshot = False
-            findings.append(_finding("read_error", "Não foi possível ler um documento regular e estável.", relative))
-            continue
-        documents.append(_inspect_document(raw, relative, findings, config.get("gherkin_language")))
-
+    documents, complete_snapshot = _analyse_documents(root, rules, config.get("gherkin_language"), findings)
     documents.sort(key=lambda item: item["path"])
     _validate_links(documents, findings)
     result = _result("needs_scenarios" if findings else "ready", findings)
@@ -396,7 +502,7 @@ def extract_features(root: Path, inspection: dict[str, Any]) -> list[dict[str, A
         if hashlib.sha256(raw).hexdigest() != document["sha256"]:
             raise ValueError("A documentação mudou desde a inspeção; inspecione novamente: " + document["path"])
         block = 0
-        for token in MarkdownIt().parse(strip_frontmatter(raw.decode("utf-8"))):
+        for token in _markdown().parse(strip_frontmatter(raw.decode("utf-8"))):
             language = token.info.strip().split(maxsplit=1)
             if token.type != "fence" or not language or language[0].casefold() != "gherkin":
                 continue

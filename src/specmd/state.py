@@ -1,7 +1,8 @@
 """Local, reconstructible hook state kept in .specmd/local/state.json.
 
 The state only remembers observations (last run, what the developer last saw,
-how many times Stop already returned feedback). Deleting it is always safe.
+how many times Stop already returned feedback); derived caches live next to
+it. Deleting any of them is always safe.
 """
 
 from __future__ import annotations
@@ -33,30 +34,44 @@ def _local_directory(root: Path) -> Path:
     return directory
 
 
-def load(root: Path) -> dict[str, Any]:
-    path = Path(root) / ".specmd" / "local" / STATE_FILE
+def read_local(root: Path, name: str) -> dict[str, Any]:
+    """A JSON object kept in .specmd/local, or {} when it is missing or invalid."""
+    path = Path(root) / ".specmd" / "local" / name
     try:
         if path.is_symlink():
             return {}
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(path.read_bytes())
     except (OSError, ValueError):
         return {}
     return value if isinstance(value, dict) else {}
 
 
-def save(root: Path, state: dict[str, Any]) -> None:
+def write_local(root: Path, name: str, value: dict[str, Any]) -> None:
+    """Replace a JSON object in .specmd/local atomically.
+
+    Compact JSON keeps the C encoder: in large projects the state holds one
+    entry per document and is written by every hook.
+    """
     directory = _local_directory(root)
-    destination = directory / STATE_FILE
+    destination = directory / name
     if destination.is_symlink():
         raise ValueError("O estado local não pode ser um link simbólico.")
+    text = json.dumps(value, ensure_ascii=False, separators=(",", ":")) + "\n"
     with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=directory, delete=False) as stream:
         temporary = Path(stream.name)
-        json.dump(state, stream, ensure_ascii=False, indent=2)
-        stream.write("\n")
+        stream.write(text)
     try:
         os.replace(temporary, destination)
     finally:
         temporary.unlink(missing_ok=True)
+
+
+def load(root: Path) -> dict[str, Any]:
+    return read_local(root, STATE_FILE)
+
+
+def save(root: Path, state: dict[str, Any]) -> None:
+    write_local(root, STATE_FILE, state)
 
 
 @contextlib.contextmanager

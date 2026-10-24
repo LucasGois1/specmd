@@ -25,31 +25,60 @@ class WorkflowTests(unittest.TestCase):
         target.write_text(content, encoding="utf-8")
         return target
 
-    def test_fingerprint_changes_with_code_but_not_markdown_or_local_state(self):
-        before = workflow.fingerprint_code(self.root)
+    def changes(self, before):
+        return workflow.code_changes(self.root, before, workflow.code_snapshot(self.root))
+
+    def commit(self):
+        git = ["git", "-C", str(self.root), "-c", "user.name=t", "-c", "user.email=t@t"]
+        subprocess.run([*git, "add", "-A"], check=True)
+        subprocess.run([*git, "commit", "-q", "-m", "x"], check=True)
+
+    def test_code_changes_ignore_markdown_and_local_state(self):
+        before = workflow.code_snapshot(self.root)
         self.touch("docs/notes.md", "# Notas\n")
         self.touch(".specmd/local/state.json", "{}")
         self.touch(".claude/settings.local.json", "{}")
-        self.assertEqual(workflow.fingerprint_code(self.root), before)
+        self.assertEqual(self.changes(before), set())
         self.touch("app.py", (self.root / "app.py").read_text() + "\n# mudança\n")
-        self.assertNotEqual(workflow.fingerprint_code(self.root), before)
+        self.assertEqual(self.changes(before), {"app.py"})
 
-    def test_fingerprint_respects_gitignore(self):
-        before = workflow.fingerprint_code(self.root)
+    def test_code_changes_respect_gitignore(self):
+        before = workflow.code_snapshot(self.root)
         self.touch("build-output/artifact.bin")
         self.touch(".gitignore", (self.root / ".gitignore").read_text() + "build-output/\n")
-        changed = workflow.fingerprint_code(self.root)
-        self.assertNotEqual(changed, before)  # .gitignore itself is code-side
+        self.assertEqual(self.changes(before), {".gitignore"})
+        changed = workflow.code_snapshot(self.root)
         self.touch("build-output/artifact.bin", "outro\n")
-        self.assertEqual(workflow.fingerprint_code(self.root), changed)
+        self.assertEqual(self.changes(changed), set())
 
-    def test_fingerprint_without_git_walks_pruned_tree(self):
+    def test_committing_or_reverting_the_work_is_not_a_change(self):
+        self.commit()
+        initial = workflow.code_snapshot(self.root)
+        original = (self.root / "app.py").read_text()
+        self.touch("app.py", original + "\n# mudança\n")
+        self.touch("src/novo.py", "VALOR = 1\n")
+        edited = workflow.code_snapshot(self.root)
+        self.assertEqual(self.changes(initial), {"app.py", "src/novo.py"})
+        self.commit()
+        self.assertEqual(self.changes(edited), set())
+        self.assertEqual(self.changes(initial), {"app.py", "src/novo.py"})
+        self.touch("app.py", original)
+        (self.root / "src/novo.py").unlink()
+        self.assertEqual(self.changes(initial), set())
+
+    def test_without_git_a_pruned_walk_tells_only_whether_code_changed(self):
         (self.root / ".git").rename(self.root / ".git-off")
-        before = workflow.fingerprint_code(self.root)
+        before = workflow.code_snapshot(self.root)
         self.touch("node_modules/lib.js")
-        self.assertEqual(workflow.fingerprint_code(self.root), before)
+        self.assertEqual(self.changes(before), set())
         self.touch("src/lib.py")
-        self.assertNotEqual(workflow.fingerprint_code(self.root), before)
+        self.assertIsNone(self.changes(before))
+
+    def test_invalid_snapshots_are_unknown_changes(self):
+        now = workflow.code_snapshot(self.root)
+        for invalid in (None, "abc", {"files": []}, {"head": 1, "files": {}}):
+            with self.subTest(invalid=invalid):
+                self.assertIsNone(workflow.code_changes(self.root, invalid, now))
 
     def test_run_records_state_and_check_reuses_it_until_code_changes(self):
         self.assertEqual(workflow.check_project(self.root)["status"], "ready")
