@@ -26,6 +26,7 @@ import subprocess
 import time
 from typing import Any, Callable, Iterator
 
+from . import mdg
 from . import state as local_state
 from .config import ConfigError, parse_config, read_regular_file as _read_regular_file
 
@@ -334,13 +335,13 @@ class _DocumentReader:
     def finding(self, kind: str, message: str, line: int | None) -> None:
         self.findings.append(_finding(kind, message, self.path, line))
 
-    def read_block(self, block: int, first_line: int, content: str, context: str | None) -> None:
+    def read_block(self, block: int, first_line: int, content: str, context: Callable[[int], str | None]) -> None:
         from behave.parser import ParserError, parse_feature
 
         try:
             feature = parse_feature("\n" * (first_line - 1) + content, language=self.language, filename=self.path)
         except ParserError as exc:
-            self.finding("gherkin_invalid", str(exc), getattr(exc, "line", first_line))
+            self.finding("gherkin_invalid", str(exc) + _language_hint(str(exc), content), getattr(exc, "line", first_line))
             return
         except (LookupError, ValueError) as exc:
             self.finding("gherkin_invalid", str(exc), first_line)
@@ -353,7 +354,7 @@ class _DocumentReader:
         if len(self.scenarios) == before:
             self.finding("scenarios_missing", "Bloco sem cenários concretos.", feature.line)
 
-    def visit(self, container: Any, inherited: set[str], block: int, context: str | None) -> None:
+    def visit(self, container: Any, inherited: set[str], block: int, context: Callable[[int], str | None]) -> None:
         from behave.model import Rule, ScenarioOutline
 
         for scenario in getattr(container, "run_items", container.scenarios):
@@ -364,7 +365,7 @@ class _DocumentReader:
             else:
                 self.add(scenario, inherited, block, context)
 
-    def outline(self, scenario: Any, inherited: set[str], block: int, context: str | None) -> None:
+    def outline(self, scenario: Any, inherited: set[str], block: int, context: Callable[[int], str | None]) -> None:
         positions = [(example_index, row_index)
                      for example_index, example in enumerate(scenario.examples, start=1) if example.table is not None
                      for row_index, _ in enumerate(example.table.rows, start=1)]
@@ -385,14 +386,15 @@ class _DocumentReader:
         self.names[name] = self.names.get(name, 0) + 1
         return f"{self.path}::{name}" + (f"#{self.names[name]}" if self.names[name] > 1 else "")
 
-    def add(self, scenario: Any, inherited: set[str], block: int, context: str | None, template: Any = None,
+    def add(self, scenario: Any, inherited: set[str], block: int, context: Callable[[int], str | None], template: Any = None,
             position: tuple[int, int] | None = None, identity: str | None = None) -> None:
         tags = inherited | {str(tag) for tag in scenario.tags}
         explicit = sorted({str(tag) for tag in (template or scenario).tags if _SCENARIO_ID.fullmatch(str(tag))})
         if len(explicit) > 1:
             self.finding("scenario_id_invalid", "Cenário deve ter no máximo uma tag de ID (…-SCN-…).", scenario.line)
         base = identity or (explicit[0] if explicit else self.default_identity(scenario.name))
-        requirement_ids = sorted(tag for tag in tags if _REQUIREMENT_ID.fullmatch(tag)) or ([context] if context else [])
+        linked = context(scenario.line)
+        requirement_ids = sorted(tag for tag in tags if _REQUIREMENT_ID.fullmatch(tag)) or ([linked] if linked else [])
         background = getattr(scenario, "background", None)
         step_count = len(scenario.steps) + len(getattr(background, "steps", []))
         if not step_count:
@@ -425,6 +427,8 @@ def _inspect_document(data: bytes, path: str, findings: list[dict[str, Any]],
     except UnicodeDecodeError:
         findings.append(_finding("invalid_utf8", "Documento não contém UTF-8 válido.", path))
         return document
+    if mdg.is_mdg(path):
+        return _inspect_mdg(document, strip_frontmatter(text), findings, language)
     document["requirements"], fences = _gherkin_fences(_markdown().parse(strip_frontmatter(text)))
     # Prose edits do not change the specification digest; requirements and
     # scenarios do. Hooks use it to tell which scenarios the developer saw.
@@ -434,7 +438,39 @@ def _inspect_document(data: bytes, path: str, findings: list[dict[str, Any]],
         findings.append(_finding("gherkin_missing", "Documento sem cenários Gherkin." + _GAP_HINT, path))
     reader = _DocumentReader(path, findings, language)
     for block, (token, context) in enumerate(fences, start=1):
-        reader.read_block(block, token.map[0] + 2, token.content, context)
+        reader.read_block(block, token.map[0] + 2, token.content, lambda _line, linked=context: linked)
+    document["scenarios"] = reader.scenarios
+    return document
+
+
+def _language_hint(error: str, content: str) -> str:
+    """When the parser found no feature in text that uses Gherkin keywords, say where the language comes from."""
+    if "No feature found" not in error or not any(_gherkin_headings().match(line.strip())
+                                                  for line in content.splitlines()):
+        return ""
+    return (" Se o Gherkin está em outro idioma, declare `# language: <código>` no início do bloco "
+            "ou `gherkin_language` no specmd.toml.")
+
+
+_MDG_LANGUAGE = (" Em MDG não existe `# language:`: o idioma vem de `gherkin_language` no specmd.toml "
+                 "(por exemplo, gherkin_language = \"pt\").")
+
+
+def _inspect_mdg(document: dict[str, Any], text: str, findings: list[dict[str, Any]],
+                 language: str | None) -> dict[str, Any]:
+    """A Markdown with Gherkin file is one feature, converted line for line."""
+    path = document["path"]
+    converted = mdg.convert(text, language, _REQUIREMENT_HEADING)
+    document["requirements"] = converted.requirements
+    document["spec_sha256"] = _digest([[item["id"] for item in converted.requirements], converted.text])
+    if not converted.scenarios:
+        foreign = any(_gherkin_headings().match(match.group(2)) for match in
+                      (mdg.HEADING.match(line) for line in text.splitlines()) if match)
+        findings.append(_finding("gherkin_missing", "Arquivo MDG sem títulos de cenário." +
+                                 (_MDG_LANGUAGE if foreign else _GAP_HINT), path))
+        return document
+    reader = _DocumentReader(path, findings, language)
+    reader.read_block(1, 1, converted.text, converted.context_at)
     document["scenarios"] = reader.scenarios
     return document
 
@@ -589,11 +625,12 @@ def inspect_project(root: Path) -> dict[str, Any]:
     return result
 
 
-def extract_features(root: Path, inspection: dict[str, Any]) -> list[dict[str, Any]]:
+def extract_features(root: Path, inspection: dict[str, Any], language: str | None = None) -> list[dict[str, Any]]:
     """Return in-memory Gherkin blocks padded to their original Markdown lines.
 
     Each document is re-read and checked against the inspection's hash, so a
-    document changed after inspection is refused. No .feature file is created.
+    document changed after inspection is refused. A Markdown with Gherkin file
+    is one block converted line for line. No .feature file is created.
     """
     root = Path(root).absolute()
     features: list[dict[str, Any]] = []
@@ -601,10 +638,14 @@ def extract_features(root: Path, inspection: dict[str, Any]) -> list[dict[str, A
         raw = _read_regular_file(root / document["path"])
         if hashlib.sha256(raw).hexdigest() != document["sha256"]:
             raise ValueError("A documentação mudou desde a inspeção; inspecione novamente: " + document["path"])
+        text = strip_frontmatter(raw.decode("utf-8"))
+        if mdg.is_mdg(document["path"]):
+            converted = mdg.convert(text, language, _REQUIREMENT_HEADING)
+            features.append({"path": document["path"], "block": 1, "line": 1, "content": converted.text})
+            continue
         block = 0
-        for token in _markdown().parse(strip_frontmatter(raw.decode("utf-8"))):
-            language = token.info.strip().split(maxsplit=1)
-            if token.type != "fence" or not language or language[0].casefold() != "gherkin":
+        for token in _markdown().parse(text):
+            if not _is_gherkin_fence(token):
                 continue
             block += 1
             first_line = token.map[0] + 2

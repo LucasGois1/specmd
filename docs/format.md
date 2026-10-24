@@ -44,6 +44,32 @@ Funcionalidade: Estorno
 ```
 ````
 
+## Markdown with Gherkin (`.feature.md`)
+
+Um arquivo `*.feature.md` é lido no formato oficial [Markdown with Gherkin](https://github.com/cucumber/gherkin/blob/main/MARKDOWN_WITH_GHERKIN.md) do Cucumber, em vez de blocos cercados:
+
+- palavras-chave são títulos Markdown (`# Funcionalidade:`, `## Regra:`, `### Cenário:`, `### Esquema do Cenário:`, `#### Exemplos:`, `## Contexto:`);
+- passos são itens de lista (`* Dado …` ou `- Quando …`);
+- tabelas são tabelas GFM indentadas de 2 a 5 espaços;
+- um bloco cercado logo após um passo é o texto do passo (Doc String); fora disso, é prosa;
+- tags ficam entre crases na linha acima da palavra-chave (`` `@rapido` ``);
+- qualquer outra linha é prosa. O arquivo é uma funcionalidade; sem título `Funcionalidade`, a primeira linha dá o nome.
+
+O MDG não tem `# language:`: o idioma vem de `gherkin_language` no `specmd.toml`. Títulos com ID de requisito funcionam como nos outros documentos, inclusive o da `Regra`:
+
+````markdown
+# Funcionalidade: Estornos
+
+Um pagamento pode ser estornado em até 7 dias corridos.
+
+## Regra: PAG-REQ-001 — Estorno em até 7 dias
+
+### Cenário: Estorno no sexto dia
+* Dado um pagamento feito há 6 dias
+* Quando o cliente pedir o estorno
+* Então o estorno deve ser aprovado
+````
+
 ## Ligação entre cenário e requisito
 
 - Um cenário fica ligado ao requisito do título mais próximo acima do seu bloco. Subtítulos dentro da seção (por exemplo `### Cenários`) mantêm a ligação.
