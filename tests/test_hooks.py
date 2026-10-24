@@ -69,6 +69,21 @@ class HookLifecycleTests(unittest.TestCase):
         with patch.object(hooks, "find_root", side_effect=AssertionError("disk access")):
             self.assertEqual(hooks.handle_hook({"hook_event_name": "PostToolUse", "tool_name": "Read"}), {})
 
+    def test_edits_outside_the_documentation_skip_the_analysis(self):
+        def post(tool, path):
+            return hooks.handle_hook({"hook_event_name": "PostToolUse", "tool_name": tool,
+                                      "tool_input": {"file_path": path}})
+
+        with patch.object(hooks, "find_root", side_effect=AssertionError("disk access")):
+            self.assertEqual(post("Edit", str(self.root / "app.py")), {})
+            self.assertEqual(post("Write", "tests/steps/cart_steps.py"), {})
+        for tool, path in (("Write", "docs/novo.MD"), ("Edit", ".specmdignore"), ("Edit", "specmd.toml"),
+                           ("Bash", "app.py"), ("Edit", None)):
+            with self.subTest(tool=tool, path=path), \
+                    patch.object(hooks, "find_root", return_value=None) as find_root:
+                post(tool, path)
+                find_root.assert_called_once()
+
     def test_session_start_summarizes_documentation_and_conventions(self):
         reply = self.hook("SessionStart")
         context = reply["hookSpecificOutput"]["additionalContext"]
@@ -78,7 +93,7 @@ class HookLifecycleTests(unittest.TestCase):
         self.assertIn("scripts/specmd_cli.py", context)
         self.assertIn(f"run --root {self.root}", context)
         state = hook_state.load(self.root)
-        self.assertIn("code_fp_baseline", state)
+        self.assertIn("code_baseline", state)
         self.assertIn("docs/cart.md", state["spec_at_prompt"])
 
     def test_documentation_gap_is_reported_after_the_edit_and_once_at_stop(self):
@@ -149,6 +164,33 @@ class HookLifecycleTests(unittest.TestCase):
         fixed = self.hook("Stop", stop_hook_active=True)
         self.assertIn("2 cenários passando", fixed["systemMessage"])
         self.assertEqual(self.hook("Stop"), {})
+
+    def test_committing_after_a_green_run_does_not_run_again(self):
+        self.hook("SessionStart")
+        self.hook("UserPromptSubmit")
+        self.edit_app("return sum(self.prices)", "return sum(self.prices) + 0")
+        self.assertIn("2 cenários passando", self.hook("Stop")["systemMessage"])
+        git = ["git", "-C", str(self.root), "-c", "user.name=t", "-c", "user.email=t@t"]
+        subprocess.run([*git, "add", "-A"], check=True)
+        subprocess.run([*git, "commit", "-q", "-m", "x"], check=True)
+        with patch("specmd.workflow.run_project", side_effect=AssertionError("executou de novo")):
+            self.assertEqual(self.hook("Stop"), {})
+
+    @unittest.skipUnless(sys.version_info >= (3, 12), "cobertura por cenário exige Python 3.12+")
+    def test_later_changes_run_only_the_affected_scenarios_and_say_so(self):
+        self.hook("SessionStart")
+        self.hook("UserPromptSubmit")
+        self.edit_app("self.prices.append(price_cents)", "self.prices.append(price_cents + 0)")
+        self.assertIn("2 cenários passando", self.hook("Stop")["systemMessage"])
+        self.edit_app("price_cents + 0", "price_cents + 1")
+        failing = self.hook("Stop")
+        self.assertEqual(failing["decision"], "block")
+        self.assertIn("1 de 1 cenário afetado pela mudança não passou; 1 cenário não executa o código alterado.",
+                      failing["reason"])
+        self.edit_app("price_cents + 1", "price_cents")
+        fixed = self.hook("Stop", stop_hook_active=True)
+        self.assertIn("1 cenário afetado pela mudança, passando; 1 cenário não executa o código alterado.",
+                      fixed["systemMessage"])
 
     def test_undefined_steps_come_back_with_a_snippet(self):
         self.hook("SessionStart")

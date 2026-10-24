@@ -16,12 +16,13 @@ DEMO = $(DEMO_BASE)/cart
 SPECMD_ENV = SPECMD_PYTHON="$(PY)"
 
 .DEFAULT_GOAL := help
-.PHONY: help setup bundle test demo agent status run init require-demo
+.PHONY: help setup bundle test bench demo agent status run init require-demo
 
 help:
 	@echo "Uso: make <alvo>"
 	@echo "  setup   Cria .venv, instala dependências e gera o plugin"
 	@echo "  test    Roda a suíte local"
+	@echo "  bench   Mede a latência dos hooks num repositório sintético grande"
 	@echo "  demo    Cria um projeto de demonstração novo em $(DEMO_HOME)"
 	@echo "  agent   Abre o Claude Code no demo com o plugin SpecMD"
 	@echo "  status  Mostra o estado do demo"
@@ -41,6 +42,9 @@ bundle: $(STAMP)
 
 test: $(STAMP)
 	"$(PY)" scripts/test_local.py
+
+bench: $(STAMP)
+	"$(PY)" scripts/benchmark.py
 
 demo: $(STAMP)
 	@base="$(DEMO_HOME)/$$(date +%Y%m%d-%H%M%S)"; \

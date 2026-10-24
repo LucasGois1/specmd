@@ -7,6 +7,7 @@ hostile project code.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import fnmatch
 import hashlib
 import json
@@ -190,107 +191,166 @@ def _failure(observed: dict, origin: dict | None) -> dict:
     }
 
 
-def execute_project(root: Path, inspection: dict, config: dict) -> dict:
+@dataclass
+class _Plan:
+    """One configured runner and the scenarios assigned to it."""
+    id: str
+    language: str
+    timeout: float
+    command: list[str]
+    selected: list[dict]
+    measured: bool
+
+
+_NO_RUNNER = ("Nenhum runner para executar os cenários: crie os passos Python em tests/steps "
+              "(ou features/steps) ou configure [[runners]] no specmd.toml; para Java e Go, veja adapters/.")
+
+
+def _expected(root: Path, inspection: dict, config: dict, only: set[str] | None,
+              result: dict) -> tuple[list[dict], list[dict]] | None:
+    """Features and scenarios to run; None when nothing is demanded (already recorded as passed)."""
+    features, expected = _features(root, inspection, set(config.get("wip_tags", ["wip"])))
+    if not expected:
+        if not any(document.get("scenarios") for document in inspection.get("documents", [])):
+            raise ValueError("Nenhum cenário encontrado na documentação.")
+        result["passed"] = True  # Only work-in-progress scenarios: nothing is demanded.
+        return None
+    if only is not None:
+        result["unselected"] = sum(item["id"] not in only for item in expected)
+        expected = [item for item in expected if item["id"] in only]
+        if not expected:
+            result["passed"] = True  # The change affects no scenario; the others already passed.
+            return None
+    return features, expected
+
+
+def _runner_settings(runner: Any, ids: set[str]) -> tuple[str, str, float, list[str] | None]:
+    if not isinstance(runner, dict):
+        raise ValueError("Runner deve ser um mapa.")
+    identifier, language = runner.get("id"), runner.get("language")
+    if not isinstance(identifier, str) or not identifier.strip() or identifier in ids:
+        raise ValueError("Runner deve ter identidade única não vazia.")
+    if language not in {"python", "java", "go"}:
+        raise ValueError("Linguagem de runner não suportada: " + str(language))
+    timeout = runner.get("timeout", 60)
+    if type(timeout) not in {int, float} or not math.isfinite(timeout) or timeout <= 0:
+        raise ValueError("Timeout do runner deve ser um número positivo finito.")
+    patterns = runner.get("paths")
+    if patterns is not None and (not isinstance(patterns, list) or not patterns or any(
+        not isinstance(pattern, str) or not pattern for pattern in patterns
+    )):
+        raise ValueError("paths deve ser uma lista não vazia de padrões.")
+    return identifier, language, timeout, patterns
+
+
+def _runner_command(root: Path, runner: dict, language: str) -> tuple[list[str], bool]:
+    """The runner's command and whether it is the packaged worker, which measures coverage."""
+    command = runner.get("command")
+    measured = command is None and language == "python"
+    if measured:
+        steps = runner.get("steps", "tests/steps")
+        if not isinstance(steps, str):
+            raise ValueError("steps deve ser um diretório relativo.")
+        _inside(root, steps)
+        # Resolve alongside this exact runner copy: a plugin bootstrap's
+        # sys.path is not inherited by a fresh Python subprocess, and
+        # -m could otherwise load a different editable installation.
+        command = [_python_for(root, runner), str(Path(__file__).with_name("behave_worker.py")),
+                   "--root", str(root), "--steps", steps]
+    if not isinstance(command, list) or not command or any(not isinstance(arg, str) or not arg for arg in command):
+        raise ValueError("Runner exige command como lista de argumentos, sem shell.")
+    return command, measured
+
+
+def _plans(root: Path, runners: Any, expected: list[dict]) -> list[_Plan]:
+    """Assign each scenario to the first runner whose paths match it."""
+    if not isinstance(runners, list) or not runners:
+        raise ValueError(_NO_RUNNER)
+    plans: list[_Plan] = []
+    taken: set[str] = set()
+    for runner in runners:
+        identifier, language, timeout, patterns = _runner_settings(runner, {plan.id for plan in plans})
+        command, measured = _runner_command(root, runner, language)
+        selected = [item for item in expected if item["id"] not in taken and _matches(item["path"], patterns)]
+        taken.update(item["id"] for item in selected)
+        plans.append(_Plan(identifier, language, timeout, command, selected, measured))
+    missing = sorted({item["path"] for item in expected if item["id"] not in taken})
+    if missing:
+        raise ValueError("Nenhum runner cobre os cenários de: " + ", ".join(missing[:5]))
+    return [plan for plan in plans if plan.selected]
+
+
+def _collect(report: Any, plan: _Plan, origins: dict, result: dict, row: dict) -> None:
+    """Record observed scenarios, failures, bridge errors and coverage from one report."""
+    observed = report.get("scenarios", []) if isinstance(report, dict) else []
+    if isinstance(observed, list):
+        row["observed_scenarios"] = observed
+        for scenario in (item for item in observed if isinstance(item, dict)):
+            result["scenarios"].append({**scenario, "runner_id": plan.id})
+            if scenario.get("status") != "passed":
+                result["failures"].append(_failure(scenario, origins.get(scenario.get("id"))))
+    if isinstance(report, dict) and report.get("error"):
+        result["findings"].append(_finding("runner_failed", str(report["error"]), plan.id))
+    scope = report.get("coverage") if plan.measured and isinstance(report, dict) else None
+    result["coverage"]["runners"][plan.id] = isinstance(scope, dict)
+    if isinstance(scope, dict) and isinstance(scope.get("global"), dict):
+        result["coverage"]["global"].append(scope["global"])
+
+
+def _run_plan(root: Path, plan: _Plan, features: list[dict], origins: dict, config: dict, result: dict) -> None:
+    blocks = {(item["path"], item["block"]) for item in plan.selected}
+    payload = {"schema": 1, "features": [item for item in features if (item["path"], item["block"]) in blocks],
+               "expected_scenarios": plan.selected, "language": config.get("gherkin_language")}
+    if plan.measured:
+        payload["coverage"] = True
+    row = {"id": plan.id, "language": plan.language, "passed": False,
+           "expected_scenarios": [item["id"] for item in plan.selected]}
+    try:
+        exit_code, stdout = _invoke(plan.command, root, payload, plan.timeout)
+        row["exit_code"] = exit_code
+        try:
+            report = json.loads(stdout)
+        except (ValueError, TypeError) as error:
+            raise ValueError("Bridge não retornou um único relatório JSON válido.") from error
+        _collect(report, plan, origins, result, row)
+        if exit_code != 0 and not result["failures"]:
+            raise ValueError("Processo do runner terminou com código " + str(exit_code))
+        if exit_code == 0:
+            _validate_report(report, plan.selected, "real")
+            row["passed"] = True
+    except subprocess.TimeoutExpired:
+        row["timed_out"] = True
+        result["findings"].append(_finding("runner_timeout", "O processo do runner excedeu seu timeout.", plan.id))
+    except (OSError, ValueError, TypeError) as error:
+        result["findings"].append(_finding("runner_failed", str(error), plan.id))
+    result["runners"].append(row)
+
+
+def execute_project(root: Path, inspection: dict, config: dict, only: set[str] | None = None) -> dict:
     """Execute each expected scenario exactly once in an assigned runner.
 
     Python defaults to the packaged Behave worker; Java/Go require an explicit
-    bridge command. Non-passing scenarios are listed in ``failures``.
+    bridge command. Non-passing scenarios are listed in ``failures``. With
+    ``only``, the other scenarios are left out and counted in ``unselected``;
+    the packaged worker then also reports per-scenario coverage.
     """
-    result = {"schema": 1, "runners": [], "scenarios": [], "failures": [], "passed": False, "findings": []}
-    findings = result["findings"]
+    result = {"schema": 1, "runners": [], "scenarios": [], "failures": [], "passed": False, "findings": [],
+              "unselected": 0, "coverage": {"runners": {}, "global": []}}
     try:
         root = Path(root).resolve(strict=True)
         if not root.is_dir() or not isinstance(config, dict):
             raise ValueError("Raiz/configuração inválida para execução.")
-        features, expected = _features(root, inspection, set(config.get("wip_tags", ["wip"])))
-        if not expected:
-            if any(document.get("scenarios") for document in inspection.get("documents", [])):
-                result["passed"] = True  # Only work-in-progress scenarios: nothing is demanded.
-                return result
-            raise ValueError("Nenhum cenário encontrado na documentação.")
-        runners = config["runners"] if "runners" in config else default_runners(root)
-        if not isinstance(runners, list) or not runners:
-            raise ValueError("Nenhum runner para executar os cenários: crie os passos Python em tests/steps "
-                             "(ou features/steps) ou configure [[runners]] no specmd.toml; para Java e Go, veja adapters/.")
-        normalized, ids = [], set()
-        for runner in runners:
-            if not isinstance(runner, dict):
-                raise ValueError("Runner deve ser um mapa.")
-            identifier, language = runner.get("id"), runner.get("language")
-            if not isinstance(identifier, str) or not identifier.strip() or identifier in ids:
-                raise ValueError("Runner deve ter identidade única não vazia.")
-            ids.add(identifier)
-            if language not in {"python", "java", "go"}:
-                raise ValueError("Linguagem de runner não suportada: " + str(language))
-            timeout = runner.get("timeout", 60)
-            if type(timeout) not in {int, float} or not math.isfinite(timeout) or timeout <= 0:
-                raise ValueError("Timeout do runner deve ser um número positivo finito.")
-            patterns = runner.get("paths")
-            if patterns is not None and (not isinstance(patterns, list) or not patterns or any(
-                not isinstance(pattern, str) or not pattern for pattern in patterns
-            )):
-                raise ValueError("paths deve ser uma lista não vazia de padrões.")
-            command = runner.get("command")
-            if command is None and language == "python":
-                steps = runner.get("steps", "tests/steps")
-                if not isinstance(steps, str):
-                    raise ValueError("steps deve ser um diretório relativo.")
-                _inside(root, steps)
-                # Resolve alongside this exact runner copy: a plugin bootstrap's
-                # sys.path is not inherited by a fresh Python subprocess, and
-                # -m could otherwise load a different editable installation.
-                command = [_python_for(root, runner), str(Path(__file__).with_name("behave_worker.py")),
-                           "--root", str(root), "--steps", steps]
-            if not isinstance(command, list) or not command or any(not isinstance(arg, str) or not arg for arg in command):
-                raise ValueError("Runner exige command como lista de argumentos, sem shell.")
-            taken = {item["id"] for _, _, _, _, items in normalized for item in items}
-            selected = [item for item in expected if item["id"] not in taken and _matches(item["path"], patterns)]
-            normalized.append((identifier, language, timeout, command, selected))
-        assigned = {item["id"] for _, _, _, _, items in normalized for item in items}
-        missing = sorted({item["path"] for item in expected if item["id"] not in assigned})
-        if missing:
-            raise ValueError("Nenhum runner cobre os cenários de: " + ", ".join(missing[:5]))
-        normalized = [entry for entry in normalized if entry[4]]
+        planned = _expected(root, inspection, config, None if only is None else set(only), result)
+        if planned is None:
+            return result
+        features, expected = planned
+        plans = _plans(root, config["runners"] if "runners" in config else default_runners(root), expected)
     except (OSError, ValueError, TypeError) as error:
-        findings.append(_finding("runner_configuration_invalid", str(error)))
+        result["findings"].append(_finding("runner_configuration_invalid", str(error)))
         return result
-
     origins = {item["id"]: item for item in expected}
-    for identifier, language, timeout, command, selected in normalized:
-        selected_blocks = {(item["path"], item["block"]) for item in selected}
-        payload = {"schema": 1, "features": [item for item in features if (item["path"], item["block"]) in selected_blocks],
-                   "expected_scenarios": selected, "language": config.get("gherkin_language")}
-        row = {"id": identifier, "language": language, "passed": False,
-               "expected_scenarios": [item["id"] for item in selected]}
-        try:
-            exit_code, stdout = _invoke(command, root, payload, timeout)
-            row["exit_code"] = exit_code
-            try:
-                report = json.loads(stdout)
-            except (ValueError, TypeError) as error:
-                raise ValueError("Bridge não retornou um único relatório JSON válido.") from error
-            observed = report.get("scenarios", []) if isinstance(report, dict) else []
-            if isinstance(observed, list):
-                row["observed_scenarios"] = observed
-                for scenario in observed:
-                    if not isinstance(scenario, dict):
-                        continue
-                    result["scenarios"].append({**scenario, "runner_id": identifier})
-                    if scenario.get("status") != "passed":
-                        result["failures"].append(_failure(scenario, origins.get(scenario.get("id"))))
-            if isinstance(report, dict) and report.get("error"):
-                findings.append(_finding("runner_failed", str(report["error"]), identifier))
-            if exit_code != 0 and not result["failures"]:
-                raise ValueError("Processo do runner terminou com código " + str(exit_code))
-            if exit_code == 0:
-                _validate_report(report, selected, "real")
-                row["passed"] = True
-        except subprocess.TimeoutExpired:
-            row["timed_out"] = True
-            findings.append(_finding("runner_timeout", "O processo do runner excedeu seu timeout.", identifier))
-        except (OSError, ValueError, TypeError) as error:
-            findings.append(_finding("runner_failed", str(error), identifier))
-        result["runners"].append(row)
-    result["passed"] = (not findings and not result["failures"] and len(result["scenarios"]) == len(expected)
+    for plan in plans:
+        _run_plan(root, plan, features, origins, config, result)
+    result["passed"] = (not result["findings"] and not result["failures"] and len(result["scenarios"]) == len(expected)
                         and all(row["passed"] for row in result["runners"]))
     return result
