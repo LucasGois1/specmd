@@ -20,6 +20,7 @@ import os
 from pathlib import Path
 import shlex
 import sys
+import time
 from typing import Any
 
 from . import protection
@@ -475,8 +476,22 @@ def soft_error(event: Any, error: Exception) -> dict[str, Any]:
     return {}
 
 
+def _log(event: Any, payload: Any, reply: dict[str, Any], started: float) -> None:
+    """Append the reply to $SPECMD_HOOK_LOG, for hosts whose output does not show hook results."""
+    destination = os.environ.get("SPECMD_HOOK_LOG")
+    if not destination:
+        return
+    entry = {"at": datetime.now(timezone.utc).isoformat(), "event": event,
+             "tool": payload.get("tool_name") if isinstance(payload, dict) else None,
+             "ms": round((time.monotonic() - started) * 1000), "reply": reply}
+    with contextlib.suppress(OSError):
+        with open(destination, "a", encoding="utf-8") as stream:
+            stream.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
 def run_hook() -> int:
-    event = None
+    started = time.monotonic()
+    event, payload = None, None
     try:
         payload = json.load(sys.stdin)
         event = payload.get("hook_event_name") if isinstance(payload, dict) else None
@@ -485,5 +500,6 @@ def run_hook() -> int:
         reply = {}
     except Exception as error:  # noqa: BLE001 - a hook must always answer with valid JSON
         reply = soft_error(event, error)
+    _log(event, payload, reply, started)
     print(json.dumps(reply, ensure_ascii=False))
     return 0
