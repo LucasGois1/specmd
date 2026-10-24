@@ -72,7 +72,7 @@ Decidido:
 - **Rede de segurança:** a execução completa continua disponível pelo CLI e no CI. A seleção pode errar (import dinâmico, arquivo de configuração lido em tempo de execução), e o feedback diz quando rodou só parte dos cenários.
 - **Benchmark** num repositório sintético da ordem de 5 mil Markdown e 50 mil arquivos, medido antes e depois. Meta: `PostToolUse` abaixo de 300 ms.
 
-Em aberto: o texto exato do feedback com a execução parcial e se `specmd run` sem opções executa tudo ou só os afetados. Os dois serão apresentados ao usuário, com cenários, antes de implementar.
+Decidido com o usuário em 24/10/2026, com os cenários de [SMD-REQ-027](requirements.md): o `Stop` e `specmd run --affected` executam só os afetados; `specmd run` executa todos. O feedback informa quantos cenários ficaram de fora. A seleção é por função, não por arquivo: todo arquivo importado pelos passos aparece como usado por todos os cenários. Mudança nos passos, no `environment.py`, na configuração ou no nível do módulo executa todos; cenários que iniciam processos ou abrem conexões sempre executam.
 
 ### D-023 — Cenário enfraquecido ou removido
 

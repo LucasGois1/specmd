@@ -5,6 +5,11 @@ list by origin (path, block, line); parsed scenarios that are not expected,
 such as work-in-progress ones, are skipped. environment.py next to the steps
 directory is loaded; behave.ini and its filters are not. This is process
 isolation, not a sandbox for hostile Python step definitions.
+
+With "coverage" in the payload and Python 3.12+, each scenario also reports
+the project code it executed (first line of each code object), the project
+files it read and whether it started a process or opened a connection, whose
+effects coverage cannot follow.
 """
 
 from __future__ import annotations
@@ -13,12 +18,13 @@ import argparse
 from contextlib import redirect_stderr, redirect_stdout
 import io
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
 
 from behave.configuration import Configuration
-from behave.model import Rule, ScenarioOutline
+from behave.model import Rule, Scenario, ScenarioOutline
 from behave.parser import parse_feature
 from behave.runner import ModelRunner, load_step_modules
 from behave.runner_util import exec_file, make_undefined_step_snippet
@@ -33,6 +39,101 @@ def _step(step):
     elif step.status.name == "undefined":
         item["snippet"] = make_undefined_step_snippet(step)
     return item
+
+
+# Code and files here are not the project's behaviour under test.
+_OUTSIDE_PROJECT = frozenset({".git", ".specmd", ".venv", "venv", "node_modules", "__pycache__", "site-packages"})
+_OPAQUE_EVENTS = frozenset({"subprocess.Popen", "os.system", "os.posix_spawn", "os.spawn", "os.exec",
+                            "os.fork", "os.forkpty", "socket.connect"})
+
+
+class Coverage:
+    """Project code executed and files read, per scenario; None is outside any scenario."""
+
+    def __init__(self, root: Path):
+        self.root = str(root) + os.sep
+        self.own = os.path.abspath(__file__)
+        self.current = None
+        self.scopes = {}
+        self.paths = {}
+
+    def start(self) -> bool:
+        monitoring = getattr(sys, "monitoring", None)
+        if monitoring is None:
+            return False
+        try:
+            monitoring.use_tool_id(monitoring.COVERAGE_ID, "specmd")
+        except ValueError:
+            return False
+        monitoring.register_callback(monitoring.COVERAGE_ID, monitoring.events.PY_START, self._started)
+        monitoring.set_events(monitoring.COVERAGE_ID, monitoring.events.PY_START)
+        sys.addaudithook(self._audited)
+        return True
+
+    def enter(self, key):
+        self.current = key
+        sys.monitoring.restart_events()
+
+    def _scope(self):
+        return self.scopes.setdefault(self.current, {"code": set(), "files": set(), "opaque": False})
+
+    def _relative(self, name):
+        if name not in self.paths:
+            relative = None
+            if isinstance(name, str) and name and not name.startswith("<"):
+                absolute = os.path.normpath(os.path.join(self.root, name))
+                if absolute.startswith(self.root) and absolute != self.own:
+                    candidate = absolute[len(self.root):].replace(os.sep, "/")
+                    if not set(candidate.split("/")[:-1]) & _OUTSIDE_PROJECT:
+                        relative = candidate
+            self.paths[name] = relative
+        return self.paths[name]
+
+    def _started(self, code, _offset):
+        relative = self._relative(code.co_filename)
+        if relative is not None:
+            self._scope()["code"].add((relative, code.co_firstlineno))
+        return sys.monitoring.DISABLE
+
+    def _audited(self, event, arguments):
+        try:
+            if event in _OPAQUE_EVENTS:
+                self._scope()["opaque"] = True
+            elif event == "open" and _reads(arguments):
+                relative = self._relative(os.fsdecode(arguments[0]))
+                if relative is not None and not relative.endswith((".py", ".pyc")):
+                    self._scope()["files"].add(relative)
+        except Exception:  # noqa: BLE001 - an audit hook must never break the scenario
+            pass
+
+    def report(self, key):
+        scope = self.scopes.get(key, {"code": set(), "files": set(), "opaque": False})
+        return {"code": sorted([path, line] for path, line in scope["code"]),
+                "files": sorted(scope["files"]), "opaque": scope["opaque"]}
+
+
+def _reads(arguments) -> bool:
+    if not arguments or not isinstance(arguments[0], (str, bytes, os.PathLike)):
+        return False
+    mode = arguments[1] if len(arguments) > 1 else None
+    if isinstance(mode, str):
+        return not set(mode) & set("wax")
+    flags = arguments[2] if len(arguments) > 2 else None
+    return isinstance(flags, int) and flags & os.O_ACCMODE == os.O_RDONLY
+
+
+def _attribute_scenarios(coverage: Coverage, identities: dict) -> None:
+    """Run each scenario, its background and its hooks inside its own coverage scope."""
+    run = Scenario.run
+
+    def scoped(scenario, *arguments, **options):
+        coverage.enter(identities.get(id(scenario)))
+        try:
+            return run(scenario, *arguments, **options)
+        finally:
+            coverage.enter(None)
+
+    Scenario.run = scoped
 
 
 def _concrete(container):
@@ -90,6 +191,11 @@ def execute(root: Path, steps: str, payload: dict) -> dict:
             origins.append((scenario, wanted["id"], path, block))
     if len(origins) != len(expected):
         raise ValueError("Cenários do parser não correspondem ao inventário esperado.")
+    coverage = Coverage(root) if payload.get("coverage") is True else None
+    if coverage is not None and coverage.start():
+        _attribute_scenarios(coverage, {id(scenario): identity for scenario, identity, _, _ in origins})
+    else:
+        coverage = None
     sys.path[:0] = [str(root), str(candidate)]
     registry.clear()
     load_step_modules([str(candidate)])
@@ -108,6 +214,10 @@ def execute(root: Path, steps: str, payload: dict) -> dict:
                                     "path": path, "block": block, "line": scenario.line,
                                     "steps_executed": sum(step["status"] in {"passed", "failed"} for step in statuses),
                                     "steps": statuses})
+        if coverage is not None:
+            result["scenarios"][-1]["coverage"] = coverage.report(identity)
+    if coverage is not None:
+        result["coverage"] = {"global": coverage.report(None)}
     result["passed"] = (not failed and bool(result["scenarios"])
                         and all(item["status"] == "passed" and item["steps"]
                                 and all(step["status"] == "passed" for step in item["steps"])

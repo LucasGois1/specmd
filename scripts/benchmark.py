@@ -6,6 +6,7 @@ code files, committed to Git) and reused while its parameters do not change.
 Each measurement starts the real hook entry point, as Claude Code does.
 
     python scripts/benchmark.py [--docs 5000] [--files 50000] [--repeat 5]
+    python scripts/benchmark.py --rules 2000   # execução: todos x só os afetados
 """
 from __future__ import annotations
 
@@ -71,6 +72,95 @@ def generate(root: Path, docs: int, files: int) -> None:
     marker.write_text(json.dumps(wanted), encoding="utf-8")
 
 
+RULE_STEPS = """import importlib
+
+from behave import given, then, when
+
+
+@given("o valor {valor:d}")
+def given_value(context, valor):
+    context.valor = valor
+
+
+@when("a regra {indice:d} é aplicada")
+def apply_rule(context, indice):
+    module = importlib.import_module(f"rules.area_{indice % 20:02d}")
+    context.resultado = getattr(module, f"regra_{indice:05d}")(context.valor)
+
+
+@then("o resultado é {esperado:d}")
+def check_result(context, esperado):
+    assert context.resultado == esperado
+"""
+
+
+def generate_rules(root: Path, rules: int) -> None:
+    """A project whose rules each live in their own function, with real steps."""
+    marker = root / ".bench.json"
+    wanted = {"rules": rules, "version": 1}
+    if marker.is_file() and json.loads(marker.read_text()) == wanted:
+        return
+    if root.exists():
+        shutil.rmtree(root)
+    (root / "rules").mkdir(parents=True)
+    (root / "rules" / "__init__.py").write_text("", encoding="utf-8")
+    (root / "tests" / "steps").mkdir(parents=True)
+    (root / "tests" / "steps" / "steps.py").write_text(RULE_STEPS, encoding="utf-8")
+    documents: dict[int, list[str]] = {}
+    modules: dict[int, list[str]] = {}
+    for index in range(rules):
+        area = index % 20
+        documents.setdefault(area, []).append(
+            f"## BEN-REQ-{index:05d} — Regra {index}\n\n```gherkin\n# language: pt\nFuncionalidade: Regra {index}\n\n"
+            f"  Cenário: Aplicar a regra {index}\n    Dado o valor {index}\n    Quando a regra {index} é aplicada\n"
+            f"    Então o resultado é {index * 2}\n```\n")
+        modules.setdefault(area, []).append(f"def regra_{index:05d}(valor):\n    return valor * 2\n")
+    (root / "docs").mkdir()
+    for area, sections in documents.items():
+        (root / "docs" / f"area-{area:02d}.md").write_text(f"# Área {area}\n\n" + "\n".join(sections), encoding="utf-8")
+        (root / "rules" / f"area_{area:02d}.py").write_text("\n\n".join(modules[area]), encoding="utf-8")
+    (root / ".gitignore").write_text(".specmd/\n", encoding="utf-8")
+    (root / "specmd.toml").write_text("[run]\ntimeout = 3600\n", encoding="utf-8")
+    git = ["git", "-C", str(root), "-c", "user.name=bench", "-c", "user.email=bench@example.com"]
+    subprocess.run([*git, "init", "-q"], check=True)
+    subprocess.run([*git, "add", "-A"], check=True)
+    subprocess.run([*git, "commit", "-q", "-m", "bench"], check=True)
+    marker.write_text(json.dumps(wanted), encoding="utf-8")
+
+
+def run_cli(root: Path, *arguments: str) -> tuple[float, dict]:
+    environment = {**os.environ, "SPECMD_PYTHON": sys.executable}
+    start = time.perf_counter()
+    completed = subprocess.run([sys.executable, str(PLUGIN / "scripts" / "specmd_cli.py"), "run", *arguments,
+                                "--root", str(root)], env=environment, capture_output=True, text=True, timeout=7200)
+    elapsed = time.perf_counter() - start
+    return elapsed, json.loads(completed.stdout).get("run", {})
+
+
+def execution_benchmark(root: Path, rules: int) -> list[dict]:
+    generate_rules(root, rules)
+    shutil.rmtree(root / ".specmd", ignore_errors=True)
+    module = root / "rules" / "area_00.py"
+    original = module.read_text(encoding="utf-8")
+    rows = []
+
+    def row(label: str, elapsed: float, run: dict) -> None:
+        rows.append({"event": label, "ms": round(elapsed * 1000), "executed": run.get("scenarios"),
+                     "unselected": run.get("unselected"), "passed": run.get("passed")})
+        print(f"{label:<34} {elapsed * 1000:>8.0f} ms   {run.get('scenarios')} executados, "
+              f"{run.get('unselected')} fora, passou={run.get('passed')}", flush=True)
+
+    row("run (todos, primeira vez)", *run_cli(root))
+    row("run (todos)", *run_cli(root))
+    try:
+        module.write_text(original.replace("return valor * 2", "return valor * 2 + 0", 1), encoding="utf-8")
+        row("run --affected (uma função)", *run_cli(root, "--affected"))
+        row("run --affected (sem mudança)", *run_cli(root, "--affected"))
+    finally:
+        module.write_text(original, encoding="utf-8")
+    return rows
+
+
 def hook(root: Path, payload: dict) -> float:
     environment = {**os.environ, "CLAUDE_PROJECT_DIR": str(root), "SPECMD_PYTHON": sys.executable}
     start = time.perf_counter()
@@ -102,8 +192,17 @@ def main() -> int:
     parser.add_argument("--repeat", type=int, default=5)
     parser.add_argument("--root", type=Path, default=Path(tempfile.gettempdir()) / "specmd-bench")
     parser.add_argument("--json", type=Path, help="grava as medições neste arquivo")
+    parser.add_argument("--rules", type=int, default=0,
+                        help="também mede a execução com este número de regras, uma função e um cenário cada")
     args = parser.parse_args()
     root = args.root.resolve()
+    if args.rules:
+        rules_root = root.with_name(root.name + "-regras")
+        print(f"Execução: {rules_root} ({args.rules} regras)", flush=True)
+        execution = execution_benchmark(rules_root, args.rules)
+        if args.json:
+            args.json.write_text(json.dumps({"rules": args.rules, "rows": execution}, indent=2) + "\n")
+        return 0
     start = time.perf_counter()
     generate(root, args.docs, args.files)
     print(f"Repositório: {root} ({args.docs} documentos, {args.files} arquivos; "

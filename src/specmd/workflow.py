@@ -11,6 +11,7 @@ not count as a change.
 """
 from __future__ import annotations
 
+import contextlib
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -182,18 +183,31 @@ def check_project(root: Path, now: dict[str, Any] | None = None) -> dict[str, An
     return result
 
 
-def run_project(root: Path) -> dict[str, Any]:
-    """Run every documented scenario and remember the result for the hooks."""
+def run_project(root: Path, affected: bool = False) -> dict[str, Any]:
+    """Run the documented scenarios and remember the result for the hooks.
+
+    With ``affected``, only the scenarios the code change since the last run
+    can affect are executed (see selection.py); the others keep their result.
+    """
     from .config import load_config
     from .runner import execute_project
+    from .selection import COVERAGE_FILE, record, select, steps_directories
 
     root = Path(root).resolve(strict=True)
     inspection = inspect_project(root)
     if inspection["status"] != "ready":
         return inspection
+    config = load_config(root)
     before = code_snapshot(root)
-    execution = execute_project(root, inspection, load_config(root))
+    last = hook_state.load(root).get("last_run")
+    previous = last.get("code") if isinstance(last, dict) and isinstance(last.get("code"), list) else []
+    changes = code_changes(root, previous[-1], before) if previous else None
+    database = hook_state.read_local(root, COVERAGE_FILE)
+    only = select(root, inspection, database, changes, steps_directories(root, config)) if affected else None
+    execution = execute_project(root, inspection, config, only=only)
     after = code_snapshot(root)
+    with contextlib.suppress(OSError, ValueError):
+        hook_state.write_local(root, COVERAGE_FILE, record(root, database, inspection, execution, only, changes))
     last_run = {
         "at": datetime.now(timezone.utc).isoformat(),
         "spec_fp": inspection["spec_fp"],
@@ -202,6 +216,7 @@ def run_project(root: Path) -> dict[str, Any]:
         "passed": execution["passed"],
         "scenarios": len(execution["scenarios"]),
         "expected": scenario_count(inspection),
+        "unselected": execution["unselected"],
         "failures": execution["failures"],
         "findings": execution["findings"],
     }

@@ -190,13 +190,16 @@ def _failure(observed: dict, origin: dict | None) -> dict:
     }
 
 
-def execute_project(root: Path, inspection: dict, config: dict) -> dict:
+def execute_project(root: Path, inspection: dict, config: dict, only: set[str] | None = None) -> dict:
     """Execute each expected scenario exactly once in an assigned runner.
 
     Python defaults to the packaged Behave worker; Java/Go require an explicit
-    bridge command. Non-passing scenarios are listed in ``failures``.
+    bridge command. Non-passing scenarios are listed in ``failures``. With
+    ``only``, the other scenarios are left out and counted in ``unselected``;
+    the packaged worker then also reports per-scenario coverage.
     """
-    result = {"schema": 1, "runners": [], "scenarios": [], "failures": [], "passed": False, "findings": []}
+    result = {"schema": 1, "runners": [], "scenarios": [], "failures": [], "passed": False, "findings": [],
+              "unselected": 0, "coverage": {"runners": {}, "global": []}}
     findings = result["findings"]
     try:
         root = Path(root).resolve(strict=True)
@@ -208,6 +211,13 @@ def execute_project(root: Path, inspection: dict, config: dict) -> dict:
                 result["passed"] = True  # Only work-in-progress scenarios: nothing is demanded.
                 return result
             raise ValueError("Nenhum cenário encontrado na documentação.")
+        if only is not None:
+            selected_ids = set(only)
+            result["unselected"] = sum(item["id"] not in selected_ids for item in expected)
+            expected = [item for item in expected if item["id"] in selected_ids]
+            if not expected:
+                result["passed"] = True  # The change affects no scenario; the others already passed.
+                return result
         runners = config["runners"] if "runners" in config else default_runners(root)
         if not isinstance(runners, list) or not runners:
             raise ValueError("Nenhum runner para executar os cenários: crie os passos Python em tests/steps "
@@ -231,6 +241,7 @@ def execute_project(root: Path, inspection: dict, config: dict) -> dict:
             )):
                 raise ValueError("paths deve ser uma lista não vazia de padrões.")
             command = runner.get("command")
+            measured = command is None and language == "python"
             if command is None and language == "python":
                 steps = runner.get("steps", "tests/steps")
                 if not isinstance(steps, str):
@@ -243,10 +254,10 @@ def execute_project(root: Path, inspection: dict, config: dict) -> dict:
                            "--root", str(root), "--steps", steps]
             if not isinstance(command, list) or not command or any(not isinstance(arg, str) or not arg for arg in command):
                 raise ValueError("Runner exige command como lista de argumentos, sem shell.")
-            taken = {item["id"] for _, _, _, _, items in normalized for item in items}
+            taken = {item["id"] for entry in normalized for item in entry[4]}
             selected = [item for item in expected if item["id"] not in taken and _matches(item["path"], patterns)]
-            normalized.append((identifier, language, timeout, command, selected))
-        assigned = {item["id"] for _, _, _, _, items in normalized for item in items}
+            normalized.append((identifier, language, timeout, command, selected, measured))
+        assigned = {item["id"] for entry in normalized for item in entry[4]}
         missing = sorted({item["path"] for item in expected if item["id"] not in assigned})
         if missing:
             raise ValueError("Nenhum runner cobre os cenários de: " + ", ".join(missing[:5]))
@@ -256,10 +267,12 @@ def execute_project(root: Path, inspection: dict, config: dict) -> dict:
         return result
 
     origins = {item["id"]: item for item in expected}
-    for identifier, language, timeout, command, selected in normalized:
+    for identifier, language, timeout, command, selected, measured in normalized:
         selected_blocks = {(item["path"], item["block"]) for item in selected}
         payload = {"schema": 1, "features": [item for item in features if (item["path"], item["block"]) in selected_blocks],
                    "expected_scenarios": selected, "language": config.get("gherkin_language")}
+        if measured:
+            payload["coverage"] = True
         row = {"id": identifier, "language": language, "passed": False,
                "expected_scenarios": [item["id"] for item in selected]}
         try:
@@ -280,6 +293,10 @@ def execute_project(root: Path, inspection: dict, config: dict) -> dict:
                         result["failures"].append(_failure(scenario, origins.get(scenario.get("id"))))
             if isinstance(report, dict) and report.get("error"):
                 findings.append(_finding("runner_failed", str(report["error"]), identifier))
+            measured_scope = report.get("coverage") if measured and isinstance(report, dict) else None
+            result["coverage"]["runners"][identifier] = isinstance(measured_scope, dict)
+            if isinstance(measured_scope, dict) and isinstance(measured_scope.get("global"), dict):
+                result["coverage"]["global"].append(measured_scope["global"])
             if exit_code != 0 and not result["failures"]:
                 raise ValueError("Processo do runner terminou com código " + str(exit_code))
             if exit_code == 0:
