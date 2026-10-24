@@ -296,25 +296,9 @@ def _rule_markers(raw: bytes) -> dict[str, Any]:
     return {"requirements": sorted(requirements), "gherkin": gherkin, "mdg": mdg}
 
 
-def _inspect_document(data: bytes, path: str, findings: list[dict[str, Any]],
-                      language: str | None = None) -> dict[str, Any]:
-    from behave.model import Rule, ScenarioOutline
-    from behave.parser import ParserError, parse_feature
-
-    document: dict[str, Any] = {
-        "path": path,
-        "sha256": hashlib.sha256(data).hexdigest(),
-        "requirements": [],
-        "scenarios": [],
-    }
-    try:
-        text = data.decode("utf-8")
-    except UnicodeDecodeError:
-        findings.append(_finding("invalid_utf8", "Documento não contém UTF-8 válido.", path))
-        return document
-    tokens = _markdown().parse(strip_frontmatter(text))
-
-    # Each fence belongs to the innermost requirement heading above it.
+def _gherkin_fences(tokens: list[Any]) -> tuple[list[dict[str, Any]], list[tuple[Any, str | None]]]:
+    """Requirement headings and Gherkin fences, each fence with the innermost requirement above it."""
+    requirements: list[dict[str, Any]] = []
     fences: list[tuple[Any, str | None]] = []
     stack: list[tuple[int, str | None]] = []
     for index, token in enumerate(tokens):
@@ -326,149 +310,172 @@ def _inspect_document(data: bytes, path: str, findings: list[dict[str, Any]],
                 stack.pop()
             stack.append((level, match.group(1) if match else None))
             if match:
-                document["requirements"].append({"id": match.group(1), "line": token.map[0] + 1})
+                requirements.append({"id": match.group(1), "line": token.map[0] + 1})
         elif token.type == "fence":
-            language_word = token.info.strip().split(maxsplit=1)
-            if language_word and language_word[0].casefold() == "gherkin":
-                context = next((identifier for _, identifier in reversed(stack) if identifier), None)
-                fences.append((token, context))
+            words = token.info.strip().split(maxsplit=1)
+            if words and words[0].casefold() == "gherkin":
+                fences.append((token, next((identifier for _, identifier in reversed(stack) if identifier), None)))
+    return requirements, fences
 
+
+class _DocumentReader:
+    """Scenarios of one document's Gherkin blocks, with identities and requirement links."""
+
+    def __init__(self, path: str, findings: list[dict[str, Any]], language: str | None):
+        self.path = path
+        self.findings = findings
+        self.language = language
+        self.scenarios: list[dict[str, Any]] = []
+        self.names: dict[str, int] = {}
+
+    def finding(self, kind: str, message: str, line: int | None) -> None:
+        self.findings.append(_finding(kind, message, self.path, line))
+
+    def read_block(self, block: int, first_line: int, content: str, context: str | None) -> None:
+        from behave.parser import ParserError, parse_feature
+
+        try:
+            feature = parse_feature("\n" * (first_line - 1) + content, language=self.language, filename=self.path)
+        except ParserError as exc:
+            self.finding("gherkin_invalid", str(exc), getattr(exc, "line", first_line))
+            return
+        except (LookupError, ValueError) as exc:
+            self.finding("gherkin_invalid", str(exc), first_line)
+            return
+        if feature is None:
+            self.finding("gherkin_invalid", "Bloco sem funcionalidade Gherkin.", first_line)
+            return
+        before = len(self.scenarios)
+        self.visit(feature, {str(tag) for tag in feature.tags}, block, context)
+        if len(self.scenarios) == before:
+            self.finding("scenarios_missing", "Bloco sem cenários concretos.", feature.line)
+
+    def visit(self, container: Any, inherited: set[str], block: int, context: str | None) -> None:
+        from behave.model import Rule, ScenarioOutline
+
+        for scenario in getattr(container, "run_items", container.scenarios):
+            if isinstance(scenario, Rule):
+                self.visit(scenario, inherited | {str(tag) for tag in scenario.tags}, block, context)
+            elif isinstance(scenario, ScenarioOutline):
+                self.outline(scenario, inherited, block, context)
+            else:
+                self.add(scenario, inherited, block, context)
+
+    def outline(self, scenario: Any, inherited: set[str], block: int, context: str | None) -> None:
+        positions = [(example_index, row_index)
+                     for example_index, example in enumerate(scenario.examples, start=1) if example.table is not None
+                     for row_index, _ in enumerate(example.table.rows, start=1)]
+        try:
+            concrete = list(scenario.scenarios)
+        except (LookupError, ValueError, TypeError, AssertionError) as exc:
+            self.finding("gherkin_invalid", str(exc), scenario.line)
+            return
+        if not positions or len(concrete) != len(positions):
+            self.finding("scenarios_missing", "Esquema do Cenário exige linhas de Exemplos concretas.", scenario.line)
+            return
+        explicit = sorted({str(tag) for tag in scenario.tags if _SCENARIO_ID.fullmatch(str(tag))})
+        base = explicit[0] if len(explicit) == 1 else self.default_identity(scenario.name)
+        for instance, position in zip(concrete, positions):
+            self.add(instance, inherited, block, context, scenario, position, base)
+
+    def default_identity(self, name: str) -> str:
+        self.names[name] = self.names.get(name, 0) + 1
+        return f"{self.path}::{name}" + (f"#{self.names[name]}" if self.names[name] > 1 else "")
+
+    def add(self, scenario: Any, inherited: set[str], block: int, context: str | None, template: Any = None,
+            position: tuple[int, int] | None = None, identity: str | None = None) -> None:
+        tags = inherited | {str(tag) for tag in scenario.tags}
+        explicit = sorted({str(tag) for tag in (template or scenario).tags if _SCENARIO_ID.fullmatch(str(tag))})
+        if len(explicit) > 1:
+            self.finding("scenario_id_invalid", "Cenário deve ter no máximo uma tag de ID (…-SCN-…).", scenario.line)
+        base = identity or (explicit[0] if explicit else self.default_identity(scenario.name))
+        requirement_ids = sorted(tag for tag in tags if _REQUIREMENT_ID.fullmatch(tag)) or ([context] if context else [])
+        background = getattr(scenario, "background", None)
+        step_count = len(scenario.steps) + len(getattr(background, "steps", []))
+        if not step_count:
+            self.finding("scenario_steps_missing", "Cenário sem passos não fornece comportamento verificável.",
+                         scenario.line)
+        item = {
+            "id": f"{base}:row:{position[0]}:{position[1]}" if position else base,
+            "name": scenario.name,
+            "line": scenario.line,
+            "requirements": requirement_ids,
+            "tags": sorted(tags),
+            "block": block,
+            "steps": step_count,
+            "explicit_id": bool(explicit),
+            "sha256": _scenario_digest(scenario, tags),
+            "steps_text": _step_texts(scenario),
+        }
+        if template is not None:
+            item.update({"template_id": base, "definition_line": template.line,
+                         "example_index": position[0], "row_index": position[1]})
+        self.scenarios.append(item)
+
+
+def _inspect_document(data: bytes, path: str, findings: list[dict[str, Any]],
+                      language: str | None = None) -> dict[str, Any]:
+    document: dict[str, Any] = {"path": path, "sha256": hashlib.sha256(data).hexdigest(),
+                                "requirements": [], "scenarios": []}
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError:
+        findings.append(_finding("invalid_utf8", "Documento não contém UTF-8 válido.", path))
+        return document
+    document["requirements"], fences = _gherkin_fences(_markdown().parse(strip_frontmatter(text)))
     # Prose edits do not change the specification digest; requirements and
     # scenarios do. Hooks use it to tell which scenarios the developer saw.
     document["spec_sha256"] = _digest([[item["id"] for item in document["requirements"]],
                                        [token.content for token, _ in fences]])
     if not fences:
         findings.append(_finding("gherkin_missing", "Documento sem cenários Gherkin." + _GAP_HINT, path))
-
-    names: dict[str, int] = {}
+    reader = _DocumentReader(path, findings, language)
     for block, (token, context) in enumerate(fences, start=1):
-        first_line = token.map[0] + 2
-        try:
-            feature = parse_feature("\n" * (first_line - 1) + token.content, language=language, filename=path)
-        except ParserError as exc:
-            findings.append(_finding("gherkin_invalid", str(exc), path, getattr(exc, "line", first_line)))
-            continue
-        except (LookupError, ValueError) as exc:
-            findings.append(_finding("gherkin_invalid", str(exc), path, first_line))
-            continue
-        if feature is None:
-            findings.append(_finding("gherkin_invalid", "Bloco sem funcionalidade Gherkin.", path, first_line))
-            continue
-        initial_count = len(document["scenarios"])
-
-        def default_identity(name: str) -> str:
-            names[name] = names.get(name, 0) + 1
-            return f"{path}::{name}" + (f"#{names[name]}" if names[name] > 1 else "")
-
-        def add_scenario(scenario: Any, inherited: set[str], template: Any = None,
-                         position: tuple[int, int] | None = None, identity: str | None = None) -> None:
-            tags = inherited | {str(tag) for tag in scenario.tags}
-            explicit = sorted({str(tag) for tag in (template or scenario).tags if _SCENARIO_ID.fullmatch(str(tag))})
-            if len(explicit) > 1:
-                findings.append(_finding(
-                    "scenario_id_invalid", "Cenário deve ter no máximo uma tag de ID (…-SCN-…).", path, scenario.line,
-                ))
-            base = identity or (explicit[0] if explicit else default_identity(scenario.name))
-            requirement_ids = sorted(tag for tag in tags if _REQUIREMENT_ID.fullmatch(tag))
-            if not requirement_ids and context:
-                requirement_ids = [context]
-            background = getattr(scenario, "background", None)
-            step_count = len(scenario.steps) + len(getattr(background, "steps", []))
-            if not step_count:
-                findings.append(_finding(
-                    "scenario_steps_missing", "Cenário sem passos não fornece comportamento verificável.", path, scenario.line,
-                ))
-            item = {
-                "id": f"{base}:row:{position[0]}:{position[1]}" if position else base,
-                "name": scenario.name,
-                "line": scenario.line,
-                "requirements": requirement_ids,
-                "tags": sorted(tags),
-                "block": block,
-                "steps": step_count,
-                "explicit_id": bool(explicit),
-                "sha256": _scenario_digest(scenario, tags),
-                "steps_text": _step_texts(scenario),
-            }
-            if template is not None:
-                item.update({"template_id": base, "definition_line": template.line,
-                             "example_index": position[0], "row_index": position[1]})
-            document["scenarios"].append(item)
-
-        def visit(container: Any, inherited: set[str]) -> None:
-            for scenario in getattr(container, "run_items", container.scenarios):
-                if isinstance(scenario, Rule):
-                    visit(scenario, inherited | {str(tag) for tag in scenario.tags})
-                elif isinstance(scenario, ScenarioOutline):
-                    positions = [
-                        (example_index, row_index)
-                        for example_index, example in enumerate(scenario.examples, start=1)
-                        if example.table is not None
-                        for row_index, _ in enumerate(example.table.rows, start=1)
-                    ]
-                    try:
-                        concrete = list(scenario.scenarios)
-                    except (LookupError, ValueError, TypeError, AssertionError) as exc:
-                        findings.append(_finding("gherkin_invalid", str(exc), path, scenario.line))
-                        continue
-                    if not positions or len(concrete) != len(positions):
-                        findings.append(_finding(
-                            "scenarios_missing", "Esquema do Cenário exige linhas de Exemplos concretas.", path, scenario.line,
-                        ))
-                        continue
-                    explicit = sorted({str(tag) for tag in scenario.tags if _SCENARIO_ID.fullmatch(str(tag))})
-                    base = explicit[0] if len(explicit) == 1 else default_identity(scenario.name)
-                    for instance, position in zip(concrete, positions):
-                        add_scenario(instance, inherited, scenario, position, identity=base)
-                else:
-                    add_scenario(scenario, inherited)
-
-        visit(feature, {str(tag) for tag in feature.tags})
-        if len(document["scenarios"]) == initial_count:
-            findings.append(_finding("scenarios_missing", "Bloco sem cenários concretos.", path, feature.line))
+        reader.read_block(block, token.map[0] + 2, token.content, context)
+    document["scenarios"] = reader.scenarios
     return document
+
+
+def _declare_requirements(document: dict[str, Any], requirements: dict[str, tuple[str, int]],
+                          findings: list[dict[str, Any]]) -> None:
+    for requirement in document["requirements"]:
+        identifier = requirement["id"]
+        if identifier in requirements:
+            earlier = requirements[identifier]
+            findings.append(_finding("requirement_id_duplicate", f"ID {identifier} também declarado em "
+                                     f"{earlier[0]}:{earlier[1]}.", document["path"], requirement["line"]))
+        else:
+            requirements[identifier] = (document["path"], requirement["line"])
+
+
+def _declare_scenarios(document: dict[str, Any], templates: dict[str, tuple[str, int]],
+                       findings: list[dict[str, Any]]) -> None:
+    for scenario in document["scenarios"]:
+        template = scenario.get("template_id", scenario["id"])
+        declaration = (document["path"], scenario.get("definition_line", scenario["line"]))
+        if template in templates and templates[template] != declaration:
+            earlier = templates[template]
+            findings.append(_finding("scenario_id_duplicate", f"ID de cenário {template} também declarado em "
+                                     f"{earlier[0]}:{earlier[1]}.", document["path"], declaration[1]))
+        else:
+            templates[template] = declaration
 
 
 def _validate_links(documents: list[dict[str, Any]], findings: list[dict[str, Any]]) -> None:
     requirements: dict[str, tuple[str, int]] = {}
     templates: dict[str, tuple[str, int]] = {}
     for document in documents:
-        path = document["path"]
-        for requirement in document["requirements"]:
-            identifier = requirement["id"]
-            if identifier in requirements:
-                earlier = requirements[identifier]
-                findings.append(_finding(
-                    "requirement_id_duplicate", f"ID {identifier} também declarado em {earlier[0]}:{earlier[1]}.", path, requirement["line"],
-                ))
-            else:
-                requirements[identifier] = (path, requirement["line"])
-        for scenario in document["scenarios"]:
-            template = scenario.get("template_id", scenario["id"])
-            declaration = (path, scenario.get("definition_line", scenario["line"]))
-            if template in templates and templates[template] != declaration:
-                earlier = templates[template]
-                findings.append(_finding(
-                    "scenario_id_duplicate", f"ID de cenário {template} também declarado em {earlier[0]}:{earlier[1]}.", path, declaration[1],
-                ))
-            else:
-                templates[template] = declaration
-
+        _declare_requirements(document, requirements, findings)
+        _declare_scenarios(document, templates, findings)
     covered: set[str] = set()
     for document in documents:
         for scenario in document["scenarios"]:
-            for identifier in scenario["requirements"]:
-                if identifier not in requirements:
-                    findings.append(_finding(
-                        "requirement_unknown", f"Cenário referencia requisito não declarado: {identifier}.", document["path"], scenario["line"],
-                    ))
-                else:
-                    covered.add(identifier)
-    for identifier, (path, line) in requirements.items():
-        if identifier not in covered:
-            findings.append(_finding(
-                "requirement_uncovered", f"Requisito {identifier} não possui cenário associado.", path, line,
-            ))
+            unknown = [identifier for identifier in scenario["requirements"] if identifier not in requirements]
+            covered.update(identifier for identifier in scenario["requirements"] if identifier in requirements)
+            findings.extend(_finding("requirement_unknown", f"Cenário referencia requisito não declarado: {identifier}.",
+                                     document["path"], scenario["line"]) for identifier in unknown)
+    findings.extend(_finding("requirement_uncovered", f"Requisito {identifier} não possui cenário associado.", path, line)
+                    for identifier, (path, line) in requirements.items() if identifier not in covered)
 
 
 def _analyse(relative: str, language: str | None, raw: bytes) -> dict[str, Any]:
