@@ -159,7 +159,7 @@ Funcionalidade: Contexto inicial
 
 ## SMD-REQ-015 — Estado local reconstruível
 
-O plugin guarda apenas observações locais em `.specmd/local/`: a última execução, os cenários vistos pelo dev e a contagem de devoluções. Apagar esse estado é seguro; ele é reconstruído na próxima sessão.
+O plugin guarda apenas observações locais em `.specmd/local/`: a última execução, os cenários vistos pelo dev, a contagem de devoluções e um cache da análise dos documentos. Apagar esse estado é seguro; ele é reconstruído na próxima sessão.
 
 ```gherkin
 # language: pt
