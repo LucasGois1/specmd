@@ -24,7 +24,7 @@ import re
 import stat
 import subprocess
 import time
-from typing import Any, Iterator
+from typing import Any, Callable, Iterator
 
 from . import state as local_state
 from .config import ConfigError, parse_config, read_regular_file as _read_regular_file
@@ -121,6 +121,16 @@ def _scenario_digest(scenario: Any, tags: set[str]) -> str:
         [step.step_type, step.name, step.text,
          [list(step.table.headings), [list(row.cells) for row in step.table.rows]] if step.table else None]
         for step in steps]])
+
+
+def _step_texts(scenario: Any) -> list[list[Any]]:
+    """Each step as [type, text, digest of its table or doc string], to show what changed."""
+    background = getattr(scenario, "background", None)
+    steps = [*getattr(background, "steps", []), *scenario.steps]
+    return [[step.step_type, f"{step.keyword.strip()} {step.name}",
+             _digest([step.text, [list(step.table.headings), [list(row.cells) for row in step.table.rows]]
+                      if step.table else None])[:12] if step.text or step.table else None]
+            for step in steps]
 
 
 def strip_frontmatter(text: str) -> str:
@@ -223,13 +233,8 @@ def _symlink_finding(relative: str) -> dict[str, Any]:
     return _finding("symlink", "Documentos simbólicos não são lidos pelo scanner.", relative)
 
 
-def _load_cache(root: Path, key: str) -> dict[str, Any]:
-    data = local_state.read_local(root, CACHE_FILE)
-    entries = data.get("entries")
-    return entries if data.get("key") == key and isinstance(entries, dict) else {}
-
-
-def _document_entry(root: Path, relative: str, cached: Any, language: str | None) -> dict[str, Any] | str | None:
+def _cached_entry(root: Path, relative: str, cached: Any,
+                  analyse: Callable[[bytes], dict[str, Any]]) -> dict[str, Any] | str | None:
     """The cached analysis when the file is unchanged; otherwise read it and analyse it again.
 
     Returns "symlink" for a symbolic link and None when the file cannot be read.
@@ -241,8 +246,8 @@ def _document_entry(root: Path, relative: str, cached: Any, language: str | None
     if stat.S_ISLNK(info.st_mode):
         return "symlink"
     signature = [info.st_size, info.st_mtime_ns, info.st_ctime_ns, info.st_ino]
-    usable = (isinstance(cached, dict) and isinstance(cached.get("document"), dict)
-              and isinstance(cached.get("findings"), list) and isinstance(cached.get("checked_ns"), int))
+    usable = (isinstance(cached, dict) and isinstance(cached.get("data"), dict)
+              and isinstance(cached.get("sha256"), str) and isinstance(cached.get("checked_ns"), int))
     if (usable and cached.get("stat") == signature
             and max(info.st_mtime_ns, info.st_ctime_ns) + _SETTLE_NS < cached["checked_ns"]):
         return cached
@@ -251,12 +256,43 @@ def _document_entry(root: Path, relative: str, cached: Any, language: str | None
         raw = _read_regular_file(root / relative)
     except OSError:
         return None
-    if usable and cached["document"].get("sha256") == hashlib.sha256(raw).hexdigest():
-        document, findings = cached["document"], cached["findings"]
-    else:
-        findings = []
-        document = _inspect_document(raw, relative, findings, language)
-    return {"stat": signature, "checked_ns": checked, "document": document, "findings": findings}
+    digest = hashlib.sha256(raw).hexdigest()
+    data = cached["data"] if usable and cached["sha256"] == digest else analyse(raw)
+    return {"stat": signature, "checked_ns": checked, "sha256": digest, "data": data}
+
+
+@functools.lru_cache(maxsize=1)
+def _gherkin_headings() -> re.Pattern[str]:
+    """Headings that MDG reads as Gherkin keywords, in every language Gherkin knows."""
+    from behave.i18n import languages
+
+    words = {word.strip() for language in languages.values()
+             for kind in ("feature", "rule", "background", "scenario", "scenario_outline", "examples")
+             for word in language.get(kind, []) if word.strip() and word.strip() != "*"}
+    return re.compile(r"^(?:" + "|".join(sorted(map(re.escape, words), key=len, reverse=True)) + r")\s*:", re.IGNORECASE)
+
+
+def _rule_markers(raw: bytes) -> dict[str, Any]:
+    """What would make an ignored document declare rules: requirement titles, Gherkin blocks, MDG titles."""
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return {"requirements": [], "gherkin": 0, "mdg": 0}
+    tokens = _markdown().parse(strip_frontmatter(text))
+    requirements: set[str] = set()
+    gherkin = mdg = 0
+    for index, token in enumerate(tokens):
+        if token.type == "heading_open" and index + 1 < len(tokens):
+            title = "".join(child.content for child in tokens[index + 1].children or [])
+            match = _REQUIREMENT_HEADING.match(title)
+            if match:
+                requirements.add(match.group(1))
+            elif _gherkin_headings().match(title):
+                mdg += 1
+        elif token.type == "fence":
+            words = token.info.strip().split(maxsplit=1)
+            gherkin += bool(words and words[0].casefold() == "gherkin")
+    return {"requirements": sorted(requirements), "gherkin": gherkin, "mdg": mdg}
 
 
 def _inspect_document(data: bytes, path: str, findings: list[dict[str, Any]],
@@ -351,6 +387,7 @@ def _inspect_document(data: bytes, path: str, findings: list[dict[str, Any]],
                 "steps": step_count,
                 "explicit_id": bool(explicit),
                 "sha256": _scenario_digest(scenario, tags),
+                "steps_text": _step_texts(scenario),
             }
             if template is not None:
                 item.update({"template_id": base, "definition_line": template.line,
@@ -434,18 +471,42 @@ def _validate_links(documents: list[dict[str, Any]], findings: list[dict[str, An
 
 
 def _analyse_documents(root: Path, rules: list[tuple[bool, re.Pattern[str]]], language: str | None,
-                       findings: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], bool]:
-    """Analyse every discovered document, reusing the cache; False when one could not be read."""
+                       findings: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], dict[str, Any], bool]:
+    """Analyse every discovered document, reusing the cache.
+
+    Returns the analysed documents, the rule markers of ignored documents that
+    have any, and False when a document could not be read.
+    """
     key = _cache_key(language)
-    cached = _load_cache(root, key)
+    stored = local_state.read_local(root, CACHE_FILE)
+    fresh = stored.get("key") == key
+    cached = stored.get("entries") if fresh and isinstance(stored.get("entries"), dict) else {}
+    cached_ignored = stored.get("ignored") if fresh and isinstance(stored.get("ignored"), dict) else {}
+    defaults = compile_ignore(list(DEFAULT_IGNORE))
+
+    def analyse(relative: str) -> Callable[[bytes], dict[str, Any]]:
+        def run(raw: bytes) -> dict[str, Any]:
+            document_findings: list[dict[str, Any]] = []
+            document = _inspect_document(raw, relative, document_findings, language)
+            return {"document": document, "findings": document_findings}
+        return run
+
     entries: dict[str, Any] = {}
+    ignored_entries: dict[str, Any] = {}
     documents: list[dict[str, Any]] = []
+    markers: dict[str, Any] = {}
     complete = True
     with _fixed_cwd():
         for relative in _discover(root, findings):
             if is_ignored(relative, rules):
+                entry = _cached_entry(root, relative, cached_ignored.get(relative), _rule_markers)
+                if isinstance(entry, dict):
+                    ignored_entries[relative] = entry
+                    found = entry["data"]
+                    if found["requirements"] or found["gherkin"] or found["mdg"]:
+                        markers[relative] = {**found, "default": is_ignored(relative, defaults)}
                 continue
-            entry = _document_entry(root, relative, cached.get(relative), language)
+            entry = _cached_entry(root, relative, cached.get(relative), analyse(relative))
             if entry == "symlink":
                 findings.append(_symlink_finding(relative))
             elif entry is None:
@@ -453,12 +514,16 @@ def _analyse_documents(root: Path, rules: list[tuple[bool, re.Pattern[str]]], la
                 findings.append(_finding("read_error", "Não foi possível ler um documento regular e estável.", relative))
             else:
                 entries[relative] = entry
-                documents.append(entry["document"])
-                findings.extend(entry["findings"])
-    if entries.keys() != cached.keys() or any(entry is not cached[path] for path, entry in entries.items()):
+                documents.append(entry["data"]["document"])
+                findings.extend(entry["data"]["findings"])
+    if not _same_entries(entries, cached) or not _same_entries(ignored_entries, cached_ignored):
         with contextlib.suppress(OSError, ValueError):
-            local_state.write_local(root, CACHE_FILE, {"key": key, "entries": entries})
-    return documents, complete
+            local_state.write_local(root, CACHE_FILE, {"key": key, "entries": entries, "ignored": ignored_entries})
+    return documents, markers, complete
+
+
+def _same_entries(entries: dict[str, Any], cached: dict[str, Any]) -> bool:
+    return entries.keys() == cached.keys() and all(entry is cached[path] for path, entry in entries.items())
 
 
 def inspect_project(root: Path) -> dict[str, Any]:
@@ -482,11 +547,12 @@ def inspect_project(root: Path) -> dict[str, Any]:
 
     findings: list[dict[str, Any]] = []
     rules = compile_ignore([*DEFAULT_IGNORE, *ignore_bytes.decode("utf-8", "replace").splitlines()])
-    documents, complete_snapshot = _analyse_documents(root, rules, config.get("gherkin_language"), findings)
+    documents, markers, complete_snapshot = _analyse_documents(root, rules, config.get("gherkin_language"), findings)
     documents.sort(key=lambda item: item["path"])
     _validate_links(documents, findings)
     result = _result("needs_scenarios" if findings else "ready", findings)
     result["documents"] = documents
+    result["ignored_rules"] = markers
     result["spec_fp"] = _digest([[document["path"], document.get("spec_sha256")] for document in documents])
     if complete_snapshot:
         manifest = {

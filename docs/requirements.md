@@ -160,6 +160,69 @@ Funcionalidade: Execução só dos cenários afetados
     Então todos os cenários são executados
 ```
 
+## SMD-REQ-028 — Cenários confirmados protegidos
+
+Os cenários da última mensagem do dev são a base de comparação. Quando o agente remove um deles, muda um `Então` (o valor esperado), muda um `Dado` ou `Quando`, marca um com `@wip` ou remove um requisito, ele recebe o diff exato logo após a edição, e o dev vê o mesmo resumo quando o agente conclui, mesmo que tudo passe. O aviso é informativo, inclusive quando o próprio dev pediu a mudança. A conclusão volta ao agente, uma vez, só no sinal forte de ajustar o teste ao código: o cenário falhava na última execução e o agente mudou o valor esperado dele e o código no mesmo turno. Origem: [D-023](decisions.md), confirmado pelo usuário em 24/10/2026.
+
+```gherkin
+# language: pt
+Funcionalidade: Cenários confirmados protegidos
+
+  @SMD-REQ-028 @SMD-SCN-123
+  Cenário: Valor esperado alterado aparece para o agente e para o dev
+    Dado um cenário que existia na última mensagem do dev
+    Quando o agente muda o valor esperado no Então
+    Então o agente recebe o cenário com o valor anterior e o novo logo após a edição
+    E o dev vê o mesmo resumo quando o agente conclui, mesmo com tudo passando
+
+  @SMD-REQ-028 @SMD-SCN-124
+  Cenário: Cenário removido, marcado como @wip ou requisito removido
+    Dado cenários e requisitos que existiam na última mensagem do dev
+    Quando o agente remove um cenário, marca outro com @wip e remove um requisito
+    Então o agente e o dev veem o cenário removido, o cenário marcado e o requisito removido
+
+  @SMD-REQ-028 @SMD-SCN-125
+  Cenário: Expectativa ajustada para o código passar volta ao agente
+    Dado um cenário que falhou na última execução
+    Quando o agente muda o valor esperado dele e o código no mesmo turno e conclui
+    Então o agente recebe uma vez o pedido para restaurar o cenário se o dev não pediu a mudança
+
+  @SMD-REQ-028 @SMD-SCN-126
+  Cenário: Mudança num cenário que passava é só informada
+    Dado um cenário que passava
+    Quando o agente muda o valor esperado dele e o código e conclui
+    Então o dev vê o resumo da mudança
+    E o agente conclui sem nova devolução
+```
+
+## SMD-REQ-029 — Documento ignorado que ganha regra
+
+Documentos ignorados, pelo `.specmdignore` ou pelos padrões, continuam sendo lidos de leve. Quando um deles muda e passa a ter um título de requisito (`…-REQ-…`), um bloco Gherkin ou um título com palavra-chave Gherkin (MDG), o agente é avisado logo após a edição, com as duas saídas: mover a regra para um documento de comportamento ou tirar o documento do `.specmdignore` (ou usar `!caminho`), perguntando ao dev em dúvida. Um documento que já tinha esses elementos não gera aviso quando outra parte dele muda. É só aviso: a conclusão não é bloqueada por isso. Origem: [D-024](decisions.md), confirmado pelo usuário em 24/10/2026.
+
+```gherkin
+# language: pt
+Funcionalidade: Documento ignorado que ganha regra
+
+  @SMD-REQ-029 @SMD-SCN-127
+  Cenário: Requisito escrito num documento ignorado
+    Dado um guia de setup listado no .specmdignore
+    Quando o agente adiciona ao guia um título de requisito ou um bloco Gherkin
+    Então o agente é avisado de que o documento está ignorado
+    E recebe as saídas: mover a regra ou tirar o documento do .specmdignore, perguntando ao dev em dúvida
+
+  @SMD-REQ-029 @SMD-SCN-128
+  Cenário: Exemplo antigo não gera aviso
+    Dado um README ignorado que sempre teve um exemplo de Gherkin
+    Quando o agente edita outra parte do README
+    Então nenhum aviso é dado
+
+  @SMD-REQ-029 @SMD-SCN-129
+  Cenário: Aviso não bloqueia a conclusão
+    Dado um documento ignorado que ganhou um requisito
+    Quando o agente conclui
+    Então a conclusão não é bloqueada por isso
+```
+
 ## SMD-REQ-024 — Feedback que não trava a sessão
 
 O plugin nunca encerra a sessão do agente. O mesmo feedback repetido sem mudança, ou o limite de quatro devoluções seguidas, deixa o agente concluir; a contagem recomeça a cada mensagem do dev. Erros internos do plugin viram aviso.
