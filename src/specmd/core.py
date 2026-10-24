@@ -464,7 +464,7 @@ def _inspect_mdg(document: dict[str, Any], text: str, findings: list[dict[str, A
     document["requirements"] = converted.requirements
     document["spec_sha256"] = _digest([[item["id"] for item in converted.requirements], converted.text])
     if not converted.scenarios:
-        foreign = any(_gherkin_headings().match(match.group(2)) for match in
+        foreign = any(_gherkin_headings().match(mdg.heading_title(match)) for match in
                       (mdg.HEADING.match(line) for line in text.splitlines()) if match)
         findings.append(_finding("gherkin_missing", "Arquivo MDG sem títulos de cenário." +
                                  (_MDG_LANGUAGE if foreign else _GAP_HINT), path))

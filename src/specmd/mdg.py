@@ -14,15 +14,22 @@ import functools
 import re
 from typing import Any
 
-HEADING = re.compile(r"^ {0,3}(#{1,6})[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$")
+HEADING = re.compile(r"^ {0,3}(#{1,6})(?:[ \t]+(\S.*))?$")
 _FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
 _TAG_LINE = re.compile(r"^\s*(?:`@[^`\s]+`\s*)+$")
 _TAG = re.compile(r"`(@[^`\s]+)`")
 _TABLE_ROW = re.compile(r"^ {2,5}(\|.*\|)\s*$")
 _SEPARATOR_CELL = re.compile(r"^\s*:?-+:?\s*$")
-_LIST_ITEM = re.compile(r"^ {0,3}[*+-][ \t]+(.*)$")
+_LIST_ITEM = re.compile(r"^ {0,3}[*+-][ \t]+(\S.*)$")
 _HEADER_KINDS = ("feature", "rule", "background", "scenario", "scenario_outline", "examples")
 _STEP_KINDS = ("given", "when", "then", "and", "but")
+
+
+def heading_title(match: re.Match[str]) -> str:
+    """The heading text without an optional closing sequence of #."""
+    title = (match.group(2) or "").rstrip()
+    stripped = title.rstrip("#")
+    return stripped.rstrip() if stripped != title and (not stripped or stripped[-1] in " \t") else title
 
 
 def is_mdg(path: str) -> bool:
@@ -76,7 +83,7 @@ class _Converter:
             return '"""' if self.after_step else ""
         heading = HEADING.match(raw)
         if heading:
-            return self.heading(len(heading.group(1)), heading.group(2))
+            return self.heading(len(heading.group(1)), heading_title(heading))
         if _TAG_LINE.match(raw):
             self.after_step = False
             return " ".join(_TAG.findall(raw))
