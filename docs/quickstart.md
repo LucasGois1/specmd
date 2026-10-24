@@ -71,7 +71,8 @@ Comandos do CLI, todos com `--root` (padrão: diretório atual):
 | `specmd init` | Declara o marketplace e habilita o plugin no `.claude/settings.json` do projeto. |
 | `specmd inventory` | Documentos, requisitos, cenários e pendências da documentação. |
 | `specmd check` | Pendências e o resultado da última execução, se ainda atual. |
-| `specmd run` | Executa os cenários e guarda o resultado para os hooks. |
+| `specmd run` | Executa todos os cenários e guarda o resultado para os hooks. |
+| `specmd run --affected` | Executa só os cenários afetados pela mudança desde a última execução, como ao concluir. |
 
 Códigos de saída: 0 sem pendências, 1 documentação pendente ou cenários falhando, 2 erro ou projeto sem `specmd.toml`.
 

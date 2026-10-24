@@ -95,7 +95,7 @@ Funcionalidade: Confirmação do dev
 
 ## SMD-REQ-023 — Execução após mudança de código e feedback acionável
 
-Quando arquivos que não são Markdown mudaram desde a última execução, a conclusão executa os cenários, inclusive os escritos no mesmo turno. Cada cenário que não passa volta ao agente com o caminho, a linha, o passo, a mensagem de erro e, para passos sem implementação, um trecho pronto para começar. Sem mudança de código na sessão, nenhuma execução é cobrada.
+Quando arquivos que não são Markdown mudaram desde a última execução, a conclusão executa os cenários afetados pela mudança (ver SMD-REQ-027), inclusive os escritos no mesmo turno. Cada cenário que não passa volta ao agente com o caminho, a linha, o passo, a mensagem de erro e, para passos sem implementação, um trecho pronto para começar. Sem mudança de código na sessão, nenhuma execução é cobrada.
 
 ```gherkin
 # language: pt
@@ -118,6 +118,46 @@ Funcionalidade: Execução após mudança de código
     Dado uma sessão em que o código não mudou
     Quando o agente conclui
     Então nenhum cenário é executado
+```
+
+## SMD-REQ-027 — Só os cenários afetados pela mudança
+
+Em projetos grandes, rodar todos os cenários a cada conclusão leva minutos. Ao concluir, o plugin executa só os cenários que a mudança pode afetar: os que executaram uma função alterada, os que leram um arquivo alterado, os novos ou alterados, os que falhavam e os que nunca rodaram. O feedback diz quantos cenários ficaram de fora. Executa todos quando muda o nível do módulo de um arquivo Python usado pelos cenários (imports, constantes, decorators, assinaturas), os passos ou a configuração, e quando não há cobertura: Java, Go, Python anterior a 3.12 ou projeto sem Git. Cenários que iniciam processos ou abrem conexões de rede são sempre executados. Dependências fora do código Python, como variáveis de ambiente ou estado de banco, podem escapar da seleção; `specmd run` executa todos os cenários e serve de rede de segurança no CI, e `specmd run --affected` aplica a mesma seleção da conclusão. Origem: [D-022](decisions.md), confirmado pelo usuário em 24/10/2026.
+
+```gherkin
+# language: pt
+Funcionalidade: Execução só dos cenários afetados
+
+  @SMD-REQ-027 @SMD-SCN-118
+  Cenário: Mudança numa função executa só quem a usa
+    Dado cenários verificados de duas regras implementadas em funções diferentes
+    Quando o agente altera o corpo de uma das funções e conclui
+    Então só os cenários que executaram essa função são executados
+    E o feedback informa quantos cenários ficaram de fora
+
+  @SMD-REQ-027 @SMD-SCN-119
+  Cenário: Mudança no nível do módulo executa todos
+    Dado cenários verificados
+    Quando o agente altera uma constante, um import ou a assinatura de uma função e conclui
+    Então todos os cenários são executados
+
+  @SMD-REQ-027 @SMD-SCN-120
+  Cenário: Cenário que falhava volta a ser executado
+    Dado um cenário que falhou na última execução
+    Quando o agente altera um arquivo que esse cenário não executa e conclui
+    Então o cenário que falhava é executado de novo
+
+  @SMD-REQ-027 @SMD-SCN-121
+  Cenário: Sem cobertura, executa todos
+    Dado um projeto Go com o bridge Godog configurado
+    Quando o agente altera o código e conclui
+    Então todos os cenários são executados
+
+  @SMD-REQ-027 @SMD-SCN-122
+  Cenário: CLI executa todos
+    Dado cenários verificados
+    Quando o dev executa specmd run
+    Então todos os cenários são executados
 ```
 
 ## SMD-REQ-024 — Feedback que não trava a sessão
@@ -159,7 +199,7 @@ Funcionalidade: Contexto inicial
 
 ## SMD-REQ-015 — Estado local reconstruível
 
-O plugin guarda apenas observações locais em `.specmd/local/`: a última execução, os cenários vistos pelo dev e a contagem de devoluções. Apagar esse estado é seguro; ele é reconstruído na próxima sessão.
+O plugin guarda apenas observações locais em `.specmd/local/`: a última execução, os cenários vistos pelo dev, a contagem de devoluções e um cache da análise dos documentos. Apagar esse estado é seguro; ele é reconstruído na próxima sessão.
 
 ```gherkin
 # language: pt
