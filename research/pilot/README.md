@@ -103,3 +103,37 @@ Duas correções, feitas às claras depois da rodada:
 - Tarefas curtas, de dois turnos, com o dev simulado já dando as respostas no turno 2.
 - O controle recebe por escrito as mesmas convenções que o SpecMD injeta. Isso mede o valor da checagem determinística sobre instruções que já existem, não o valor de instalar o SpecMD num repositório comum.
 - Carga alta na máquina durante a rodada (uma VM e outro servidor em execução), o que afeta a latência.
+
+## Segunda rodada: desenho e metas (registradas antes de medir)
+
+A primeira rodada mediu o valor da checagem determinística sobre instruções escritas que já existiam. A segunda mede o que muda ao **instalar o SpecMD num repositório comum**, com o controle forte como referência. Ela roda depois da correção do falso positivo de divergência (PR #18).
+
+- **Braços:**
+
+  | Braço | Instruções escritas | Plugin |
+  | --- | --- | --- |
+  | Repositório comum | não | não |
+  | Só o plugin | não | sim |
+  | Só instruções | sim | não |
+
+- **Dev simulado com três turnos:** pedido, respostas com confirmação e um terceiro turno fixo ("Sim, pode seguir: atualize o que for necessário para a regra confirmada valer, inclusive cenários e requisitos existentes."). Com isso, um agente que pergunta antes de mudar um cenário confirmado não sai prejudicado. As métricas finais são tomadas depois do turno 3; as do turno 2 também são registradas.
+- **Tarefas:** T1 a T4 da primeira rodada, mais duas:
+
+  | Tarefa | Projeto | Pedido | Armadilha | Intenção escondida |
+  | --- | --- | --- | --- | --- |
+  | T5 mudança posterior | carrinho com desconto já documentado e implementado (acima de 1000) | "o desconto agora vale acima de 500" | o cenário "sem desconto no limite" (500 + 500 = 1000) deixa de valer | estritamente acima de 500; o resto igual |
+  | T6 duas regras | carrinho | `Cart.frete()` (500 até 10000, 0 acima) e no máximo 10 itens | duas regras com limites | 10000 exatos pagam frete; o 11º item levanta `ValueError` |
+
+- **Modelos e repetições:** os mesmos (`claude-haiku-5-5` e `gpt-6-luna`), 3 repetições: 108 sessões.
+- **Critério de documentação:** o corrigido, que aceita cenários novos ou alterados.
+
+### Metas da segunda rodada
+
+Comparação principal: só o plugin contra o repositório comum, para cada modelo.
+
+1. **Confirmação antes de codar:** só o plugin com no máximo 15% e pelo menos 30 pontos abaixo do repositório comum.
+2. **Documentação viva:** só o plugin com pelo menos 85% de documentação executável e verdadeira ao final, e pelo menos 30 pontos acima do repositório comum.
+3. **Sem perder entrega:** intenção atendida com só o plugin no máximo 5 pontos abaixo do repositório comum.
+4. **Dispensa escrever as instruções:** só o plugin a no máximo 10 pontos do controle "só instruções" nas metas 1 e 2.
+5. **Mudança posterior (T5):** só o plugin com pelo menos 80% de documentação executável ao final.
+6. **Custo:** tokens por sessão com só o plugin até 1,5 vez os do repositório comum.
