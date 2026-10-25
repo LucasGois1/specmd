@@ -129,6 +129,19 @@ def _touched(entry: Any, changes: dict[str, Any], steps: list[str]) -> bool | No
     return None if UNKNOWN in statuses else False
 
 
+def _kind(failure: dict[str, Any], entry: Any, existed: bool, passed_before: set[str],
+          changes: dict[str, Any] | None, steps: list[str]) -> str | None:
+    """"divergent", "contradicted" or None for one failing scenario."""
+    if not any(step.get("status") == "failed" for step in failure.get("steps", [])):
+        return None  # Undefined or skipped steps are missing work, not a disagreement.
+    touched = _touched(entry, changes, steps) if changes is not None else None
+    if failure.get("id") not in passed_before and (touched is False or (touched is None and not existed)):
+        return "divergent"
+    if existed and (touched or (touched is None and bool(changes))):
+        return "contradicted"
+    return None
+
+
 def classify(inspection: dict[str, Any], execution: dict[str, Any], database: Any, passed_before: set[str],
              prompt: Any, changes: dict[str, Any] | None, steps: list[str]) -> dict[str, list[str]]:
     """Failing scenarios that look like legacy divergence, and the ones the agent's change contradicts."""
@@ -136,15 +149,11 @@ def classify(inspection: dict[str, Any], execution: dict[str, Any], database: An
                 for item in document.get("scenarios", [])} if isinstance(prompt, dict) else {}
     current = {item["id"]: item.get("sha256") for document in inspection["documents"] for item in document["scenarios"]}
     entries = database.get("scenarios", {}) if isinstance(database, dict) else {}
-    divergent, contradicted = [], []
+    kinds: dict[str, list[str]] = {"divergent": [], "contradicted": []}
     for failure in execution["failures"]:
         identity = failure.get("id")
-        if not any(step.get("status") == "failed" for step in failure.get("steps", [])):
-            continue  # Undefined or skipped steps are missing work, not a disagreement.
-        touched = _touched(entries.get(identity), changes, steps) if changes is not None else None
         existed = identity in baseline and baseline[identity] == current.get(identity)
-        if identity not in passed_before and (touched is False or (touched is None and not existed)):
-            divergent.append(identity)
-        elif existed and (touched or (touched is None and bool(changes))):
-            contradicted.append(identity)
-    return {"divergent": divergent, "contradicted": contradicted}
+        kind = _kind(failure, entries.get(identity), existed, passed_before, changes, steps)
+        if kind:
+            kinds[kind].append(identity)
+    return kinds
