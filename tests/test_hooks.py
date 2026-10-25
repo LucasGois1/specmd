@@ -65,6 +65,16 @@ class HookLifecycleTests(unittest.TestCase):
         for event in ("SessionStart", "UserPromptSubmit", "PostToolUse", "Stop"):
             self.assertEqual(self.hook(event, tool_name="Edit"), {})
 
+    def test_hook_log_records_each_reply_when_asked(self):
+        log = self.root.parent / "hooks.jsonl"
+        payload = json.dumps({"hook_event_name": "SessionStart"})
+        with patch.dict(os.environ, {"SPECMD_HOOK_LOG": str(log)}), patch("sys.stdin", io.StringIO(payload)), \
+                contextlib.redirect_stdout(io.StringIO()):
+            hooks.run_hook()
+        entry = json.loads(log.read_text().splitlines()[0])
+        self.assertEqual(entry["event"], "SessionStart")
+        self.assertIn("SpecMD ativo", entry["reply"]["hookSpecificOutput"]["additionalContext"])
+
     def test_read_only_tools_return_without_touching_the_project(self):
         with patch.object(hooks, "find_root", side_effect=AssertionError("disk access")):
             self.assertEqual(hooks.handle_hook({"hook_event_name": "PostToolUse", "tool_name": "Read"}), {})

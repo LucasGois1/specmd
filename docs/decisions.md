@@ -32,7 +32,7 @@ Este registro consolida a discussão que originou o projeto. As diretrizes abaix
 | D-024 | Avisar quando um documento ignorado passa a declarar regras. | Só aviso, quando o arquivo muda. Implementada em SMD-REQ-029. |
 | D-025 | Adoção em legado por um comando que parte da documentação existente. | Lista todos os documentos, o dev filtra com o agente e os cenários nascem um documento por vez. Implementada em SMD-REQ-030; o `@wip` continua decisão do dev. |
 | D-026 | Suportar MDG (`.feature.md`) seguindo a especificação oficial. | Conversão para Gherkin em memória, preservando as linhas. Implementada em SMD-REQ-031. |
-| D-027 | Validar o Codex com LLM real e os eventos novos. | Depende de autenticação e da confiança nos hooks pelo usuário. Proposta, não executada. |
+| D-027 | Validar o Codex com LLM real e os eventos novos. | Depende de autenticação e da confiança nos hooks pelo usuário. Executada em 24/10/2026; ver [sessões nativas no Codex](../research/codex/native-session.md). |
 | D-028 | Medir o valor do SpecMD num piloto comparativo. | Grupo de comparação forte e avaliação por testes de aceite escondidos. Proposta, não executada. |
 
 ## D-021 — Assistente, não auditoria (23/10/2026)
@@ -147,7 +147,9 @@ Decidido:
 - Repetir o roteiro de quatro turnos já exercitado no Claude Code.
 - Dependências do usuário: a autenticação do Codex na máquina e a confiança nos hooks pelo `/hooks`, que é uma ação humana.
 
-Em aberto: como ativar o SpecMD no Codex sem o `.claude/settings` do projeto (só pelo `specmd.toml`, ou por um mecanismo equivalente do Codex).
+Executado em 24/10/2026 com o Codex 0.163 e `gpt-6-luna`: os quatro eventos, `additionalContext` no início e depois de ferramentas e o bloqueio do `Stop` funcionaram; ver [sessões nativas no Codex](../research/codex/native-session.md).
+
+Em aberto: como ativar o SpecMD no Codex sem o `.claude/settings` do projeto (hoje, pelo `specmd.toml`, ou por um mecanismo equivalente do Codex).
 
 ### D-028 — Piloto comparativo
 
