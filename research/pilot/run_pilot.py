@@ -229,8 +229,13 @@ def hidden_checks(task, project):
         return {"passed": False, "checks": [["checagem não executou", False]], "stderr": completed.stderr[-500:]}
 
 
-def documentation(task, project, base_count):
-    """Rule documented with scenarios, and SpecMD (as evaluator) running them on a clean copy."""
+def documentation(task, project, base_count, base_shas=None):
+    """Rule documented with scenarios, and SpecMD (as evaluator) running them on a clean copy.
+
+    The registered criterion needs more scenarios than at the start (T1 to T3). The
+    corrected one, used after the run, also accepts updated scenarios: in T2
+    the rule is documented by changing "Somar dois itens" from 500 to 501.
+    """
     copy = clean_copy(project)
     inspection = specmd("inventory", root=copy)
     count = len(scenarios(inspection))
@@ -239,11 +244,14 @@ def documentation(task, project, base_count):
     if task == "T4":
         terms = terms and "10 dias" not in text
     grew = count > base_count if TASKS[task]["new_scenarios"] else count >= base_count
+    touched = grew if base_shas is None or not TASKS[task]["new_scenarios"] else \
+        bool(set(scenarios(inspection).values()) - set(base_shas))
     executed = specmd("run", root=copy)
     run_info = executed.get("run") or {}
     shutil.rmtree(copy.parent, ignore_errors=True)
-    return {"scenarios": count, "documented": bool(terms and grew),
-            "executable": bool(terms and grew and executed.get("status") == "passing"),
+    passing = executed.get("status") == "passing"
+    return {"scenarios": count, "documented": bool(terms and grew), "executable": bool(terms and grew and passing),
+            "documented_corrected": bool(terms and touched), "executable_corrected": bool(terms and touched and passing),
             "run_status": executed.get("status"), "failures": len(run_info.get("failures", []))}
 
 
@@ -281,7 +289,7 @@ def one_run(task, agent, arm, rep, workspace):
                            "base_scenario_changed": any(now.get(key) != value for key, value in initial.items()),
                            "intent": hidden_checks(task, project)["passed"]}
     checks = hidden_checks(task, project)
-    docs = documentation(task, project, len(initial))
+    docs = documentation(task, project, len(initial), initial.values())
     row = {"task": task, "agent": agent, "model": MODELS[agent], "arm": arm, "rep": rep, "project": str(project),
            "turns": turns, "metrics": {"implemented_before_confirmation": after_first.get("code_changed"),
                                        "base_scenario_changed_turn1": after_first.get("base_scenario_changed"),
@@ -302,9 +310,15 @@ def percent(value):
 def summarize(rows, destination):
     lines = ["# Resultados do piloto", "", f"Gerado em {datetime.now(timezone.utc).isoformat()} a partir de "
              f"{len(rows)} sessões. Desenho e metas em [README](../../README.md).", ""]
+    replaced = [row for row in rows if row.get("replaces")]
+    if replaced:
+        lines += ["Sessões repetidas por falha de infraestrutura: " + ", ".join(
+            f"{row['task']} {row['agent']} {row['arm']} rep {row['rep']} ({row['replaces']})" for row in replaced) + ".", ""]
     metrics = [("implemented_before_confirmation", "Regra antes da confirmação (menor é melhor)"),
-               ("intent", "Intenção atendida"), ("documented", "Regra documentada com cenários"),
-               ("executable", "Documentação executável e verdadeira"),
+               ("intent", "Intenção atendida"), ("documented", "Regra documentada com cenários (critério registrado)"),
+               ("executable", "Documentação executável e verdadeira (critério registrado)"),
+               ("documented_corrected", "Regra documentada com cenários (critério corrigido)"),
+               ("executable_corrected", "Documentação executável e verdadeira (critério corrigido)"),
                ("base_scenario_changed_turn1", "Cenário existente alterado antes da confirmação")]
     for agent in sorted({row["agent"] for row in rows}):
         lines += [f"## {MODELS[agent]}", "", "| Métrica | SpecMD | Controle |", "| --- | --- | --- |"]
@@ -336,8 +350,42 @@ def summarize(rows, destination):
     destination.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def reevaluate(path, replacements):
+    """Recompute the evaluation of finished projects; optionally swap rows for repeated sessions."""
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    extra = {}
+    for replacement in replacements:
+        for line in replacement.read_text(encoding="utf-8").splitlines():
+            row = json.loads(line)
+            extra[(row["task"], row["agent"], row["arm"])] = row
+    bases = {}
+    result = []
+    for row in rows:
+        key = (row["task"], row["agent"], row["arm"])
+        if key in extra and row["metrics"].get("intent_turn1") is not None and any(turn["exit"] != 0 and not turn["tokens_in"]
+                                                                                 for turn in row["turns"]):
+            replacement = extra.pop(key)
+            row = {**replacement, "rep": row["rep"], "replaces": "turno sem resposta do host, código de saída 1"}
+        task = row["task"]
+        if task not in bases:
+            base = Path(tempfile.mkdtemp(prefix="specmd-pilot-base-")) / "project"
+            build_project(task, base)
+            bases[task] = scenarios(inventory(base))
+        project = Path(row["project"])
+        if project.is_dir():
+            row["metrics"].update(documentation(task, project, len(bases[task]), bases[task].values()))
+        result.append(row)
+    output = path.with_name("runs-reevaluated.jsonl")
+    output.write_text("".join(json.dumps(row, ensure_ascii=False) + "\n" for row in result), encoding="utf-8")
+    summarize(result, path.with_name("summary.md"))
+    print("Reavaliado:", output)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--reevaluate", type=Path, help="reavalia os projetos de um runs.jsonl existente")
+    parser.add_argument("--replace", type=Path, action="append", default=[],
+                        help="runs.jsonl com sessões repetidas por falha de infraestrutura")
     parser.add_argument("--reps", type=int, default=3)
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--tasks", default=",".join(TASKS))
@@ -345,6 +393,9 @@ def main():
     parser.add_argument("--arms", default="specmd,control")
     parser.add_argument("--output", type=Path, default=HERE / "results" / datetime.now().strftime("%Y%m%d-%H%M%S"))
     args = parser.parse_args()
+    if args.reevaluate:
+        reevaluate(args.reevaluate, args.replace)
+        return
     if not (BUNDLE / "hooks/hooks.json").is_file():
         raise SystemExit("Gere o bundle antes: python scripts/build_codex_plugin.py")
     args.output.mkdir(parents=True, exist_ok=True)

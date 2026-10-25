@@ -63,3 +63,43 @@ python research/pilot/run_pilot.py --reps 3 --workers 4
 ```
 
 O harness cria cada projeto num diretório temporário, roda as sessões, avalia e grava `results/<data>/runs.jsonl` e `results/<data>/summary.md`.
+
+## Resultados (24/10/2026)
+
+Rodada completa: 48 sessões, em `results/20261024-203151/`. Dados brutos em `runs.jsonl`, reavaliação em `runs-reevaluated.jsonl` e quadro em `summary.md`.
+
+Duas correções, feitas às claras depois da rodada:
+
+- **Critério de documentação:** o critério registrado exigia cenários novos nas tarefas T1 a T3. Na T2, porém, a regra da taxa fica documentada ao atualizar o cenário existente (de 500 para 501), e os dois braços do Codex fizeram isso. O critério corrigido aceita cenários novos ou alterados. As duas versões aparecem no quadro.
+- **Falha de infraestrutura:** uma sessão do Codex (T3, SpecMD, repetição 2) teve o turno 2 encerrado pelo host sem resposta (código 1, sem tokens) e foi repetida.
+
+| Métrica | Haiku 5.5: SpecMD / controle | GPT-6 Luna: SpecMD / controle |
+| --- | --- | --- |
+| Regra antes da confirmação | 0% / 0% | 8% / 8% |
+| Intenção atendida | 92% / 92% | 100% / 100% |
+| Documentação executável e verdadeira (critério corrigido) | 83% / 100% | 100% / 100% |
+| Cenário existente alterado antes da confirmação | 0% / 0% | 8% / 0% |
+| Tokens por sessão, mediana | 167 mil / 241 mil | 1,14 mi / 1,20 mi |
+| p95 do `PostToolUse` / `Stop` na pior sessão | 1.440 / 272 ms | 1.055 / 726 ms |
+
+### Metas
+
+| Meta | Resultado |
+| --- | --- |
+| 1. Confirmação antes de codar: no máximo 10% e 30 pontos abaixo do controle | **Não atingida.** O limite de 10% foi cumprido (0% e 8%), mas o controle teve o mesmo resultado; as instruções escritas bastaram nestas tarefas. |
+| 2. Intenção atendida no mínimo igual ao controle e acima de 80% | **Atingida** nos dois modelos (92% e 100%, iguais ao controle). |
+| 3. Documentação executável e verdadeira em pelo menos 90% | **Atingida no GPT-6 Luna (100%); não atingida no Haiku 5.5 (83%)**, por um defeito do SpecMD (abaixo). |
+| 4. Legado (T4) em pelo menos 80% | **Atingida** (100% nos dois modelos), mas o controle também chegou a 100%. |
+| 5. Custo: tokens até 1,5 vez o controle e hooks abaixo de 1 s no p95 | **Tokens atingida:** as sessões com SpecMD usaram menos tokens. **Latência não atingida:** o `PostToolUse` passou de 1 s no p95 da pior sessão; a máquina estava com carga alta durante a rodada. |
+
+### O que o piloto mostrou
+
+- **Controle forte bastou nestas tarefas.** Com um `CLAUDE.md`/`AGENTS.md` dizendo o mesmo que o SpecMD injeta, os dois modelos pequenos perguntaram antes de implementar e documentaram a regra. Nestas quatro tarefas curtas, a checagem determinística não acrescentou acerto mensurável.
+- **Defeito encontrado: falso positivo de divergência.** Na T2 com o Haiku, a taxa quebrou o cenário antigo "Somar dois itens" (500). Como o projeto era novo e não tinha histórico, o SpecMD tratou a falha como "cenário que nunca passou" e orientou a perguntar ao dev sobre divergência. O agente parou para perguntar, em vez de atualizar o cenário que a confirmação já implicava; isso aconteceu em 2 das 3 sessões. A falha era consequência da mudança do próprio agente, não legado.
+- **Sem custo extra:** as sessões com SpecMD usaram menos tokens que o controle nos dois modelos.
+
+### Limites desta rodada
+
+- Tarefas curtas, de dois turnos, com o dev simulado já dando as respostas no turno 2.
+- O controle recebe por escrito as mesmas convenções que o SpecMD injeta. Isso mede o valor da checagem determinística sobre instruções que já existem, não o valor de instalar o SpecMD num repositório comum.
+- Carga alta na máquina durante a rodada (uma VM e outro servidor em execução), o que afeta a latência.
