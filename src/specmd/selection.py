@@ -140,6 +140,54 @@ def select(root: Path, inspection: dict[str, Any], database: Any, changes: set[s
     return selected
 
 
+class _Sources:
+    """Function blocks of the project files a run executed, each parsed once."""
+
+    def __init__(self, root: Path):
+        self.root = root
+        self.parsed: dict[str, dict[str, Any] | None] = {}
+
+    def blocks(self, path: str) -> dict[str, Any] | None:
+        if path not in self.parsed:
+            try:
+                self.parsed[path] = python_blocks((self.root / path).read_bytes())
+            except OSError:
+                self.parsed[path] = None
+        return self.parsed[path]
+
+    def dependencies(self, coverage: dict[str, Any]) -> tuple[list[str], list[str]]:
+        """Function keys executed and files read; code outside a parsable .py counts as a file."""
+        keys, files = set(), set(coverage.get("files", []))
+        for path, line in coverage.get("code", []):
+            blocks = self.blocks(path) if path.endswith(".py") else None
+            if blocks is None:
+                files.add(path)
+            else:
+                keys.add(f"{path}::{_block_at(blocks['ranges'], line)}")
+        return sorted(keys), sorted(files)
+
+
+def _scenario_entry(scenario: dict[str, Any], observed: Any, measured: dict[str, bool],
+                    sources: _Sources) -> dict[str, Any]:
+    passed = isinstance(observed, dict) and observed.get("status") == "passed"
+    entry = {"sha256": scenario.get("sha256"), "passed": passed, "deps": None, "files": [], "opaque": True}
+    coverage = observed.get("coverage") if isinstance(observed, dict) and measured.get(observed.get("runner_id")) else None
+    if isinstance(coverage, dict):
+        entry["deps"], entry["files"] = sources.dependencies(coverage)
+        entry["opaque"] = bool(coverage.get("opaque"))
+    return entry
+
+
+def _refreshed_table(table: dict[str, Any], referenced: set[str], refresh: set[str],
+                     sources: _Sources) -> dict[str, Any]:
+    """Hashes of every referenced file, recomputed for the files executed now or changed."""
+    for path in referenced:
+        blocks = sources.blocks(path) if path in refresh or path not in table else None
+        if blocks is not None:
+            table[path] = {"module": blocks["module"], "blocks": blocks["blocks"]}
+    return {path: value for path, value in table.items() if path in referenced}
+
+
 def record(root: Path, database: Any, inspection: dict[str, Any], execution: dict[str, Any],
            executed: set[str] | None, changes: set[str] | None) -> dict[str, Any]:
     """Merge one execution into the coverage table.
@@ -148,62 +196,26 @@ def record(root: Path, database: Any, inspection: dict[str, Any], execution: dic
     new table). Function hashes are refreshed for the files this run executed
     and the files that changed since the previous run.
     """
-    root = Path(root)
     keep = executed is not None and _valid(database)
     scenarios = dict(database["scenarios"]) if keep else {}
-    table = dict(database["files"]) if keep else {}
     scope = database["global"] if keep else {"deps": [], "files": []}
-    parsed: dict[str, dict[str, Any] | None] = {}
-
-    def blocks_of(path: str) -> dict[str, Any] | None:
-        if path not in parsed:
-            try:
-                parsed[path] = python_blocks((root / path).read_bytes())
-            except OSError:
-                parsed[path] = None
-        return parsed[path]
-
-    def dependencies(coverage: dict[str, Any]) -> tuple[list[str], list[str]]:
-        keys, files = set(), set(coverage.get("files", []))
-        for path, line in coverage.get("code", []):
-            blocks = blocks_of(path) if path.endswith(".py") else None
-            if blocks is None:
-                files.add(path)
-            else:
-                keys.add(f"{path}::{_block_at(blocks['ranges'], line)}")
-        return sorted(keys), sorted(files)
-
+    sources = _Sources(Path(root))
     known = {item["id"]: item for document in inspection.get("documents", []) for item in document.get("scenarios", [])}
     measured = execution.get("coverage", {}).get("runners", {})
     observed = {item.get("id"): item for item in execution.get("scenarios", []) if isinstance(item, dict)}
     for identity in (executed if executed is not None else known.keys()):
-        if identity not in known:
-            continue
-        item = observed.get(identity)
-        coverage = item.get("coverage") if item and measured.get(item.get("runner_id")) else None
-        entry = {"sha256": known[identity].get("sha256"), "passed": bool(item) and item.get("status") == "passed",
-                 "deps": None, "files": [], "opaque": True}
-        if isinstance(coverage, dict):
-            entry["deps"], entry["files"] = dependencies(coverage)
-            entry["opaque"] = bool(coverage.get("opaque"))
-        scenarios[identity] = entry
+        if identity in known:
+            scenarios[identity] = _scenario_entry(known[identity], observed.get(identity), measured, sources)
     scenarios = {identity: entry for identity, entry in scenarios.items() if identity in known}
-
     deps, files = set(scope.get("deps", [])), set(scope.get("files", []))
     for coverage in execution.get("coverage", {}).get("global", []):
-        new_deps, new_files = dependencies(coverage)
+        new_deps, new_files = sources.dependencies(coverage)
         deps.update(new_deps)
         files.update(new_files)
-
     referenced = {key.split("::", 1)[0] for entry in scenarios.values() for key in entry.get("deps") or []}
     referenced |= {key.split("::", 1)[0] for key in deps}
-    refresh = set(parsed) | (changes or set())
-    for path in referenced:
-        if path in refresh or path not in table:
-            blocks = blocks_of(path)
-            if blocks is not None:
-                table[path] = {"module": blocks["module"], "blocks": blocks["blocks"]}
-    table = {path: value for path, value in table.items() if path in referenced}
+    table = _refreshed_table(dict(database["files"]) if keep else {}, referenced,
+                             set(sources.parsed) | (changes or set()), sources)
     return {"version": _VERSION, "python": list(sys.version_info[:2]), "files": table, "scenarios": scenarios,
             "global": {"deps": sorted(deps), "files": sorted(files)}}
 

@@ -142,14 +142,18 @@ def code_changes(root: Path, before: Any, after: Any) -> set[str] | None:
         between = _between_commits(root, before["head"], after["head"])
         if between is None:
             return None
-    changed = set()
-    for path in first.keys() | second.keys() | between.keys():
-        # Outside a snapshot's list, a file has its committed content.
-        old = first[path][1] if path in first else (between[path][0] if path in between else second[path][0])
-        new = second[path][1] if path in second else (between[path][1] if path in between else first[path][0])
-        if old != new and _is_code(path):
-            changed.add(path)
-    return changed
+    return {path for path in first.keys() | second.keys() | between.keys()
+            if _is_code(path) and _content(path, first, second, between, 0) != _content(path, second, first, between, 1)}
+
+
+def _content(path: str, own: dict[str, Any], other: dict[str, Any], between: dict[str, list[str | None]],
+             side: int) -> str | None:
+    """A file's content in one snapshot: listed in it, changed between the commits, or as committed."""
+    if path in own:
+        return own[path][1]
+    if path in between:
+        return between[path][side]
+    return other[path][0]  # Unlisted in both snapshots with the same commit content.
 
 
 def matches_code(root: Path, run: dict[str, Any], now: dict[str, Any]) -> bool:

@@ -23,6 +23,7 @@ import time
 
 PLUGIN = Path(__file__).resolve().parents[1]
 HOOK = PLUGIN / "scripts" / "specmd_hook.py"
+LOCAL_STATE = ".specmd"
 DOCUMENT = """# Área {area}, regra {index}
 
 Texto explicativo da regra {index}, como numa documentação real.
@@ -64,7 +65,7 @@ def generate(root: Path, docs: int, files: int) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(f"VALUE = {index}\n\n\ndef value():\n    return VALUE\n", encoding="utf-8")
     (root / "specmd.toml").write_text("[run]\non_stop = true\n", encoding="utf-8")
-    (root / ".gitignore").write_text(".specmd/\n", encoding="utf-8")
+    (root / ".gitignore").write_text(LOCAL_STATE + "/\n", encoding="utf-8")
     git = ["git", "-C", str(root), "-c", "user.name=bench", "-c", "user.email=bench@example.com"]
     subprocess.run([*git, "init", "-q"], check=True)
     subprocess.run([*git, "add", "-A"], check=True)
@@ -119,7 +120,7 @@ def generate_rules(root: Path, rules: int) -> None:
     for area, sections in documents.items():
         (root / "docs" / f"area-{area:02d}.md").write_text(f"# Área {area}\n\n" + "\n".join(sections), encoding="utf-8")
         (root / "rules" / f"area_{area:02d}.py").write_text("\n\n".join(modules[area]), encoding="utf-8")
-    (root / ".gitignore").write_text(".specmd/\n", encoding="utf-8")
+    (root / ".gitignore").write_text(LOCAL_STATE + "/\n", encoding="utf-8")
     (root / "specmd.toml").write_text("[run]\ntimeout = 3600\n", encoding="utf-8")
     git = ["git", "-C", str(root), "-c", "user.name=bench", "-c", "user.email=bench@example.com"]
     subprocess.run([*git, "init", "-q"], check=True)
@@ -139,7 +140,7 @@ def run_cli(root: Path, *arguments: str) -> tuple[float, dict]:
 
 def execution_benchmark(root: Path, rules: int) -> list[dict]:
     generate_rules(root, rules)
-    shutil.rmtree(root / ".specmd", ignore_errors=True)
+    shutil.rmtree(root / LOCAL_STATE, ignore_errors=True)
     module = root / "rules" / "area_00.py"
     original = module.read_text(encoding="utf-8")
     rows = []
@@ -185,7 +186,7 @@ def measure(label: str, action, repeat: int, prepare=None) -> dict:
     return row
 
 
-def main() -> int:
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--docs", type=int, default=5000)
     parser.add_argument("--files", type=int, default=50000)
@@ -202,12 +203,12 @@ def main() -> int:
         execution = execution_benchmark(rules_root, args.rules)
         if args.json:
             args.json.write_text(json.dumps({"rules": args.rules, "rows": execution}, indent=2) + "\n")
-        return 0
+        return
     start = time.perf_counter()
     generate(root, args.docs, args.files)
     print(f"Repositório: {root} ({args.docs} documentos, {args.files} arquivos; "
           f"preparado em {time.perf_counter() - start:.1f} s)", flush=True)
-    shutil.rmtree(root / ".specmd", ignore_errors=True)
+    shutil.rmtree(root / LOCAL_STATE, ignore_errors=True)
 
     document = root / "docs" / "area-00" / "regra-00000.md"
     original = document.read_text(encoding="utf-8")
@@ -216,24 +217,25 @@ def main() -> int:
     def edit_document() -> None:
         document.write_text(original + f"\nNota {next(counter)}.\n", encoding="utf-8")
 
-    rows = [measure("SessionStart (estado vazio)", lambda: hook(root, {"hook_event_name": "SessionStart"}), 1,
-                    prepare=lambda: shutil.rmtree(root / ".specmd", ignore_errors=True))]
-    rows.append(measure("SessionStart", lambda: hook(root, {"hook_event_name": "SessionStart"}), args.repeat))
-    rows.append(measure("UserPromptSubmit", lambda: hook(root, {"hook_event_name": "UserPromptSubmit"}), args.repeat))
-    rows.append(measure("PostToolUse (Edit em código)", lambda: hook(
-        root, {"hook_event_name": "PostToolUse", "tool_name": "Edit",
-               "tool_input": {"file_path": str(root / "src/pkg000/mod00000.py")}}), args.repeat))
-    rows.append(measure("PostToolUse (Bash)", lambda: hook(
-        root, {"hook_event_name": "PostToolUse", "tool_name": "Bash"}), args.repeat))
-    rows.append(measure("PostToolUse (documento editado)", lambda: hook(
-        root, {"hook_event_name": "PostToolUse", "tool_name": "Edit",
-               "tool_input": {"file_path": str(document)}}), args.repeat, prepare=edit_document))
-    rows.append(measure("Stop (sem mudança de código)", lambda: hook(root, {"hook_event_name": "Stop"}), args.repeat))
+    rows = [
+        measure("SessionStart (estado vazio)", lambda: hook(root, {"hook_event_name": "SessionStart"}), 1,
+                prepare=lambda: shutil.rmtree(root / LOCAL_STATE, ignore_errors=True)),
+        measure("SessionStart", lambda: hook(root, {"hook_event_name": "SessionStart"}), args.repeat),
+        measure("UserPromptSubmit", lambda: hook(root, {"hook_event_name": "UserPromptSubmit"}), args.repeat),
+        measure("PostToolUse (Edit em código)", lambda: hook(
+            root, {"hook_event_name": "PostToolUse", "tool_name": "Edit",
+                   "tool_input": {"file_path": str(root / "src/pkg000/mod00000.py")}}), args.repeat),
+        measure("PostToolUse (Bash)", lambda: hook(
+            root, {"hook_event_name": "PostToolUse", "tool_name": "Bash"}), args.repeat),
+        measure("PostToolUse (documento editado)", lambda: hook(
+            root, {"hook_event_name": "PostToolUse", "tool_name": "Edit",
+                   "tool_input": {"file_path": str(document)}}), args.repeat, prepare=edit_document),
+        measure("Stop (sem mudança de código)", lambda: hook(root, {"hook_event_name": "Stop"}), args.repeat),
+    ]
     document.write_text(original, encoding="utf-8")
     if args.json:
         args.json.write_text(json.dumps({"docs": args.docs, "files": args.files, "rows": rows}, indent=2) + "\n")
-    return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()

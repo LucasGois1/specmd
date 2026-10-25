@@ -12,6 +12,7 @@ internal error becomes a warning.
 """
 from __future__ import annotations
 
+import contextlib
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -21,6 +22,7 @@ import shlex
 import sys
 from typing import Any
 
+from . import protection
 from . import state as hook_state
 
 MAX_BLOCKS = 4
@@ -143,15 +145,17 @@ def _passing_message(run: dict[str, Any]) -> str:
             f"{'passando' if executed == 1 else 'todos passando'}{_left_out(run)}.")
 
 
+def _failures_header(run: dict[str, Any]) -> str:
+    failures = len(run.get("failures", []))
+    if not run.get("unselected"):
+        return f"SpecMD: {failures} de {run.get('expected', '?')} cenários da documentação não passaram."
+    executed = _plural(run.get("scenarios", 0), "cenário afetado", "cenários afetados")
+    return f"SpecMD: {failures} de {executed} pela mudança não {'passou' if failures == 1 else 'passaram'}{_left_out(run)}."
+
+
 def _format_failures(run: dict[str, Any]) -> str:
     failures = run.get("failures", [])
-    if run.get("unselected"):
-        executed = run.get("scenarios", 0)
-        header = (f"SpecMD: {len(failures)} de {_plural(executed, 'cenário afetado', 'cenários afetados')} "
-                  f"pela mudança não {'passou' if len(failures) == 1 else 'passaram'}{_left_out(run)}.")
-    else:
-        header = f"SpecMD: {len(failures)} de {run.get('expected', '?')} cenários da documentação não passaram."
-    lines = [header]
+    lines = [_failures_header(run)]
     for failure in failures[:MAX_FINDINGS]:
         name = f' "{failure["name"]}"' if failure.get("name") else ""
         lines.append(f"- {failure.get('path')}:{failure.get('line')} {failure.get('id')}{name} ({failure.get('status')})")
@@ -209,13 +213,18 @@ def _session_start(root: Path) -> dict[str, Any]:
     def change(state: dict[str, Any]) -> None:
         state.pop("code_fp_baseline", None)
         state.setdefault("spec_at_prompt", _spec_map(result))
+        state.setdefault("code_at_prompt", snapshot)
         state["docs_seen"] = _doc_map(result)
         state["spec_seen"] = _spec_map(result)
+        state["ignored_seen"] = result.get("ignored_rules", {})
         state["code_baseline"] = snapshot
         state["session_at"] = datetime.now(timezone.utc).isoformat()
         state["stop"] = {"signature": None, "count": 0}
 
     hook_state.update(root, change)
+    if result["status"] != "error":
+        with contextlib.suppress(OSError, ValueError):
+            protection.save_baseline(root, result, replace=False)
     documents = [document for document in result.get("documents", []) if document.get("scenarios")]
     lines = ["SpecMD ativo neste repositório.",
              f"- Documentos com cenários: {len(documents)} ({scenario_count(result)} cenários)."]
@@ -235,17 +244,27 @@ def _session_start(root: Path) -> dict[str, Any]:
 
 def _user_prompt(root: Path) -> dict[str, Any]:
     from .core import inspect_project
+    from .workflow import code_snapshot
 
     result = inspect_project(root)
     if result["status"] == "error":
         return {}
+    snapshot = code_snapshot(root)
 
     def change(state: dict[str, Any]) -> None:
         state["spec_at_prompt"] = _spec_map(result)
+        state["code_at_prompt"] = snapshot
         state["stop"] = {"signature": None, "count": 0}
 
     hook_state.update(root, change, timeout=2)
+    protection.save_baseline(root, result)
     return {}
+
+
+def _wip_tags(root: Path) -> set[str]:
+    from .config import load_config
+
+    return set(load_config(root).get("wip_tags", ["wip"]))
 
 
 def _post_tool(root: Path) -> dict[str, Any]:
@@ -254,34 +273,47 @@ def _post_tool(root: Path) -> dict[str, Any]:
     result = inspect_project(root)
     if result["status"] == "error":
         return {}
-    current, spec_now = _doc_map(result), _spec_map(result)
+    current, spec_now, ignored_now = _doc_map(result), _spec_map(result), result.get("ignored_rules", {})
     seen: dict[str, Any] = {}
 
     def change(state: dict[str, Any]) -> None:
         seen["docs"] = state.get("docs_seen")
         seen["spec"] = state.get("spec_seen") or {}
+        seen["ignored"] = state.get("ignored_seen")
         state["docs_seen"] = current
         state["spec_seen"] = spec_now
+        state["ignored_seen"] = ignored_now
 
     hook_state.update(root, change, timeout=1)
-    if not isinstance(seen["docs"], dict):
-        return {}  # First observation in this project: nothing to compare yet.
-    changed = sorted(path for path, digest in current.items() if seen["docs"].get(path) != digest)
-    if not changed:
+    lines = protection.describe_gained(protection.gained_rules(seen["ignored"], ignored_now))
+    if isinstance(seen["docs"], dict):  # Without a previous observation there is nothing to compare.
+        lines.extend(_documentation_feedback(root, result, seen))
+    if not lines:
         return {}
-    findings = [item for item in result["findings"] if item.get("path") in changed]
+    return {"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": "\n".join(lines)}}
+
+
+def _documentation_feedback(root: Path, result: dict[str, Any], seen: dict[str, Any]) -> list[str]:
+    current, spec_now = _doc_map(result), _spec_map(result)
+    changed = sorted(path for path, digest in current.items() if seen["docs"].get(path) != digest)
+    vanished = sorted(set(seen["docs"]) - set(current))
     spec_changed = [path for path in changed if spec_now.get(path) and seen["spec"].get(path) != spec_now.get(path)]
-    lines = [f"SpecMD: documentação alterada: {', '.join(changed[:6])}."]
+    findings = [item for item in result["findings"] if item.get("path") in changed]
+    lines = []
     if findings:
-        lines.append("Pendências encontradas:")
-        lines.extend(_format_findings(findings))
-        lines.append(GAP_GUIDANCE)
+        lines.extend(["Pendências encontradas:", *_format_findings(findings), GAP_GUIDANCE])
     elif spec_changed:
         lines.append("Requisitos ou cenários mudaram. Se o dev ainda não confirmou estes cenários, mostre-os e "
                      "peça confirmação antes de implementar.")
-    else:
-        return {}
-    return {"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": "\n".join(lines)}}
+    if spec_changed or vanished:
+        altered = protection.scenario_changes(protection.load_baseline(root), result, _wip_tags(root),
+                                              set(spec_changed) | set(vanished))
+        if altered:
+            lines.extend(["SpecMD: cenários da última mensagem do dev mudaram:", *protection.describe_all(altered),
+                          "Se o dev não pediu essas mudanças, restaure os cenários e corrija o código."])
+    if lines and changed:
+        lines.insert(0, f"SpecMD: documentação alterada: {', '.join(changed[:6])}.")
+    return lines
 
 
 def _runs_on_stop(root: Path) -> bool:
@@ -290,15 +322,15 @@ def _runs_on_stop(root: Path) -> bool:
     return load_config(root).get("run", {}).get("on_stop", True)
 
 
-def _current_run(root: Path, result: dict[str, Any], state: dict[str, Any]) -> tuple[dict[str, Any] | None, bool]:
+def _current_run(root: Path, result: dict[str, Any], state: dict[str, Any],
+                 now: dict[str, Any]) -> tuple[dict[str, Any] | None, bool]:
     """Reuse a run that matches the current code and scenarios, or run when code changed."""
-    from .workflow import code_changes, code_snapshot, matches_code, run_project
+    from .workflow import code_changes, matches_code, run_project
 
-    now = code_snapshot(root)
     last = state.get("last_run") if isinstance(state.get("last_run"), dict) else None
     if last and last.get("spec_fp") == result["spec_fp"] and matches_code(root, last, now):
         return last, True
-    ran_in_session = bool(last) and str(last.get("at", "")) >= str(state.get("session_at", "~"))
+    ran_in_session = last is not None and str(last.get("at", "")) >= str(state.get("session_at", "~"))
     if not ran_in_session and code_changes(root, state.get("code_baseline"), now) == set():
         # No code changed in this session: no execution is demanded.
         return None, False
@@ -313,26 +345,61 @@ def _pending_confirmation(state: dict[str, Any], result: dict[str, Any]) -> list
     return sorted(path for path, digest in _spec_map(result).items() if seen.get(path) != digest)
 
 
+def _code_changed_in_turn(root: Path, state: dict[str, Any], now: dict[str, Any]) -> bool:
+    from .workflow import code_changes
+
+    snapshot = state.get("code_at_prompt")
+    if not isinstance(snapshot, dict):
+        return False
+    changes = code_changes(root, snapshot, now)
+    return changes is None or bool(changes)
+
+
 def _stop(root: Path) -> dict[str, Any]:
     from .core import inspect_project
-    from .workflow import scenario_count
+    from .workflow import code_snapshot
 
     result = inspect_project(root)
     if result["status"] == "error":
         return {"systemMessage": "SpecMD: " + "; ".join(item["message"] for item in result["findings"])}
+    state = hook_state.load(root)
+    changes = protection.scenario_changes(protection.load_baseline(root), result, _wip_tags(root))
+    reply = _stop_reply(root, result, state, changes, code_snapshot(root))
+    if "decision" in reply or not changes:
+        return reply
+    # The developer sees what changed in confirmed scenarios, even when everything passes.
+    summary = "\n".join(["SpecMD: cenários alterados nesta resposta, em relação à sua última mensagem:",
+                         *protection.describe_all(changes)])
+    return {**reply, "systemMessage": "\n".join(filter(None, [summary, reply.get("systemMessage")]))}
+
+
+def _stop_reply(root: Path, result: dict[str, Any], state: dict[str, Any], changes: list[dict[str, Any]],
+                now: dict[str, Any]) -> dict[str, Any]:
+    from .workflow import scenario_count
+
     if result["status"] == "needs_scenarios":
         findings = result["findings"]
         reason = "\n".join(["SpecMD: a documentação tem pendências antes de concluir:",
                             *_format_findings(findings), GAP_GUIDANCE])
         return _block_once(root, _digest(["docs", findings]), reason,
                            f"SpecMD: {len(findings)} pendências na documentação continuam abertas.")
-    state = hook_state.load(root)
+    strong = protection.strong_signals(changes, state.get("last_run"))
+    if strong and _code_changed_in_turn(root, state, now):
+        lines = ["SpecMD: o valor esperado de cenários que falhavam mudou junto com o código neste turno:"]
+        lines.extend(f"{protection.describe(change)} (falhava: {protection.failure_hint(failure)})"
+                     for change, failure in strong[:protection.MAX_LINES])
+        lines.append("Se o dev não pediu essa mudança, restaure o cenário e corrija o código. "
+                     "Se ele pediu, siga e diga isso a ele no resumo.")
+        reply = _block_once(root, _digest(["expectation", [(change["id"], change["then"]) for change, _ in strong]]),
+                            "\n".join(lines), "")
+        if "decision" in reply:
+            return reply
     pending = _pending_confirmation(state, result)
     awaiting = ({"systemMessage": "SpecMD: cenários novos ou alterados aguardando sua confirmação em "
                                   + ", ".join(pending[:6]) + "."} if pending else {})
     if not scenario_count(result) or not _runs_on_stop(root):
         return awaiting
-    run, fresh = _current_run(root, result, state)
+    run, fresh = _current_run(root, result, state, now)
     if run is None:
         # Only documentation changed in this session: wait for the developer.
         return awaiting
@@ -345,7 +412,8 @@ def _stop(root: Path) -> dict[str, Any]:
     signature = _digest(["run", [(item.get("id"), item.get("status"), [step.get("error") for step in item.get("steps", [])])
                                  for item in run.get("failures", [])], run.get("findings")])
     return _block_once(root, signature, _format_failures(run) + reminder,
-                       f"SpecMD: {len(run.get('failures', []))} cenários ainda não passam.")
+                       "SpecMD: " + _plural(len(run.get("failures", [])), "cenário ainda não passa",
+                                            "cenários ainda não passam") + ".")
 
 
 def _may_change_documentation(payload: dict[str, Any]) -> bool:
