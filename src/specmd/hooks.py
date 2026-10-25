@@ -196,8 +196,10 @@ def _format_failures(run: dict[str, Any]) -> str:
         lines.append(f"- … e mais {len(failures) - MAX_FINDINGS} cenários.")
     lines.extend(f"- Execução: {finding.get('message')}" for finding in run.get("findings", []))
     lines.extend(_diagnosis(run, failures))
-    lines.append("Implemente o comportamento documentado até os cenários passarem. Se um cenário parecer "
-                 "errado, confirme com o dev antes de mudá-lo.")
+    diagnosed = set(run.get("divergent") or []) | set(run.get("contradicted") or [])
+    if not failures or any(failure.get("id") not in diagnosed for failure in failures):
+        lines.append("Implemente o comportamento documentado até os cenários passarem. Se um cenário parecer "
+                     "errado, confirme com o dev antes de mudá-lo.")
     return "\n".join(lines)[:MAX_REASON]
 
 

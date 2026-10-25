@@ -140,6 +140,7 @@ class DivergenceTests(unittest.TestCase):
         self.assertNotIn("divergência", reason)
         self.assertIn('1 cenário que já existia quebrou com a mudança no código ("Somar dois itens"). '
                       "Se o dev confirmou a nova regra, atualize o cenário; se não, ajuste o código.", reason)
+        self.assertNotIn("confirme com o dev antes de mudá-lo", reason)
 
     @unittest.skipUnless(sys.version_info >= (3, 12), "cobertura por cenário exige Python 3.12+")
     def test_legacy_scenario_whose_code_the_agent_did_not_touch_is_divergence(self):  # SMD-SCN-133
