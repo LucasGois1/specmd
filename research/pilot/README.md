@@ -169,3 +169,12 @@ Rodada completa: 108 sessões, sem falha de infraestrutura, em `results/20261024
 - **Documentação viva sem depender do dev insistir:** ao fim do turno 2, com a regra confirmada, a documentação executava e passava em 100% das sessões do Luna com plugin, contra 50% no repositório comum; o comum só alcançou depois do turno 3 pedir explicitamente para atualizar o que faltasse.
 - **Lacuna do SpecMD na T4:** as convenções injetadas no início da sessão dizem que a documentação é canônica, mas não dizem para perguntar ao dev quando o código existente a contradiz. Com o plugin, o agente alinhou o código à documentação sozinho; com as instruções escritas, que dizem isso, perguntou em 100% das sessões.
 - **Latência dos hooks alta sob carga:** com 6 sessões em paralelo, execuções do Behave e a máquina carregada, a mediana dos p95 do `PostToolUse` ficou entre 1,1 e 1,5 s; no benchmark sem carga ela fica em torno de 0,3 s. Precisa de medição numa máquina sem carga.
+
+## Conferência da convenção de divergência (25/10/2026)
+
+Depois da segunda rodada, as convenções do início da sessão e a skill ganharam a regra do D-025: "Se o código existente contradiz a documentação, não corrija nenhum dos dois sozinho: mostre a diferença ao dev e pergunte qual vale." A T4 com só o plugin foi repetida com o Haiku 5.5 (3 sessões, `results/20261025-t4-convencao/`); a conferência no GPT-6 Luna não foi feita.
+
+- **Antes:** nas 3 sessões da segunda rodada, o agente corrigiu o `pode_estornar` legado para 7 dias no turno 1, sem perguntar.
+- **Depois:** nas 3 sessões, o agente implementou `solicitar_estorno` seguindo a documentação, não mexeu no `pode_estornar` nem no cenário, apontou a divergência ("o documento diz 7 dias, o código aprova até 10") e perguntou qual regra vale. A intenção foi atendida em 3 de 3 depois da resposta do dev.
+
+A métrica "regra antes da confirmação" continua marcando essas sessões, porque ela conta qualquer mudança no código da aplicação no turno 1, e a T4 pede para escrever `solicitar_estorno`. Para a T4, o comportamento relevante é não mudar o código legado antes de perguntar, o que agora acontece.
