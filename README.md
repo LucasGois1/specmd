@@ -26,6 +26,8 @@ Dentro do Claude Code, no seu repositório:
 
 Pronto: o SpecMD já está ativo nesse repositório, com os padrões. Para o time receber o plugin automaticamente, rode `/specmd:init` (ou `make init REPO=…` a partir deste clone) e faça commit do `.claude/settings.json`; quem abrir o Claude Code no repositório e confiar na pasta recebe o plugin.
 
+Num projeto que já tem documentação, `/specmd:adopt` conduz a adoção: lista os documentos sem cenários, você diz quais não descrevem comportamento e o agente propõe os cenários de um documento por vez.
+
 `specmd.toml` e `.specmdignore` são opcionais, para ajustar o comportamento (veja o [formato](docs/format.md)). O plugin precisa de Python 3.11 ou superior na máquina; as dependências vêm junto.
 
 ## O problema

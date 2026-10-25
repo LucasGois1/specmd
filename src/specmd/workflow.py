@@ -162,6 +162,46 @@ def matches_code(root: Path, run: dict[str, Any], now: dict[str, Any]) -> bool:
     return any(code_changes(root, snapshot, now) == set() for snapshot in snapshots)
 
 
+HISTORY_FILE = "scenario-history.json"
+
+
+def adoption_list(root: Path) -> dict[str, Any]:
+    """Analysed documents still without scenarios or with requirements without scenarios, by path."""
+    root = Path(root).resolve(strict=True)
+    inspection = inspect_project(root)
+    if inspection["status"] == "error":
+        return inspection
+    documents = sorted(inspection["documents"], key=lambda item: item["path"])
+    covered = {identifier for document in documents for scenario in document["scenarios"]
+               for identifier in scenario["requirements"]}
+    pending = []
+    for document in documents:
+        missing = [item["id"] for item in document["requirements"] if item["id"] not in covered]
+        if not document["scenarios"] or missing:
+            pending.append({"path": document["path"], "scenarios": len(document["scenarios"]),
+                            "requirements_without_scenarios": missing})
+    return {"protocol_version": 2, "status": "adoption", "pending": pending, "documents": len(documents),
+            "documented": sum(1 for document in documents if document["scenarios"]),
+            "findings": [item for item in inspection["findings"] if item.get("kind") not in {
+                "gherkin_missing", "requirement_uncovered"}]}
+
+
+def _never_passed(root: Path, inspection: dict[str, Any], execution: dict[str, Any]) -> list[str]:
+    """Failing scenarios that never passed, then remember which scenarios have passed."""
+    history = hook_state.read_local(root, HISTORY_FILE).get("passed")
+    passed = dict(history) if isinstance(history, dict) else {}
+    now = datetime.now(timezone.utc).isoformat()
+    never = [failure["id"] for failure in execution["failures"] if failure.get("id") not in passed
+             and any(step.get("status") == "failed" for step in failure.get("steps", []))]
+    for scenario in execution["scenarios"]:
+        if scenario.get("status") == "passed":
+            passed.setdefault(scenario.get("id"), now)
+    known = {item["id"] for document in inspection["documents"] for item in document["scenarios"]}
+    with contextlib.suppress(OSError, ValueError):
+        hook_state.write_local(root, HISTORY_FILE, {"passed": {key: value for key, value in passed.items() if key in known}})
+    return never
+
+
 def _reported(run: dict[str, Any]) -> dict[str, Any]:
     """A run as shown to the agent and the CLI, without the code snapshots."""
     return {key: value for key, value in run.items() if key != "code"}
@@ -222,6 +262,7 @@ def run_project(root: Path, affected: bool = False) -> dict[str, Any]:
         "expected": scenario_count(inspection),
         "unselected": execution["unselected"],
         "failures": execution["failures"],
+        "never_passed": _never_passed(root, inspection, execution),
         "findings": execution["findings"],
     }
     hook_state.update(root, lambda state: state.__setitem__("last_run", last_run))

@@ -30,7 +30,7 @@ Este registro consolida a discussão que originou o projeto. As diretrizes abaix
 | D-022 | Em 24/10/2026, o usuário escolheu otimizar o desempenho para projetos com milhares de arquivos, inclusive executando só os cenários afetados. | Cache por documento, impressão digital do código pelo Git e seleção de cenários por cobertura. Implementada; ver [estado da implementação](implementation-status.md). |
 | D-023 | Avisar quando um cenário confirmado é enfraquecido ou removido. | Diff contra os cenários da última mensagem do dev; devolve ao agente só no sinal forte. Implementada em SMD-REQ-028. |
 | D-024 | Avisar quando um documento ignorado passa a declarar regras. | Só aviso, quando o arquivo muda. Implementada em SMD-REQ-029. |
-| D-025 | Adoção em legado por um comando que parte da documentação existente. | Lista todos os documentos, o dev filtra com o agente e os cenários nascem um documento por vez. Proposta, não implementada. |
+| D-025 | Adoção em legado por um comando que parte da documentação existente. | Lista todos os documentos, o dev filtra com o agente e os cenários nascem um documento por vez. Implementada em SMD-REQ-030; o `@wip` continua decisão do dev. |
 | D-026 | Suportar MDG (`.feature.md`) seguindo a especificação oficial. | Conversão para Gherkin em memória, preservando as linhas. Proposta, não implementada. |
 | D-027 | Validar o Codex com LLM real e os eventos novos. | Depende de autenticação e da confiança nos hooks pelo usuário. Proposta, não executada. |
 | D-028 | Medir o valor do SpecMD num piloto comparativo. | Grupo de comparação forte e avaliação por testes de aceite escondidos. Proposta, não executada. |
@@ -106,8 +106,9 @@ O usuário corrigiu a proposta inicial: o plugin não ordena nem filtra document
 
 Em aberto:
 
-- Se o progresso da adoção precisa de estado próprio. Proposta: o estado da documentação e do `.specmdignore` basta para retomar em outra sessão.
-- Se o agente pode marcar com `@wip` os cenários confirmados que ainda não têm passos. Até o usuário decidir, vale a convenção atual: marcar `@wip` é decisão do dev.
+- Progresso da adoção: decidido em 24/10/2026 que não há estado próprio; a documentação e o `.specmdignore` bastam para retomar.
+- `@wip` na adoção: decidido em 24/10/2026 que continua decisão do dev; o agente implementa os passos de um documento antes de seguir.
+- Falha num cenário que nunca passou traz a orientação de divergência (pergunte ao dev qual vale), aprovada com SMD-REQ-030.
 
 ### D-026 — MDG (`.feature.md`)
 

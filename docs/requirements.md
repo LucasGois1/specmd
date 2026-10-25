@@ -223,6 +223,41 @@ Funcionalidade: Documento ignorado que ganha regra
     Então a conclusão não é bloqueada por isso
 ```
 
+## SMD-REQ-030 — Adoção em projeto legado
+
+Num projeto que já tem documentação, `/specmd:adopt` (ou `specmd adopt`) lista todos os documentos analisados que ainda não têm cenários ou têm requisitos sem cenário, em ordem de caminho, sem palpite sobre quais parecem ter regras. Ficam fora os ignorados por padrão e os que o time já colocou no `.specmdignore`. O agente apresenta a lista ao dev, que diz quais não descrevem comportamento; o agente grava esses no `.specmdignore`. Depois o agente trata um documento por vez: propõe requisitos e cenários, pede confirmação e segue o ciclo normal de passos, execução e feedback. Não há estado próprio da adoção: rodar a lista de novo mostra o que falta. Quando um cenário que nunca passou falha, o feedback lembra que, se o código já existia e faz outra coisa, é uma divergência entre documentação e código, e o agente pergunta ao dev qual dos dois vale antes de mudar qualquer um. Marcar `@wip` continua sendo decisão do dev. Origem: [D-025](decisions.md), confirmado pelo usuário em 24/10/2026.
+
+```gherkin
+# language: pt
+Funcionalidade: Adoção em projeto legado
+
+  @SMD-REQ-030 @SMD-SCN-130
+  Cenário: Lista de documentos para adoção
+    Dado um projeto com documentos sem cenários, um README e um .specmdignore do time
+    Quando o dev pede a adoção
+    Então o agente recebe todos os documentos sem cenários em ordem de caminho
+    E a lista não traz os ignorados por padrão nem os que estão no .specmdignore
+
+  @SMD-REQ-030 @SMD-SCN-131
+  Cenário: Dev escolhe o que ignorar
+    Dado a lista de documentos para adoção
+    Quando o dev diz que um guia de setup não descreve comportamento
+    Então o agente adiciona o guia ao .specmdignore
+    E o guia sai da lista
+
+  @SMD-REQ-030 @SMD-SCN-132
+  Cenário: Um documento por vez
+    Dado documentos de comportamento sem cenários
+    Quando o agente conduz a adoção
+    Então ele propõe requisitos e cenários de um documento e pede confirmação antes do próximo
+
+  @SMD-REQ-030 @SMD-SCN-133
+  Cenário: Divergência entre documentação e código
+    Dado um cenário confirmado que nunca passou e falha porque o código faz outra coisa
+    Quando o agente recebe a falha
+    Então o feedback orienta a perguntar ao dev qual dos dois vale, sem corrigir sozinho
+```
+
 ## SMD-REQ-024 — Feedback que não trava a sessão
 
 O plugin nunca encerra a sessão do agente. O mesmo feedback repetido sem mudança, ou o limite de quatro devoluções seguidas, deixa o agente concluir; a contagem recomeça a cada mensagem do dev. Erros internos do plugin viram aviso.

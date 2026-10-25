@@ -153,23 +153,40 @@ def _failures_header(run: dict[str, Any]) -> str:
     return f"SpecMD: {failures} de {executed} pela mudança não {'passou' if failures == 1 else 'passaram'}{_left_out(run)}."
 
 
+def _failure_lines(failure: dict[str, Any]) -> list[str]:
+    name = f' "{failure["name"]}"' if failure.get("name") else ""
+    lines = [f"- {failure.get('path')}:{failure.get('line')} {failure.get('id')}{name} ({failure.get('status')})"]
+    for step in failure.get("steps", [])[:3]:
+        lines.append(f"    {step.get('text', 'passo')} (linha {step.get('line')}): {step.get('status')}")
+        if step.get("error"):
+            lines.extend("      " + line for line in step["error"].splitlines()[-6:])
+        if step.get("snippet"):
+            lines.append("      Passo sem implementação. Ponto de partida:")
+            lines.extend("      " + line for line in step["snippet"].strip().splitlines())
+    return lines
+
+
+def _divergence(run: dict[str, Any], failures: list[dict[str, Any]]) -> list[str]:
+    """Scenarios that never passed may document behaviour the existing code does differently."""
+    never_passed = set(run.get("never_passed") or [])
+    never = [failure for failure in failures if failure.get("id") in never_passed]
+    if not never:
+        return []
+    names = ", ".join(f'"{failure.get("name") or failure.get("id")}"' for failure in never[:3])
+    return [f"{_plural(len(never), 'cenário nunca passou', 'cenários nunca passaram')} ({names}). "
+            "Se o código já existia e faz outra coisa, é divergência entre documentação e código: "
+            "pergunte ao dev qual vale antes de mudar qualquer um dos dois."]
+
+
 def _format_failures(run: dict[str, Any]) -> str:
     failures = run.get("failures", [])
     lines = [_failures_header(run)]
     for failure in failures[:MAX_FINDINGS]:
-        name = f' "{failure["name"]}"' if failure.get("name") else ""
-        lines.append(f"- {failure.get('path')}:{failure.get('line')} {failure.get('id')}{name} ({failure.get('status')})")
-        for step in failure.get("steps", [])[:3]:
-            lines.append(f"    {step.get('text', 'passo')} (linha {step.get('line')}): {step.get('status')}")
-            if step.get("error"):
-                lines.extend("      " + line for line in step["error"].splitlines()[-6:])
-            if step.get("snippet"):
-                lines.append("      Passo sem implementação. Ponto de partida:")
-                lines.extend("      " + line for line in step["snippet"].strip().splitlines())
+        lines.extend(_failure_lines(failure))
     if len(failures) > MAX_FINDINGS:
         lines.append(f"- … e mais {len(failures) - MAX_FINDINGS} cenários.")
-    for finding in run.get("findings", []):
-        lines.append(f"- Execução: {finding.get('message')}")
+    lines.extend(f"- Execução: {finding.get('message')}" for finding in run.get("findings", []))
+    lines.extend(_divergence(run, failures))
     lines.append("Implemente o comportamento documentado até os cenários passarem. Se um cenário parecer "
                  "errado, confirme com o dev antes de mudá-lo.")
     return "\n".join(lines)[:MAX_REASON]

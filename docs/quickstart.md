@@ -43,6 +43,8 @@ Uma instalação só no escopo de usuário não ativa repositórios sozinha.
 
 Para o time: `/specmd:init` (ou `make init REPO=…` a partir deste clone) declara o marketplace e habilita o plugin no `.claude/settings.json` do projeto, sem mexer no resto. Faça commit desse arquivo; quem abrir o Claude Code no repositório e confiar na pasta recebe o plugin.
 
+Num projeto que já tem documentação, `/specmd:adopt` conduz a adoção: lista os documentos sem cenários, você diz quais não descrevem comportamento (vão para o `.specmdignore`) e o agente propõe os cenários de um documento por vez, com sua confirmação. Se um cenário novo falha porque o código faz outra coisa, ele pergunta qual dos dois vale.
+
 O estado local fica em `.specmd/local/`, que se ignora sozinho no Git.
 
 O plugin não fixa versão no manifesto, então cada commit da `main` do SpecMD é uma versão nova. Com o marketplace declarado pelo `/specmd:init` (`autoUpdate: true`), o Claude Code atualiza sozinho. Num marketplace adicionado à mão, use `/plugin marketplace update specmd`, depois `claude plugin update specmd@specmd` e `/reload-plugins`.
@@ -72,6 +74,7 @@ Comandos do CLI, todos com `--root` (padrão: diretório atual):
 | `specmd inventory` | Documentos, requisitos, cenários e pendências da documentação. |
 | `specmd check` | Pendências e o resultado da última execução, se ainda atual. |
 | `specmd run` | Executa todos os cenários e guarda o resultado para os hooks. |
+| `specmd adopt` | Documentos sem cenários e requisitos sem cenário, em ordem de caminho, para a adoção em legado. |
 | `specmd run --affected` | Executa só os cenários afetados pela mudança desde a última execução, como ao concluir. |
 
 Códigos de saída: 0 sem pendências, 1 documentação pendente ou cenários falhando, 2 erro ou projeto sem `specmd.toml`.
