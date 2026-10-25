@@ -1,9 +1,12 @@
+import json
 import os
 from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 
+from specmd import core
 from specmd.core import compile_ignore, extract_features, inspect_project, is_ignored
 
 
@@ -208,6 +211,67 @@ class InspectProjectTests(unittest.TestCase):
         self.write("docs/regras.md", "# Mudou\n\n" + block(scenario()))
         with self.assertRaises(ValueError):
             extract_features(self.root, report)
+
+
+class InspectionCacheTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix="specmd-cache-")
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name).resolve()
+        self.document = self.root / "docs/regras.md"
+        self.document.parent.mkdir()
+        self.document.write_text(block(scenario("Somar")), encoding="utf-8")
+        self.cache = self.root / ".specmd/local" / core.CACHE_FILE
+
+    def analysed(self):
+        with mock.patch.object(core, "_inspect_document", wraps=core._inspect_document) as spy:
+            report = inspect_project(self.root)
+        return report, [call.args[1] for call in spy.call_args_list]
+
+    def test_unchanged_documents_are_not_parsed_again(self):
+        self.assertEqual(self.analysed()[1], ["docs/regras.md"])
+        report, parsed = self.analysed()
+        self.assertEqual(parsed, [])
+        self.assertEqual([item["name"] for item in report["documents"][0]["scenarios"]], ["Somar"])
+
+    def test_settled_documents_are_not_even_read(self):
+        inspect_project(self.root)
+        with mock.patch.object(core, "_SETTLE_NS", -10**12), \
+                mock.patch.object(core, "_read_regular_file", side_effect=AssertionError("lido")):
+            self.assertEqual(inspect_project(self.root)["status"], "ready")
+
+    def test_same_size_rewrite_with_the_old_timestamp_is_analysed_again(self):
+        inspect_project(self.root)
+        info = self.document.stat()
+        self.document.write_text(block(scenario("Somou")), encoding="utf-8")
+        os.utime(self.document, ns=(info.st_atime_ns, info.st_mtime_ns))
+        report, parsed = self.analysed()
+        self.assertEqual(parsed, ["docs/regras.md"])
+        self.assertEqual(report["documents"][0]["scenarios"][0]["name"], "Somou")
+
+    def test_language_change_discards_the_cache(self):
+        inspect_project(self.root)
+        (self.root / "specmd.toml").write_text('gherkin_language = "pt"\n', encoding="utf-8")
+        self.assertEqual(self.analysed()[1], ["docs/regras.md"])
+
+    def test_removed_documents_leave_the_cache_and_corrupt_cache_is_ignored(self):
+        (self.root / "docs/outro.md").write_text(block(scenario("Outro")), encoding="utf-8")
+        inspect_project(self.root)
+        (self.root / "docs/outro.md").unlink()
+        inspect_project(self.root)
+        self.assertEqual(list(json.loads(self.cache.read_text())["entries"]), ["docs/regras.md"])
+        self.cache.write_text("{corrompido", encoding="utf-8")
+        report, parsed = self.analysed()
+        self.assertEqual((report["status"], parsed), ("ready", ["docs/regras.md"]))
+
+    def test_unwritable_cache_does_not_break_the_inspection(self):
+        (self.root / ".specmd").mkdir()
+        outside = self.root.parent / (self.root.name + "-fora")
+        outside.mkdir()
+        self.addCleanup(outside.rmdir)
+        os.symlink(outside, self.root / ".specmd/local")
+        self.assertEqual(inspect_project(self.root)["status"], "ready")
+        self.assertEqual(list(outside.iterdir()), [])
 
 
 class IgnorePatternTests(unittest.TestCase):
