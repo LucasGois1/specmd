@@ -113,6 +113,16 @@ def _digest(value: Any) -> str:
                                      separators=(",", ":")).encode("utf-8")).hexdigest()
 
 
+def _scenario_digest(scenario: Any, tags: set[str]) -> str:
+    """What a scenario checks: its steps (with background, tables, doc strings and outline values) and tags."""
+    background = getattr(scenario, "background", None)
+    steps = [*getattr(background, "steps", []), *scenario.steps]
+    return _digest([scenario.name, sorted(tags), [
+        [step.step_type, step.name, step.text,
+         [list(step.table.headings), [list(row.cells) for row in step.table.rows]] if step.table else None]
+        for step in steps]])
+
+
 def strip_frontmatter(text: str) -> str:
     """Blank out a leading YAML frontmatter block, keeping line numbers intact."""
     match = _FRONTMATTER.match(text)
@@ -340,6 +350,7 @@ def _inspect_document(data: bytes, path: str, findings: list[dict[str, Any]],
                 "block": block,
                 "steps": step_count,
                 "explicit_id": bool(explicit),
+                "sha256": _scenario_digest(scenario, tags),
             }
             if template is not None:
                 item.update({"template_id": base, "definition_line": template.line,

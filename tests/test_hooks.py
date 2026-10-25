@@ -176,6 +176,22 @@ class HookLifecycleTests(unittest.TestCase):
         with patch("specmd.workflow.run_project", side_effect=AssertionError("executou de novo")):
             self.assertEqual(self.hook("Stop"), {})
 
+    @unittest.skipUnless(sys.version_info >= (3, 12), "cobertura por cenário exige Python 3.12+")
+    def test_later_changes_run_only_the_affected_scenarios_and_say_so(self):
+        self.hook("SessionStart")
+        self.hook("UserPromptSubmit")
+        self.edit_app("self.prices.append(price_cents)", "self.prices.append(price_cents + 0)")
+        self.assertIn("2 cenários passando", self.hook("Stop")["systemMessage"])
+        self.edit_app("price_cents + 0", "price_cents + 1")
+        failing = self.hook("Stop")
+        self.assertEqual(failing["decision"], "block")
+        self.assertIn("1 de 1 cenário afetado pela mudança não passou; 1 cenário não executa o código alterado.",
+                      failing["reason"])
+        self.edit_app("price_cents + 1", "price_cents")
+        fixed = self.hook("Stop", stop_hook_active=True)
+        self.assertIn("1 cenário afetado pela mudança, passando; 1 cenário não executa o código alterado.",
+                      fixed["systemMessage"])
+
     def test_undefined_steps_come_back_with_a_snippet(self):
         self.hook("SessionStart")
         (self.root / "docs/cupons.md").write_text(GAP_DOC + SCENARIO.replace(

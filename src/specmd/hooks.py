@@ -121,9 +121,37 @@ def _format_findings(findings: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
+def _plural(count: int, singular: str, plural: str) -> str:
+    return f"{count} {singular if count == 1 else plural}"
+
+
+def _left_out(run: dict[str, Any]) -> str:
+    unselected = run.get("unselected") or 0
+    if not unselected:
+        return ""
+    return "; " + _plural(unselected, "cenário não executa", "cenários não executam") + " o código alterado"
+
+
+def _passing_message(run: dict[str, Any]) -> str:
+    executed, unselected = run.get("scenarios", 0), run.get("unselected") or 0
+    if not unselected:
+        return f"SpecMD: {executed} cenários passando."
+    if not executed:
+        return ("SpecMD: a mudança não afeta nenhum cenário; "
+                + _plural(unselected, "cenário continua", "cenários continuam") + " passando.")
+    return (f"SpecMD: {_plural(executed, 'cenário afetado', 'cenários afetados')} pela mudança, "
+            f"{'passando' if executed == 1 else 'todos passando'}{_left_out(run)}.")
+
+
 def _format_failures(run: dict[str, Any]) -> str:
     failures = run.get("failures", [])
-    lines = [f"SpecMD: {len(failures)} de {run.get('expected', '?')} cenários da documentação não passaram."]
+    if run.get("unselected"):
+        executed = run.get("scenarios", 0)
+        header = (f"SpecMD: {len(failures)} de {_plural(executed, 'cenário afetado', 'cenários afetados')} "
+                  f"pela mudança não {'passou' if len(failures) == 1 else 'passaram'}{_left_out(run)}.")
+    else:
+        header = f"SpecMD: {len(failures)} de {run.get('expected', '?')} cenários da documentação não passaram."
+    lines = [header]
     for failure in failures[:MAX_FINDINGS]:
         name = f' "{failure["name"]}"' if failure.get("name") else ""
         lines.append(f"- {failure.get('path')}:{failure.get('line')} {failure.get('id')}{name} ({failure.get('status')})")
@@ -168,7 +196,8 @@ def _commands(root: Path) -> str:
     project = shlex.quote(str(root))
     return ("Para conferir a qualquer momento, sem instalar nada:\n"
             f"- pendências e última execução: `{command} check --root {project}`\n"
-            f"- executar os cenários: `{command} run --root {project}`")
+            f"- executar todos os cenários: `{command} run --root {project}`\n"
+            f"- só os afetados pela mudança desde a última execução: `{command} run --affected --root {project}`")
 
 
 def _session_start(root: Path) -> dict[str, Any]:
@@ -197,7 +226,8 @@ def _session_start(root: Path) -> dict[str, Any]:
     if run:
         state_text = "passando" if run.get("passed") else f"{len(run.get('failures', []))} falhando"
         freshness = "" if run.get("current") else " (o código ou os cenários mudaram depois)"
-        lines.append(f"- Última execução: {run.get('scenarios')} cenários, {state_text}{freshness}.")
+        scope = f" afetados pela mudança ({run['unselected']} fora)" if run.get("unselected") else ""
+        lines.append(f"- Última execução: {run.get('scenarios')} cenários{scope}, {state_text}{freshness}.")
     lines.append(CONVENTIONS)
     lines.append(_commands(root))
     return {"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": "\n".join(lines)}}
@@ -272,7 +302,7 @@ def _current_run(root: Path, result: dict[str, Any], state: dict[str, Any]) -> t
     if not ran_in_session and code_changes(root, state.get("code_baseline"), now) == set():
         # No code changed in this session: no execution is demanded.
         return None, False
-    return run_project(root).get("run"), False
+    return run_project(root, affected=True).get("run"), False
 
 
 def _pending_confirmation(state: dict[str, Any], result: dict[str, Any]) -> list[str]:
@@ -311,7 +341,7 @@ def _stop(root: Path) -> dict[str, Any]:
     if run.get("passed"):
         if fresh and not pending:
             return {}
-        return {"systemMessage": f"SpecMD: {run.get('scenarios')} cenários passando." + reminder}
+        return {"systemMessage": _passing_message(run) + reminder}
     signature = _digest(["run", [(item.get("id"), item.get("status"), [step.get("error") for step in item.get("steps", [])])
                                  for item in run.get("failures", [])], run.get("findings")])
     return _block_once(root, signature, _format_failures(run) + reminder,

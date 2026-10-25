@@ -22,8 +22,12 @@ def main(argv=None):
                        ("inventory", "Listar documentos, requisitos e cenários"),
                        ("check", "Pendências da documentação e resultado da última execução"),
                        ("status", "Mesmo que check"),
-                       ("run", "Executar os cenários da documentação")):
-        commands.add_parser(name, help=text).add_argument("--root", type=Path, default=Path.cwd())
+                       ("run", "Executar todos os cenários da documentação")):
+        command = commands.add_parser(name, help=text)
+        command.add_argument("--root", type=Path, default=Path.cwd())
+        if name == "run":
+            command.add_argument("--affected", action="store_true",
+                                 help="executar só os cenários afetados pela mudança desde a última execução")
     demo = commands.add_parser("demo", help="Criar um projeto de demonstração")
     demo.add_argument("--dest", type=Path, required=True)
     commands.add_parser("codex-hook", help="Lê o payload de hook do Codex pelo stdin")
@@ -50,7 +54,7 @@ def main(argv=None):
             result = inspect_project(root)
         elif args.command == "run":
             from .workflow import run_project
-            result = run_project(root)
+            result = run_project(root, affected=args.affected)
         else:
             from .workflow import check_project
             result = check_project(root)
