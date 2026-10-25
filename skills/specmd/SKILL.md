@@ -18,6 +18,7 @@ A documentação Markdown é a fonte canônica das regras de negócio. Os cenár
 
 - Depois de escrever ou mudar cenários, mostre-os ao dev e pergunte se estão corretos antes de implementar. Aponte ambiguidades (limites, arredondamentos, exceções).
 - Não mude um cenário existente para fazer o código passar sem confirmar com o dev: se o código pedido contraria a documentação, pergunte se a regra mudou.
+- Se o código existente contradiz a documentação, não corrija nenhum dos dois sozinho: mostre a diferença ao dev e pergunte qual vale.
 
 ## Markdown with Gherkin
 

@@ -50,7 +50,9 @@ CONVENTIONS = (
     "em dúvida, pergunte ao dev se ele precisa de cenários.\n"
     "4. Ao concluir uma implementação, o SpecMD executa os cenários e devolve o que falta ou falha.\n"
     "5. Cenários marcados com @wip não são cobrados, e marcar @wip é decisão do dev. Não marque por conta "
-    "própria para evitar a cobrança: cenários que aguardam a confirmação do dev já não são cobrados."
+    "própria para evitar a cobrança: cenários que aguardam a confirmação do dev já não são cobrados.\n"
+    "6. Se o código existente contradiz a documentação, não corrija nenhum dos dois sozinho: mostre a "
+    "diferença ao dev e pergunte qual vale."
 )
 GAP_GUIDANCE = (
     "Para cada documento: se ele descreve comportamento do sistema, confirme os requisitos com o dev e "

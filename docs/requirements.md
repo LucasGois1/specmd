@@ -323,7 +323,7 @@ Funcionalidade: Feedback limitado
 
 ## SMD-REQ-025 — Contexto no início da sessão
 
-Ao abrir uma sessão, o agente recebe um resumo da documentação canônica (documentos com cenários, pendências, última execução) e as convenções de trabalho: onde escrever requisitos e cenários, quando pedir confirmação ao dev e o que fazer com documentos que não descrevem comportamento.
+Ao abrir uma sessão, o agente recebe um resumo da documentação canônica (documentos com cenários, pendências, última execução) e as convenções de trabalho: onde escrever requisitos e cenários, quando pedir confirmação ao dev, o que fazer com documentos que não descrevem comportamento e que, quando o código existente contradiz a documentação, o agente não corrige nenhum dos dois sozinho e pergunta ao dev qual vale (aprovado pelo usuário em 25/10/2026, depois da segunda rodada do [piloto](../research/pilot/README.md)).
 
 ```gherkin
 # language: pt
@@ -335,6 +335,13 @@ Funcionalidade: Contexto inicial
     Quando uma sessão do agente começa
     Então o agente recebe a quantidade de documentos e cenários
     E as convenções de trabalho do SpecMD
+
+  @SMD-REQ-025 @SMD-SCN-139
+  Cenário: Divergência com o código existente vira pergunta ao dev
+    Dado um projeto com o SpecMD ativo
+    Quando uma sessão do agente começa
+    Então as convenções orientam a não corrigir sozinho o código ou a documentação quando um contradiz o outro
+    E a perguntar ao dev qual vale
 ```
 
 ## SMD-REQ-015 — Estado local reconstruível

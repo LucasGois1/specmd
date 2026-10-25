@@ -100,6 +100,7 @@ class HookLifecycleTests(unittest.TestCase):
         self.assertIn("1 (2 cenários)", context)
         self.assertIn("mostre-os ao dev e peça confirmação", context)
         self.assertIn("marcar @wip é decisão do dev", context)
+        self.assertIn("Se o código existente contradiz a documentação, não corrija nenhum dos dois sozinho", context)
         self.assertIn("scripts/specmd_cli.py", context)
         self.assertIn(f"run --root {self.root}", context)
         state = hook_state.load(self.root)
