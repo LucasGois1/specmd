@@ -494,9 +494,8 @@ def _log(event: Any, payload: Any, reply: dict[str, Any], started: float) -> Non
     entry = {"at": datetime.now(timezone.utc).isoformat(), "event": event,
              "tool": payload.get("tool_name") if isinstance(payload, dict) else None,
              "ms": round((time.monotonic() - started) * 1000), "reply": reply}
-    with contextlib.suppress(OSError):
-        with open(destination, "a", encoding="utf-8") as stream:
-            stream.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    with contextlib.suppress(OSError), open(destination, "a", encoding="utf-8") as stream:
+        stream.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
 def run_hook() -> int:
