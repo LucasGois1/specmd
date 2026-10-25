@@ -79,6 +79,22 @@ def _module_core(source: bytes) -> str | None:
         return None
 
 
+def _function_changes(root: Path, baseline: dict[str, Any], path: str) -> Any:
+    """Function keys changed in one Python file; None for the whole file, UNKNOWN without its earlier content."""
+    old_source = _source_at(root, baseline, path)
+    if old_source is None:
+        return UNKNOWN
+    try:
+        source = (root / path).read_bytes()
+    except OSError:
+        return None
+    current, previous = python_blocks(source), python_blocks(old_source) if old_source else None
+    if current is None or previous is None or _module_core(source) != _module_core(old_source):
+        return None
+    return {key for key in previous["blocks"].keys() | current["blocks"].keys()
+            if previous["blocks"].get(key) != current["blocks"].get(key)}
+
+
 def session_changes(root: Path, baseline: Any, now: dict[str, Any]) -> dict[str, Any] | None:
     """Changed files since the session started, with the function keys changed in each
     Python file (None: the whole file; UNKNOWN: its earlier content is not recoverable).
@@ -88,26 +104,18 @@ def session_changes(root: Path, baseline: Any, now: dict[str, Any]) -> dict[str,
     changed = code_changes(root, baseline, now)
     if changed is None or "files" not in now:
         return None
-    result: dict[str, Any] = {}
-    for path in changed:
-        result[path] = None
-        if not path.endswith(".py"):
-            continue
-        old_source = _source_at(root, baseline, path)
-        if old_source is None:
-            result[path] = UNKNOWN
-            continue
-        try:
-            current = python_blocks((root / path).read_bytes())
-        except OSError:
-            current = None
-        previous = python_blocks(old_source) if old_source else None
-        core = _module_core((root / path).read_bytes()) if current is not None else None
-        if (current is not None and previous is not None and core is not None
-                and core == _module_core(old_source)):
-            result[path] = {key for key in previous["blocks"].keys() | current["blocks"].keys()
-                            if previous["blocks"].get(key) != current["blocks"].get(key)}
-    return result
+    return {path: _function_changes(root, baseline, path) if path.endswith(".py") else None for path in changed}
+
+
+def _dependency(key: str, changes: dict[str, Any], steps: list[str]) -> Any:
+    """True when the session changed this product function, UNKNOWN when it cannot be told, else False."""
+    path, _, block = key.partition("::")
+    if path not in changes or _under(path, steps):
+        return False
+    keys = changes[path]
+    if keys == UNKNOWN:
+        return UNKNOWN
+    return keys is None or block in keys or block == MODULE
 
 
 def _touched(entry: Any, changes: dict[str, Any], steps: list[str]) -> bool | None:
@@ -115,19 +123,10 @@ def _touched(entry: Any, changes: dict[str, Any], steps: list[str]) -> bool | No
     deps = entry.get("deps") if isinstance(entry, dict) else None
     if not isinstance(deps, list):
         return None
-    unknown = False
-    for key in deps:
-        path, _, block = key.partition("::")
-        if path not in changes or _under(path, steps):
-            continue
-        keys = changes[path]
-        if keys == UNKNOWN:
-            unknown = True
-        elif keys is None or block in keys or block == MODULE:
-            return True
-    if any(path in changes for path in entry.get("files", [])):
+    statuses = [_dependency(key, changes, steps) for key in deps]
+    if True in statuses or any(path in changes for path in entry.get("files", [])):
         return True
-    return None if unknown else False
+    return None if UNKNOWN in statuses else False
 
 
 def classify(inspection: dict[str, Any], execution: dict[str, Any], database: Any, passed_before: set[str],
