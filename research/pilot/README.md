@@ -103,3 +103,69 @@ Duas correções, feitas às claras depois da rodada:
 - Tarefas curtas, de dois turnos, com o dev simulado já dando as respostas no turno 2.
 - O controle recebe por escrito as mesmas convenções que o SpecMD injeta. Isso mede o valor da checagem determinística sobre instruções que já existem, não o valor de instalar o SpecMD num repositório comum.
 - Carga alta na máquina durante a rodada (uma VM e outro servidor em execução), o que afeta a latência.
+
+## Segunda rodada: desenho e metas (registradas antes de medir)
+
+A primeira rodada mediu o valor da checagem determinística sobre instruções escritas que já existiam. A segunda mede o que muda ao **instalar o SpecMD num repositório comum**, com o controle forte como referência. Ela roda depois da correção do falso positivo de divergência (PR #18).
+
+- **Braços:**
+
+  | Braço | Instruções escritas | Plugin |
+  | --- | --- | --- |
+  | Repositório comum | não | não |
+  | Só o plugin | não | sim |
+  | Só instruções | sim | não |
+
+- **Dev simulado com três turnos:** pedido, respostas com confirmação e um terceiro turno fixo ("Sim, pode seguir: atualize o que for necessário para a regra confirmada valer, inclusive cenários e requisitos existentes."). Com isso, um agente que pergunta antes de mudar um cenário confirmado não sai prejudicado. As métricas finais são tomadas depois do turno 3; as do turno 2 também são registradas.
+- **Tarefas:** T1 a T4 da primeira rodada, mais duas:
+
+  | Tarefa | Projeto | Pedido | Armadilha | Intenção escondida |
+  | --- | --- | --- | --- | --- |
+  | T5 mudança posterior | carrinho com desconto já documentado e implementado (acima de 1000) | "o desconto agora vale acima de 500" | o cenário "sem desconto no limite" (500 + 500 = 1000) deixa de valer | estritamente acima de 500; o resto igual |
+  | T6 duas regras | carrinho | `Cart.frete()` (500 até 10000, 0 acima) e no máximo 10 itens | duas regras com limites | 10000 exatos pagam frete; o 11º item levanta `ValueError` |
+
+- **Modelos e repetições:** os mesmos (`claude-haiku-5-5` e `gpt-6-luna`), 3 repetições: 108 sessões.
+- **Critério de documentação:** o corrigido, que aceita cenários novos ou alterados.
+
+### Metas da segunda rodada
+
+Comparação principal: só o plugin contra o repositório comum, para cada modelo.
+
+1. **Confirmação antes de codar:** só o plugin com no máximo 15% e pelo menos 30 pontos abaixo do repositório comum.
+2. **Documentação viva:** só o plugin com pelo menos 85% de documentação executável e verdadeira ao final, e pelo menos 30 pontos acima do repositório comum.
+3. **Sem perder entrega:** intenção atendida com só o plugin no máximo 5 pontos abaixo do repositório comum.
+4. **Dispensa escrever as instruções:** só o plugin a no máximo 10 pontos do controle "só instruções" nas metas 1 e 2.
+5. **Mudança posterior (T5):** só o plugin com pelo menos 80% de documentação executável ao final.
+6. **Custo:** tokens por sessão com só o plugin até 1,5 vez os do repositório comum.
+
+## Resultados da segunda rodada (24/10/2026)
+
+Rodada completa: 108 sessões, sem falha de infraestrutura, em `results/20261024-215841/`. Tudo depois do turno 3, com o critério de documentação corrigido.
+
+| Métrica | Haiku 5.5: comum / plugin / instruções | GPT-6 Luna: comum / plugin / instruções |
+| --- | --- | --- |
+| Regra antes da confirmação | 100% / 17% / 0% | 100% / 22% / 0% |
+| Cenário existente alterado antes da confirmação | 33% / 0% / 0% | 33% / 17% / 0% |
+| Intenção atendida | 100% / 94% / 94% | 100% / 100% / 100% |
+| Documentação executável e verdadeira | 100% / 100% / 100% | 94% / 100% / 94% |
+| Documentação executável após o turno 2 | 100% / 89% / 100% | 50% / 100% / 89% |
+| Tokens por sessão, mediana | 344 mil / 251 mil / 342 mil | 2,67 mi / 2,07 mi / 2,03 mi |
+| p95 do `PostToolUse` / `Stop`, mediana entre sessões com plugin | 1.475 / 931 ms | 1.084 / 792 ms |
+
+### Metas da segunda rodada
+
+| Meta | Resultado |
+| --- | --- |
+| 1. Só o plugin com no máximo 15% de regra antes da confirmação e 30 pontos abaixo do repositório comum | **Não atingida**: 17% e 22%, embora 83 e 78 pontos abaixo do comum. Todos os casos do Haiku e 3 dos 4 do Luna são da T4, em que o agente alinhou o código legado à documentação no turno 1 sem perguntar; nas tarefas de regra nova (T1, T2, T3, T5 e T6), o plugin ficou em 0% no Haiku e em 7% no Luna. |
+| 2. Só o plugin com pelo menos 85% de documentação executável ao final e 30 pontos acima do comum | **Não atingida.** O plugin chegou a 100% nos dois modelos, mas o comum também chegou a 100% e 94% depois do turno 3, que pede para atualizar o que for necessário. Ao fim do turno 2, quando o dev já tinha confirmado, o comum no Luna estava em 50% contra 100% do plugin. |
+| 3. Intenção com só o plugin no máximo 5 pontos abaixo do comum | **Atingida no Luna (100% = 100%); não atingida no Haiku (94% contra 100%)**, por uma sessão da T4 em que o agente mudou os passos e a checagem escondida não conseguiu executar. |
+| 4. Só o plugin a no máximo 10 pontos das instruções escritas nas metas 1 e 2 | **Não atingida** na meta 1 (17% e 22% contra 0%); atingida na meta 2 (100% contra 100% e 94%). |
+| 5. T5 (mudança posterior) com pelo menos 80% de documentação executável | **Atingida**: 100% nos dois modelos. |
+| 6. Tokens com só o plugin até 1,5 vez os do comum | **Atingida**: o plugin usou menos tokens (0,73 e 0,78 vez). |
+
+### O que a segunda rodada mostrou
+
+- **Num repositório comum, os dois modelos codaram antes de qualquer confirmação em 100% das sessões**, e em um terço delas alteraram cenários existentes sem perguntar. Instalar só o plugin, sem escrever instruções, levou isso a 0% (Haiku) e 7% (Luna) nas tarefas de regra nova, com menos tokens.
+- **Documentação viva sem depender do dev insistir:** ao fim do turno 2, com a regra confirmada, a documentação executava e passava em 100% das sessões do Luna com plugin, contra 50% no repositório comum; o comum só alcançou depois do turno 3 pedir explicitamente para atualizar o que faltasse.
+- **Lacuna do SpecMD na T4:** as convenções injetadas no início da sessão dizem que a documentação é canônica, mas não dizem para perguntar ao dev quando o código existente a contradiz. Com o plugin, o agente alinhou o código à documentação sozinho; com as instruções escritas, que dizem isso, perguntou em 100% das sessões.
+- **Latência dos hooks alta sob carga:** com 6 sessões em paralelo, execuções do Behave e a máquina carregada, a mediana dos p95 do `PostToolUse` ficou entre 1,1 e 1,5 s; no benchmark sem carga ela fica em torno de 0,3 s. Precisa de medição numa máquina sem carga.

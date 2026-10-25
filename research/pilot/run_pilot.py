@@ -109,11 +109,54 @@ TASKS = {
         "Valide o preço ao adicionar itens no carrinho.",
         "Respostas: só preços negativos são inválidos e devem levantar ValueError; preço zero é permitido (brinde); "
         "não há limite máximo. Confirmo, pode implementar."]},
+    "T5": {"project": "cart_discount", "app": CART_APP, "terms": [["500"], ["desconto"]], "new_scenarios": True, "turns": [
+        "O desconto de 10% agora vale para totais acima de 500 centavos.",
+        "Respostas: 'acima de 500' é estritamente maior que 500; o resto da regra continua igual. Confirmo, pode implementar."]},
+    "T6": {"project": "cart", "app": CART_APP, "terms": [["frete"], ["10 itens", "dez itens", "11"]], "new_scenarios": True,
+           "turns": [
+        "Adicione duas regras ao carrinho: o método Cart.frete() retorna 500 centavos para totais até 10000 centavos "
+        "e 0 acima disso; e o carrinho aceita no máximo 10 itens.",
+        "Respostas: 10000 centavos exatos pagam frete; o frete usa o total do carrinho; adicionar o 11º item levanta "
+        "ValueError. Confirmo, pode implementar."]},
     "T4": {"project": "payments", "app": "pagamentos.py", "terms": [["7 dias"]], "new_scenarios": False, "turns": [
         "Implemente em pagamentos.py a função solicitar_estorno(dias_desde_compra), que retorna 'aprovado' ou "
         "'recusado' conforme a regra de estornos.",
         "Respostas: vale o que está na documentação, 7 dias corridos; corrija o que estiver diferente. Confirmo, pode implementar."]},
 }
+
+ARMS = {
+    # Round 1: the same written instructions in both arms.
+    "control": {"instructions": True, "plugin": False},
+    "specmd": {"instructions": True, "plugin": True},
+    # Round 2: a common repository, the plugin alone, and the written instructions alone.
+    "comum": {"instructions": False, "plugin": False},
+    "plugin": {"instructions": False, "plugin": True},
+    "instrucoes": {"instructions": True, "plugin": False},
+}
+FOLLOW_UP = ("Sim, pode seguir: atualize o que for necessário para a regra confirmada valer, inclusive cenários "
+             "e requisitos existentes.")
+DISCOUNT_DOC = """
+## CART-REQ-003 — Desconto
+
+Totais acima de 1000 centavos recebem 10% de desconto, arredondado para baixo.
+
+```gherkin
+# language: pt
+Funcionalidade: Desconto
+
+  Cenário: Desconto acima de 1000 centavos
+    Dado um carrinho vazio
+    Quando eu adicionar itens de 600 e 500 centavos
+    Então o total deve ser 990 centavos
+
+  Cenário: Sem desconto no limite
+    Dado um carrinho vazio
+    Quando eu adicionar itens de 500 e 500 centavos
+    Então o total deve ser 1000 centavos
+```
+"""
+DISCOUNT_CODE = ("        subtotal = sum(self.prices)\n        if subtotal > 1000:\n"
+                 "            return subtotal - subtotal // 10\n        return subtotal\n")
 
 _lock = threading.Lock()
 
@@ -147,17 +190,24 @@ def inventory(project):
         shutil.rmtree(copy.parent, ignore_errors=True)
 
 
-def build_project(task, destination):
-    if TASKS[task]["project"] == "cart":
+def build_project(task, destination, instructions=True):
+    if TASKS[task]["project"] in {"cart", "cart_discount"}:
         environment = {**os.environ, "PYTHONPATH": f"{REPO}/src:{REPO}/vendor"}
         run([PYTHON, "-m", "specmd", "demo", "--dest", str(destination)], REPO, env=environment, check=True)
+        if TASKS[task]["project"] == "cart_discount":
+            with (destination / "docs/cart.md").open("a", encoding="utf-8") as stream:
+                stream.write(DISCOUNT_DOC)
+            app = destination / "app.py"
+            app.write_text(app.read_text(encoding="utf-8").replace("        return sum(self.prices)\n", DISCOUNT_CODE),
+                           encoding="utf-8")
     else:
         for relative, content in PAYMENTS.items():
             target = destination / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(content, encoding="utf-8")
-    for name in ("CLAUDE.md", "AGENTS.md"):
-        (destination / name).write_text(INSTRUCTIONS, encoding="utf-8")
+    if instructions:
+        for name in ("CLAUDE.md", "AGENTS.md"):
+            (destination / name).write_text(INSTRUCTIONS, encoding="utf-8")
     for command in (["git", "init", "-q"], ["git", "add", "-A"],
                     ["git", "-c", "user.name=pilot", "-c", "user.email=pilot@example.com", "commit", "-qm", "base"]):
         run(command, destination, check=True)
@@ -178,7 +228,7 @@ def claude_turn(project, prompt, session, first, arm, log):
     command = ["claude", "-p", prompt, "--model", MODELS["claude"], "--setting-sources", "project,local",
                "--strict-mcp-config", "--permission-mode", "acceptEdits", "--allowedTools", "Bash",
                "--output-format", "json", *(["--session-id", session] if first else ["--resume", session])]
-    if arm == "specmd":
+    if ARMS[arm]["plugin"]:
         command += ["--plugin-dir", str(BUNDLE)]
     environment = {key: value for key, value in os.environ.items() if key != "CLAUDE_PROJECT_DIR"}
     environment["SPECMD_HOOK_LOG"] = str(log)
@@ -195,7 +245,7 @@ def claude_turn(project, prompt, session, first, arm, log):
 
 def codex_turn(project, prompt, thread, arm, log):
     flags = ["--json", "-m", MODELS["codex"], "--skip-git-repo-check", "-c", 'sandbox_mode="workspace-write"',
-             *codex_overrides(arm == "specmd")]
+             *codex_overrides(ARMS[arm]["plugin"])]
     command = ["codex", "exec", *flags, prompt] if thread is None else ["codex", "exec", "resume", *flags, thread, prompt]
     environment = {**os.environ, "SPECMD_HOOK_LOG": str(log)}
     started = time.time()
@@ -269,16 +319,17 @@ def hook_stats(log):
             "post_tool_p95_ms": p95("PostToolUse"), "stop_p95_ms": p95("Stop")}
 
 
-def one_run(task, agent, arm, rep, workspace):
+def one_run(task, agent, arm, rep, workspace, follow_up=False):
     base = workspace / f"{task}-{agent}-{arm}-{rep}"
     project, log = base / "project", base / "hooks.jsonl"
     base.mkdir(parents=True)
-    build_project(task, project)
+    build_project(task, project, ARMS[arm]["instructions"])
     initial = scenarios(inventory(project))
     app = TASKS[task]["app"]
     base_ast = code_ast(project, app)
-    session, turns, after_first = (str(uuid.uuid4()) if agent == "claude" else None), [], {}
-    for index, prompt in enumerate(TASKS[task]["turns"]):
+    session, turns, after_first, after_second = (str(uuid.uuid4()) if agent == "claude" else None), [], {}, {}
+    prompts = TASKS[task]["turns"] + ([FOLLOW_UP] if follow_up else [])
+    for index, prompt in enumerate(prompts):
         if agent == "claude":
             session, turn = claude_turn(project, prompt, session, index == 0, arm, log)
         else:
@@ -289,13 +340,17 @@ def one_run(task, agent, arm, rep, workspace):
             after_first = {"code_changed": code_ast(project, app) != base_ast,
                            "base_scenario_changed": any(now.get(key) != value for key, value in initial.items()),
                            "intent": hidden_checks(task, project)["passed"]}
+        if index == 1 and follow_up:
+            after_second = {"intent_turn2": hidden_checks(task, project)["passed"],
+                            "executable_turn2": documentation(task, project, len(initial), initial.values())["executable_corrected"]}
     checks = hidden_checks(task, project)
     docs = documentation(task, project, len(initial), initial.values())
     row = {"task": task, "agent": agent, "model": MODELS[agent], "arm": arm, "rep": rep, "project": str(project),
            "turns": turns, "metrics": {"implemented_before_confirmation": after_first.get("code_changed"),
                                        "base_scenario_changed_turn1": after_first.get("base_scenario_changed"),
                                        "intent_turn1": after_first.get("intent"), "intent": checks["passed"],
-                                       **docs}, "checks": checks["checks"], "hooks": hook_stats(log)}
+                                       **after_second, **docs}, "checks": checks["checks"], "hooks": hook_stats(log),
+           "instructions": ARMS[arm]["instructions"], "plugin": ARMS[arm]["plugin"]}
     return row
 
 
@@ -426,6 +481,7 @@ def main():
     parser.add_argument("--tasks", default=",".join(TASKS))
     parser.add_argument("--agents", default="claude,codex")
     parser.add_argument("--arms", default="specmd,control")
+    parser.add_argument("--follow-up", action="store_true", help="terceiro turno do dev, que responde às perguntas pendentes")
     parser.add_argument("--output", type=Path, default=HERE / "results" / datetime.now().strftime("%Y%m%d-%H%M%S"))
     args = parser.parse_args()
     if args.reevaluate:
@@ -442,7 +498,7 @@ def main():
 
     def work(job):
         try:
-            row = one_run(*job, workspace)
+            row = one_run(*job, workspace, follow_up=args.follow_up)
         except Exception as error:  # noqa: BLE001 - one failed session must not stop the pilot
             row = {"task": job[0], "agent": job[1], "arm": job[2], "rep": job[3], "error": f"{type(error).__name__}: {error}"}
         with _lock:
