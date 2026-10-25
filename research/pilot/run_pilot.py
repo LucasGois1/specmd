@@ -34,6 +34,7 @@ PYTHON = str(REPO / ".venv/bin/python") if (REPO / ".venv/bin/python").exists() 
 BUNDLE = REPO / "dist/codex-plugin"
 CODEX_PLUGIN = "specmd@specmd-local"
 MODELS = {"claude": "claude-haiku-5-5", "codex": "gpt-6-luna"}
+CART_APP = "app.py"
 TIMEOUT = 1800
 
 INSTRUCTIONS = """# Instruções do projeto
@@ -97,14 +98,14 @@ def refused(context):
 }
 
 TASKS = {
-    "T1": {"project": "cart", "app": "app.py", "terms": [["1000"], ["10%", "desconto"]], "new_scenarios": True, "turns": [
+    "T1": {"project": "cart", "app": CART_APP, "terms": [["1000"], ["10%", "desconto"]], "new_scenarios": True, "turns": [
         "Adicione ao carrinho um desconto de 10% para totais acima de 1000 centavos.",
         "Respostas: 'acima de 1000' é estritamente maior que 1000; o desconto é arredondado para baixo, em centavos "
         "inteiros. Confirmo, pode implementar."]},
-    "T2": {"project": "cart", "app": "app.py", "terms": [["taxa"]], "new_scenarios": True, "turns": [
+    "T2": {"project": "cart", "app": CART_APP, "terms": [["taxa"]], "new_scenarios": True, "turns": [
         "Some uma taxa fixa de 1 centavo ao total do carrinho.",
         "Respostas: o carrinho vazio continua com total zero; a taxa vale só quando há itens. Confirmo, pode implementar."]},
-    "T3": {"project": "cart", "app": "app.py", "terms": [["negativ"]], "new_scenarios": True, "turns": [
+    "T3": {"project": "cart", "app": CART_APP, "terms": [["negativ"]], "new_scenarios": True, "turns": [
         "Valide o preço ao adicionar itens no carrinho.",
         "Respostas: só preços negativos são inválidos e devem levantar ValueError; preço zero é permitido (brinde); "
         "não há limite máximo. Confirmo, pode implementar."]},
@@ -307,6 +308,66 @@ def percent(value):
     return "—" if value is None else f"{value * 100:.0f}%"
 
 
+ARM_ORDER = ["comum", "plugin", "instrucoes", "specmd", "control"]
+ARM_LABELS = {"comum": "Repositório comum", "plugin": "Só o plugin", "instrucoes": "Só instruções",
+              "specmd": "Instruções + plugin", "control": "Só instruções"}
+METRICS = [("implemented_before_confirmation", "Regra antes da confirmação (menor é melhor)"),
+           ("intent", "Intenção atendida"), ("documented", "Regra documentada com cenários (critério registrado)"),
+           ("executable", "Documentação executável e verdadeira (critério registrado)"),
+           ("documented_corrected", "Regra documentada com cenários (critério corrigido)"),
+           ("executable_corrected", "Documentação executável e verdadeira (critério corrigido)"),
+           ("intent_turn2", "Intenção atendida após o turno 2"),
+           ("executable_turn2", "Documentação executável após o turno 2"),
+           ("base_scenario_changed_turn1", "Cenário existente alterado antes da confirmação")]
+
+
+def _median(rows, measure):
+    values = [measure(row) for row in rows]
+    return statistics.median(values) if values else None
+
+
+def _number(value, pattern):
+    return "—" if value is None else format(value, pattern)
+
+
+def _metric_lines(group, arms):
+    lines = []
+    for key, label in METRICS:
+        values = [rate(group[arm], key) for arm in arms]
+        if any(value is not None for value in values):
+            lines.append(f"| {label} | " + " | ".join(percent(value) for value in values) + " |")
+    tokens = [_median(group[arm], lambda row: sum((turn.get("tokens_in") or 0) + (turn.get("tokens_out") or 0)
+                                                  for turn in row["turns"])) for arm in arms]
+    seconds = [_median(group[arm], lambda row: sum(turn["seconds"] for turn in row["turns"])) for arm in arms]
+    costs = [_median(group[arm], lambda row: sum(turn.get("cost_usd") or 0 for turn in row["turns"])) for arm in arms]
+    lines.append("| Tokens por sessão, mediana | " + " | ".join(_number(value, ",.0f") for value in tokens) + " |")
+    lines.append("| Segundos por sessão, mediana | " + " | ".join(_number(value, ".0f") for value in seconds) + " |")
+    if any(costs):
+        lines.append("| Custo por sessão, mediana em US$ | " + " | ".join(_number(value, ".4f") for value in costs) + " |")
+    return lines
+
+
+def _hook_lines(group, arms):
+    hooks = [row["hooks"] for arm in arms for row in group[arm] if row["hooks"].get("events")]
+    post = [value["post_tool_p95_ms"] for value in hooks if value.get("post_tool_p95_ms") is not None]
+    stop = [value["stop_p95_ms"] for value in hooks if value.get("stop_p95_ms") is not None]
+    if not hooks:
+        return []
+    return ["", f"Hooks: p95 do PostToolUse / Stop na pior sessão: {max(post) if post else '—'} / "
+                f"{max(stop) if stop else '—'} ms; mediana dos p95: {statistics.median(post) if post else '—'} / "
+                f"{statistics.median(stop) if stop else '—'} ms."]
+
+
+def _task_lines(group, arms, tasks):
+    lines = ["", "Por tarefa (" + " / ".join(ARM_LABELS[arm] for arm in arms) + "):", "",
+             "| Tarefa | Antes da confirmação | Intenção | Executável (corrigido) |", "| --- | --- | --- | --- |"]
+    for task in tasks:
+        cells = [" / ".join(percent(rate([row for row in group[arm] if row["task"] == task], key)) for arm in arms)
+                 for key in ("implemented_before_confirmation", "intent", "executable_corrected")]
+        lines.append(f"| {task} | " + " | ".join(cells) + " |")
+    return lines
+
+
 def summarize(rows, destination):
     lines = ["# Resultados do piloto", "", f"Gerado em {datetime.now(timezone.utc).isoformat()} a partir de "
              f"{len(rows)} sessões. Desenho e metas em [README](../../README.md).", ""]
@@ -314,39 +375,13 @@ def summarize(rows, destination):
     if replaced:
         lines += ["Sessões repetidas por falha de infraestrutura: " + ", ".join(
             f"{row['task']} {row['agent']} {row['arm']} rep {row['rep']} ({row['replaces']})" for row in replaced) + ".", ""]
-    metrics = [("implemented_before_confirmation", "Regra antes da confirmação (menor é melhor)"),
-               ("intent", "Intenção atendida"), ("documented", "Regra documentada com cenários (critério registrado)"),
-               ("executable", "Documentação executável e verdadeira (critério registrado)"),
-               ("documented_corrected", "Regra documentada com cenários (critério corrigido)"),
-               ("executable_corrected", "Documentação executável e verdadeira (critério corrigido)"),
-               ("base_scenario_changed_turn1", "Cenário existente alterado antes da confirmação")]
+    arms = [arm for arm in ARM_ORDER if any(row["arm"] == arm for row in rows)]
+    tasks = sorted({row["task"] for row in rows})
     for agent in sorted({row["agent"] for row in rows}):
-        lines += [f"## {MODELS[agent]}", "", "| Métrica | SpecMD | Controle |", "| --- | --- | --- |"]
-        group = {arm: [row for row in rows if row["agent"] == agent and row["arm"] == arm] for arm in ("specmd", "control")}
-        for key, label in metrics:
-            lines.append(f"| {label} | {percent(rate(group['specmd'], key))} | {percent(rate(group['control'], key))} |")
-        for arm in ("specmd", "control"):
-            tokens = [sum((turn.get("tokens_in") or 0) + (turn.get("tokens_out") or 0) for turn in row["turns"]) for row in group[arm]]
-            seconds = [sum(turn["seconds"] for turn in row["turns"]) for row in group[arm]]
-            cost = [sum(turn.get("cost_usd") or 0 for turn in row["turns"]) for row in group[arm]]
-            lines.append(f"| Tokens por sessão, mediana ({arm}) | {statistics.median(tokens) if tokens else '—'} | |")
-            lines.append(f"| Segundos por sessão, mediana ({arm}) | {statistics.median(seconds) if seconds else '—'} | |")
-            if any(cost):
-                lines.append(f"| Custo por sessão, mediana em US$ ({arm}) | {statistics.median(cost):.4f} | |")
-        hooks = [row["hooks"] for row in group["specmd"] if row["hooks"].get("events")]
-        if hooks:
-            post = [value["post_tool_p95_ms"] for value in hooks if value.get("post_tool_p95_ms") is not None]
-            stop = [value["stop_p95_ms"] for value in hooks if value.get("stop_p95_ms") is not None]
-            lines.append(f"| Hooks: p95 do PostToolUse / Stop (pior sessão, ms) | {max(post) if post else '—'} / "
-                         f"{max(stop) if stop else '—'} | |")
-        lines += ["", "Por tarefa (SpecMD / controle):", "", "| Tarefa | Antes da confirmação | Intenção | Executável |",
-                  "| --- | --- | --- | --- |"]
-        for task in sorted(TASKS):
-            by_arm = {arm: [row for row in group[arm] if row["task"] == task] for arm in group}
-            cells = [" / ".join(percent(rate(by_arm[arm], key)) for arm in ("specmd", "control"))
-                     for key in ("implemented_before_confirmation", "intent", "executable")]
-            lines.append(f"| {task} | " + " | ".join(cells) + " |")
-        lines.append("")
+        group = {arm: [row for row in rows if row["agent"] == agent and row["arm"] == arm] for arm in arms}
+        lines += [f"## {MODELS[agent]}", "", "| Métrica | " + " | ".join(ARM_LABELS[arm] for arm in arms) + " |",
+                  "| --- |" + " --- |" * len(arms)]
+        lines += _metric_lines(group, arms) + _hook_lines(group, arms) + _task_lines(group, arms, tasks) + [""]
     destination.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
