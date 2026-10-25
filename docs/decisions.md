@@ -31,7 +31,7 @@ Este registro consolida a discussão que originou o projeto. As diretrizes abaix
 | D-023 | Avisar quando um cenário confirmado é enfraquecido ou removido. | Diff contra os cenários da última mensagem do dev; devolve ao agente só no sinal forte. Implementada em SMD-REQ-028. |
 | D-024 | Avisar quando um documento ignorado passa a declarar regras. | Só aviso, quando o arquivo muda. Implementada em SMD-REQ-029. |
 | D-025 | Adoção em legado por um comando que parte da documentação existente. | Lista todos os documentos, o dev filtra com o agente e os cenários nascem um documento por vez. Implementada em SMD-REQ-030; o `@wip` continua decisão do dev. |
-| D-026 | Suportar MDG (`.feature.md`) seguindo a especificação oficial. | Conversão para Gherkin em memória, preservando as linhas. Proposta, não implementada. |
+| D-026 | Suportar MDG (`.feature.md`) seguindo a especificação oficial. | Conversão para Gherkin em memória, preservando as linhas. Implementada em SMD-REQ-031. |
 | D-027 | Validar o Codex com LLM real e os eventos novos. | Depende de autenticação e da confiança nos hooks pelo usuário. Proposta, não executada. |
 | D-028 | Medir o valor do SpecMD num piloto comparativo. | Grupo de comparação forte e avaliação por testes de aceite escondidos. Proposta, não executada. |
 
@@ -132,8 +132,8 @@ Decidido:
 
 Em aberto:
 
-- Aceitar o ID de requisito também no título da `Regra`. Proposta: sim.
-- Quais idiomas suportar. Proposta: todos os do Gherkin, já que o idioma vem da configuração.
+- ID de requisito no título da `Regra`: aceito, decidido em 24/10/2026.
+- Idiomas: todos os do Gherkin, pelo `gherkin_language`, decidido em 24/10/2026. Os bridges Java e Go não leem o campo `language` do protocolo; o SpecMD insere o cabeçalho `# language:` no texto enviado a eles.
 
 ### D-027 — Codex com LLM real
 

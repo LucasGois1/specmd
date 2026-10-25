@@ -258,6 +258,41 @@ Funcionalidade: Adoção em projeto legado
     Então o feedback orienta a perguntar ao dev qual dos dois vale, sem corrigir sozinho
 ```
 
+## SMD-REQ-031 — Markdown with Gherkin (`.feature.md`)
+
+Arquivos `*.feature.md` são lidos no formato oficial Markdown with Gherkin (MDG) do Cucumber: palavras-chave como títulos Markdown, passos como itens de lista, tabelas GFM indentadas de 2 a 5 espaços, tags entre crases na linha acima da palavra-chave e prosa livre entre eles. O SpecMD converte o arquivo em Gherkin em memória, linha a linha, e os motores executam sem arquivo `.feature`. Num `.feature.md`, um bloco cercado logo após um passo é o texto (Doc String) do passo; os demais Markdown continuam com blocos cercados `gherkin`. O MDG não tem `# language:`: o idioma vem de `gherkin_language` no `specmd.toml`, e um arquivo cujas palavras-chave não estão no idioma configurado gera um aviso dizendo isso. Títulos com ID de requisito ligam os cenários abaixo deles, inclusive o da `Regra` (`## Regra: PAG-REQ-001 — Estorno`). Origem: [D-026](decisions.md), confirmado pelo usuário em 24/10/2026.
+
+```gherkin
+# language: pt
+Funcionalidade: Markdown with Gherkin
+
+  @SMD-REQ-031 @SMD-SCN-134
+  Cenário: Documento MDG executado com origem no Markdown
+    Dado um arquivo .feature.md com prosa, títulos de cenário e passos em lista
+    E gherkin_language definido no specmd.toml
+    Quando os cenários são executados
+    Então cada resultado aponta a linha do cenário no arquivo .feature.md
+    E nenhum arquivo .feature é criado
+
+  @SMD-REQ-031 @SMD-SCN-135
+  Cenário: Regra com ID vira requisito
+    Dado um título "## Regra: PAG-REQ-001 — Estorno" num arquivo .feature.md
+    Quando a documentação é analisada
+    Então os cenários da regra ficam ligados a PAG-REQ-001
+
+  @SMD-REQ-031 @SMD-SCN-136
+  Cenário: Bloco cercado é argumento de passo
+    Dado um passo seguido de um bloco cercado num arquivo .feature.md
+    Quando o cenário é executado
+    Então o passo recebe o conteúdo do bloco como texto
+
+  @SMD-REQ-031 @SMD-SCN-137
+  Cenário: Idioma ausente é apontado
+    Dado um arquivo .feature.md em português sem gherkin_language configurado
+    Quando a documentação é analisada
+    Então o agente é avisado de que em MDG o idioma vem do specmd.toml
+```
+
 ## SMD-REQ-024 — Feedback que não trava a sessão
 
 O plugin nunca encerra a sessão do agente. O mesmo feedback repetido sem mudança, ou o limite de quatro devoluções seguidas, deixa o agente concluir; a contagem recomeça a cada mensagem do dev. Erros internos do plugin viram aviso.

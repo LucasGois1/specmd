@@ -14,6 +14,7 @@ import json
 import math
 import os
 from pathlib import Path
+import re
 import signal
 import subprocess
 import sys
@@ -60,7 +61,25 @@ def _document_scenarios(root: Path, document: Any, wip_tags: set[str]) -> list[d
     return expected
 
 
-def _features(root: Path, inspection: dict, wip_tags: set[str] = frozenset()) -> tuple[list[dict], list[dict]]:
+_LANGUAGE_HEADER = re.compile(r"^\s*#\s*language\s*:", re.IGNORECASE)
+
+
+def _with_language(feature: dict, language: str | None) -> dict:
+    """Bridges read the language from the text: add the configured one where a line is free for it."""
+    content, line = feature["content"], feature["line"]
+    leading = [text for text in content.splitlines() if text.strip()][:1]
+    if not language or (leading and _LANGUAGE_HEADER.match(leading[0])):
+        return feature
+    header = f"# language: {language}"
+    if content.startswith("\n"):
+        return {**feature, "content": header + content}
+    if line > 1:
+        return {**feature, "content": header + "\n" + content, "line": line - 1}
+    return feature
+
+
+def _features(root: Path, inspection: dict, wip_tags: set[str] = frozenset(),
+              language: str | None = None) -> tuple[list[dict], list[dict]]:
     """Use the scanner's inventory-checked in-memory extraction; skip work-in-progress scenarios."""
     from .core import extract_features
 
@@ -71,13 +90,13 @@ def _features(root: Path, inspection: dict, wip_tags: set[str] = frozenset()) ->
     if len({item["id"] for item in expected}) != len(expected):
         raise ValueError("Identidades de cenário duplicadas na inspeção.")
     features = []
-    for feature in extract_features(root, inspection):
+    for feature in extract_features(root, inspection, language):
         # The core preserves source coordinates by padding its parser input.
         # Bridge protocol carries raw content + first-content line explicitly.
         padding = "\n" * (feature["line"] - 1)
         if not feature["content"].startswith(padding):
             raise ValueError("Extração de Gherkin sem o padding de origem esperado.")
-        features.append({**feature, "content": feature["content"][len(padding):]})
+        features.append(_with_language({**feature, "content": feature["content"][len(padding):]}, language))
     return features, expected
 
 
@@ -209,7 +228,7 @@ _NO_RUNNER = ("Nenhum runner para executar os cenários: crie os passos Python e
 def _expected(root: Path, inspection: dict, config: dict, only: set[str] | None,
               result: dict) -> tuple[list[dict], list[dict]] | None:
     """Features and scenarios to run; None when nothing is demanded (already recorded as passed)."""
-    features, expected = _features(root, inspection, set(config.get("wip_tags", ["wip"])))
+    features, expected = _features(root, inspection, set(config.get("wip_tags", ["wip"])), config.get("gherkin_language"))
     if not expected:
         if not any(document.get("scenarios") for document in inspection.get("documents", [])):
             raise ValueError("Nenhum cenário encontrado na documentação.")

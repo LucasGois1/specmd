@@ -19,6 +19,11 @@ A documentação Markdown é a fonte canônica das regras de negócio. Os cenár
 - Depois de escrever ou mudar cenários, mostre-os ao dev e pergunte se estão corretos antes de implementar. Aponte ambiguidades (limites, arredondamentos, exceções).
 - Não mude um cenário existente para fazer o código passar sem confirmar com o dev: se o código pedido contraria a documentação, pergunte se a regra mudou.
 
+## Markdown with Gherkin
+
+- Um arquivo `*.feature.md` usa o formato MDG do Cucumber: palavras-chave como títulos (`### Cenário:`), passos como itens de lista (`* Dado …`), tabelas indentadas de 2 a 5 espaços e prosa livre entre eles. Não use blocos ```gherkin nesses arquivos: ali, um bloco cercado após um passo é o texto do passo.
+- O MDG não aceita `# language:`; o idioma vem de `gherkin_language` no `specmd.toml`.
+
 ## Markdown que não descreve comportamento
 
 - README, CHANGELOG, guias de setup, notas e ADRs técnicos vão para o `.specmdignore` na raiz (padrões no estilo `.gitignore`).

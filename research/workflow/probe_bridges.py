@@ -37,6 +37,41 @@ Funcionalidade: Soma
 ```
 '''
 
+MDG = '''# Funcionalidade: Soma em MDG
+
+Prosa sobre a soma.
+
+## SMD-NATIVE-REQ-002 — Somar em MDG
+
+### Cenário: Somar com a aplicação em MDG
+* Dado os números 2 e 3
+* Quando a aplicação somar os números
+* Então o resultado deve ser 5
+'''
+
+
+CONTRACT_FILE = "contract.md"
+MDG_FILE = "contract.feature.md"
+CASES = (
+    ("passes", CONTRACT_FILE, CONTRACT, None, True),
+    ("assertion_failure", CONTRACT_FILE, CONTRACT.replace("ser 5", "ser 999"), None, False),
+    ("undefined_step", CONTRACT_FILE, CONTRACT.replace("a aplicação somar os números", "um passo não implementado"), None, False),
+    ("language_from_config", CONTRACT_FILE, CONTRACT.replace("# language: pt\n", ""), "pt", True),
+    ("markdown_with_gherkin", MDG_FILE, MDG, "pt", True),
+    ("markdown_with_gherkin_failure", MDG_FILE, MDG.replace("ser 5", "ser 999"), "pt", False),
+)
+
+
+def run_case(root, language, command, name, text, gherkin_language):
+    for old in root.glob("*.md"):
+        old.unlink()
+    (root / "specmd.toml").write_text(f'gherkin_language = "{gherkin_language}"\n' if gherkin_language else "")
+    (root / name).write_text(text, encoding="utf-8")
+    config = {"runners": [{"id": language, "language": language, "command": command, "timeout": 60}]}
+    if gherkin_language:
+        config["gherkin_language"] = gherkin_language
+    return execute_project(root, inspect_project(root), config)
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -54,17 +89,9 @@ def main():
     cases = []
     with tempfile.TemporaryDirectory(prefix="specmd-native-bridge-") as temporary:
         root = Path(temporary)
-        (root / "specmd.toml").write_text('schema = 2\nproject_id = "native-bridge-probe"\n')
-        document = root / "contract.md"
         for language, command in commands:
-            for case, text, expected in (
-                ("passes", CONTRACT, True),
-                ("assertion_failure", CONTRACT.replace("ser 5", "ser 999"), False),
-                ("undefined_step", CONTRACT.replace("a aplicação somar os números", "um passo não implementado"), False),
-            ):
-                document.write_text(text, encoding="utf-8")
-                report = execute_project(root, inspect_project(root), {"runners": [
-                    {"id": language, "language": language, "command": command, "timeout": 60}]})
+            for case, name, text, gherkin_language, expected in CASES:
+                report = run_case(root, language, command, name, text, gherkin_language)
                 cases.append({"language": language, "case": case, "expected_passed": expected,
                               "expectation_met": report["passed"] == expected, "report": report})
         no_feature_files = not list(root.rglob("*.feature"))
