@@ -33,7 +33,7 @@ Este registro consolida a discussão que originou o projeto. As diretrizes abaix
 | D-025 | Adoção em legado por um comando que parte da documentação existente. | Lista todos os documentos, o dev filtra com o agente e os cenários nascem um documento por vez. Implementada em SMD-REQ-030; o `@wip` continua decisão do dev. |
 | D-026 | Suportar MDG (`.feature.md`) seguindo a especificação oficial. | Conversão para Gherkin em memória, preservando as linhas. Implementada em SMD-REQ-031. |
 | D-027 | Validar o Codex com LLM real e os eventos novos. | Depende de autenticação e da confiança nos hooks pelo usuário. Executada em 24/10/2026; ver [sessões nativas no Codex](../research/codex/native-session.md). |
-| D-028 | Medir o valor do SpecMD num piloto comparativo. | Grupo de comparação forte e avaliação por testes de aceite escondidos. Proposta, não executada. |
+| D-028 | Medir o valor do SpecMD num piloto comparativo. | Grupo de comparação forte e avaliação por testes de aceite escondidos. Primeira rodada executada em 24/10/2026 com claude-haiku-5-5 e gpt-6-luna; ver [piloto](../research/pilot/README.md). |
 
 ## D-021 — Assistente, não auditoria (23/10/2026)
 

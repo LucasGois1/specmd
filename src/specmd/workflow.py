@@ -162,9 +162,6 @@ def matches_code(root: Path, run: dict[str, Any], now: dict[str, Any]) -> bool:
     return any(code_changes(root, snapshot, now) == set() for snapshot in snapshots)
 
 
-HISTORY_FILE = "scenario-history.json"
-
-
 def adoption_list(root: Path) -> dict[str, Any]:
     """Analysed documents still without scenarios or with requirements without scenarios, by path."""
     root = Path(root).resolve(strict=True)
@@ -184,22 +181,6 @@ def adoption_list(root: Path) -> dict[str, Any]:
             "documented": sum(1 for document in documents if document["scenarios"]),
             "findings": [item for item in inspection["findings"] if item.get("kind") not in {
                 "gherkin_missing", "requirement_uncovered"}]}
-
-
-def _never_passed(root: Path, inspection: dict[str, Any], execution: dict[str, Any]) -> list[str]:
-    """Failing scenarios that never passed, then remember which scenarios have passed."""
-    history = hook_state.read_local(root, HISTORY_FILE).get("passed")
-    passed = dict(history) if isinstance(history, dict) else {}
-    now = datetime.now(timezone.utc).isoformat()
-    never = [failure["id"] for failure in execution["failures"] if failure.get("id") not in passed
-             and any(step.get("status") == "failed" for step in failure.get("steps", []))]
-    for scenario in execution["scenarios"]:
-        if scenario.get("status") == "passed":
-            passed.setdefault(scenario.get("id"), now)
-    known = {item["id"] for document in inspection["documents"] for item in document["scenarios"]}
-    with contextlib.suppress(OSError, ValueError):
-        hook_state.write_local(root, HISTORY_FILE, {"passed": {key: value for key, value in passed.items() if key in known}})
-    return never
 
 
 def _reported(run: dict[str, Any]) -> dict[str, Any]:
@@ -235,6 +216,8 @@ def run_project(root: Path, affected: bool = False) -> dict[str, Any]:
     """
     from .config import load_config
     from .runner import execute_project
+    from .diagnosis import classify, remember_passed, session_changes
+    from .protection import load_baseline
     from .selection import COVERAGE_FILE, record, select, steps_directories
 
     root = Path(root).resolve(strict=True)
@@ -250,8 +233,12 @@ def run_project(root: Path, affected: bool = False) -> dict[str, Any]:
     only = select(root, inspection, database, changes, steps_directories(root, config)) if affected else None
     execution = execute_project(root, inspection, config, only=only)
     after = code_snapshot(root)
+    database = record(root, database, inspection, execution, only, changes)
     with contextlib.suppress(OSError, ValueError):
-        hook_state.write_local(root, COVERAGE_FILE, record(root, database, inspection, execution, only, changes))
+        hook_state.write_local(root, COVERAGE_FILE, database)
+    state = hook_state.load(root)
+    kinds = classify(inspection, execution, database, remember_passed(root, inspection, execution), load_baseline(root),
+                     session_changes(root, state.get("code_baseline"), before), steps_directories(root, config))
     last_run = {
         "at": datetime.now(timezone.utc).isoformat(),
         "spec_fp": inspection["spec_fp"],
@@ -262,7 +249,8 @@ def run_project(root: Path, affected: bool = False) -> dict[str, Any]:
         "expected": scenario_count(inspection),
         "unselected": execution["unselected"],
         "failures": execution["failures"],
-        "never_passed": _never_passed(root, inspection, execution),
+        "divergent": kinds["divergent"],
+        "contradicted": kinds["contradicted"],
         "findings": execution["findings"],
     }
     hook_state.update(root, lambda state: state.__setitem__("last_run", last_run))

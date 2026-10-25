@@ -225,7 +225,7 @@ Funcionalidade: Documento ignorado que ganha regra
 
 ## SMD-REQ-030 — Adoção em projeto legado
 
-Num projeto que já tem documentação, `/specmd:adopt` (ou `specmd adopt`) lista todos os documentos analisados que ainda não têm cenários ou têm requisitos sem cenário, em ordem de caminho, sem palpite sobre quais parecem ter regras. Ficam fora os ignorados por padrão e os que o time já colocou no `.specmdignore`. O agente apresenta a lista ao dev, que diz quais não descrevem comportamento; o agente grava esses no `.specmdignore`. Depois o agente trata um documento por vez: propõe requisitos e cenários, pede confirmação e segue o ciclo normal de passos, execução e feedback. Não há estado próprio da adoção: rodar a lista de novo mostra o que falta. Quando um cenário que nunca passou falha, o feedback lembra que, se o código já existia e faz outra coisa, é uma divergência entre documentação e código, e o agente pergunta ao dev qual dos dois vale antes de mudar qualquer um. Marcar `@wip` continua sendo decisão do dev. Origem: [D-025](decisions.md), confirmado pelo usuário em 24/10/2026.
+Num projeto que já tem documentação, `/specmd:adopt` (ou `specmd adopt`) lista todos os documentos analisados que ainda não têm cenários ou têm requisitos sem cenário, em ordem de caminho, sem palpite sobre quais parecem ter regras. Ficam fora os ignorados por padrão e os que o time já colocou no `.specmdignore`. O agente apresenta a lista ao dev, que diz quais não descrevem comportamento; o agente grava esses no `.specmdignore`. Depois o agente trata um documento por vez: propõe requisitos e cenários, pede confirmação e segue o ciclo normal de passos, execução e feedback. Não há estado próprio da adoção: rodar a lista de novo mostra o que falta. Quando um cenário que nunca passou falha e o código de produto que ele executa não foi alterado na sessão, o feedback lembra que, se o código já existia e faz outra coisa, é uma divergência entre documentação e código, e o agente pergunta ao dev qual dos dois vale antes de mudar qualquer um. Sem cobertura (Java, Go, Python anterior a 3.12), a orientação vale para cenários novos ou alterados desde a última mensagem do dev. Quando um cenário que já existia na última mensagem do dev quebra porque o agente mudou o código que ele executa, não é divergência: o feedback orienta a atualizar o cenário se o dev confirmou a nova regra, ou a ajustar o código. Os passos (`tests/steps`, `environment.py`) não contam como código de produto. Correção aprovada pelo usuário em 24/10/2026, depois do [piloto](../research/pilot/README.md). Marcar `@wip` continua sendo decisão do dev. Origem: [D-025](decisions.md), confirmado pelo usuário em 24/10/2026.
 
 ```gherkin
 # language: pt
@@ -253,9 +253,16 @@ Funcionalidade: Adoção em projeto legado
 
   @SMD-REQ-030 @SMD-SCN-133
   Cenário: Divergência entre documentação e código
-    Dado um cenário confirmado que nunca passou e falha porque o código faz outra coisa
+    Dado um cenário confirmado que nunca passou e falha porque o código, que o agente não mudou, faz outra coisa
     Quando o agente recebe a falha
     Então o feedback orienta a perguntar ao dev qual dos dois vale, sem corrigir sozinho
+
+  @SMD-REQ-030 @SMD-SCN-138
+  Cenário: Cenário existente quebrado pela mudança do agente não é divergência
+    Dado um cenário que já existia e nunca rodou
+    Quando o agente muda o código que ele executa e o cenário falha
+    Então o feedback não sugere divergência
+    E orienta a atualizar o cenário se o dev confirmou a nova regra, ou a ajustar o código
 ```
 
 ## SMD-REQ-031 — Markdown with Gherkin (`.feature.md`)
