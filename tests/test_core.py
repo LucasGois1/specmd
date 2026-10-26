@@ -2,6 +2,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -263,6 +264,16 @@ class InspectionCacheTests(unittest.TestCase):
         self.cache.write_text("{corrompido", encoding="utf-8")
         report, parsed = self.analysed()
         self.assertEqual((report["status"], parsed), ("ready", ["docs/regras.md"]))
+
+    def test_warm_cache_does_not_import_the_gherkin_parser(self):
+        inspect_project(self.root)
+        repository = Path(__file__).resolve().parents[1]
+        code = ("import sys; sys.path[:0] = [sys.argv[1], sys.argv[2]]; from pathlib import Path; "
+                "from specmd.core import inspect_project; inspect_project(Path(sys.argv[3])); "
+                "print('behave' in sys.modules)")
+        completed = subprocess.run([sys.executable, "-c", code, str(repository / "src"), str(repository / "vendor"),
+                                    str(self.root)], capture_output=True, text=True, check=True)
+        self.assertEqual(completed.stdout.strip(), "False")
 
     def test_unwritable_cache_does_not_break_the_inspection(self):
         (self.root / ".specmd").mkdir()
