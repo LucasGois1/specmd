@@ -37,10 +37,14 @@ def _locked_wheels() -> list[dict]:
     return sorted(wheels, key=lambda item: item["name"])
 
 
+# Files the operating system leaves behind (Finder, Explorer); never part of a wheel.
+OS_FILES = frozenset({".DS_Store", "Thumbs.db"})
+
+
 def _tree_digest() -> str:
     digest = hashlib.sha256()
     for path in sorted(VENDOR.rglob("*")):
-        if path.is_file() and path != MANIFEST and "__pycache__" not in path.parts:
+        if path.is_file() and path != MANIFEST and "__pycache__" not in path.parts and path.name not in OS_FILES:
             digest.update(path.relative_to(VENDOR).as_posix().encode() + b"\0" + path.read_bytes() + b"\0")
     return digest.hexdigest()
 

@@ -66,12 +66,26 @@ def _markdown() -> Any:
 
 
 @functools.lru_cache(maxsize=None)
+def _package_file(package: str, name: str) -> bytes:
+    """A file of an installed package, found without importing it.
+
+    find_spec on a submodule imports the parent package, and importing behave
+    alone cost about 100 ms in every hook.
+    """
+    spec = importlib.util.find_spec(package)
+    locations = list(spec.submodule_search_locations or []) if spec else []
+    for location in locations:
+        candidate = Path(location) / name
+        if candidate.is_file():
+            return candidate.read_bytes()
+    return f"{package}/{name}".encode()
+
+
+@functools.lru_cache(maxsize=None)
 def _cache_key(language: str | None) -> str:
     """Cached analyses are valid only for this analyser, these parsers and this language."""
-    parts = [Path(__file__).read_bytes(), str(language).encode()]
-    for module in ("behave.version", "markdown_it"):
-        spec = importlib.util.find_spec(module)
-        parts.append(Path(spec.origin).read_bytes() if spec and spec.origin else module.encode())
+    parts = [Path(__file__).read_bytes(), str(language).encode(),
+             _package_file("behave", "version.py"), _package_file("markdown_it", "__init__.py")]
     return hashlib.sha256(b"\0".join(parts)).hexdigest()
 
 

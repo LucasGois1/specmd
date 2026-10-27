@@ -44,7 +44,7 @@ def build() -> dict[str, object]:
     files.extend(str(path.relative_to(REPOSITORY)) for path in sorted(package.glob("*.py")))
     for tree in TREES:
         files.extend(str(path.relative_to(REPOSITORY)) for path in sorted((REPOSITORY / tree).rglob("*"))
-                     if path.is_file() and "__pycache__" not in path.parts)
+                     if path.is_file() and "__pycache__" not in path.parts and path.name not in {".DS_Store", "Thumbs.db"})
     payloads: dict[str, bytes] = {}
     for relative in sorted(files):
         source = REPOSITORY / relative
