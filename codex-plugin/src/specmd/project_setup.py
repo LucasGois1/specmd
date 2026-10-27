@@ -1,18 +1,22 @@
-"""Enable the SpecMD plugin for everyone who opens the repository in Claude Code.
+"""Enable the SpecMD plugin for everyone who opens the repository in Claude Code or Codex.
 
-Installing the plugin with project scope already activates it; this adds the
-marketplace declaration so collaborators receive it after trusting the folder.
-specmd.toml and .specmdignore stay optional. Safe to run again.
+Installing the plugin with project scope already activates it in Claude Code;
+this adds the marketplace declaration so collaborators receive it after
+trusting the folder. Codex installs plugins per user, so the project enables
+SpecMD in its own .codex/config.toml. specmd.toml and .specmdignore stay
+optional. Safe to run again; existing entries are kept.
 """
 from __future__ import annotations
 
 import json
 from pathlib import Path
+import tomllib
 from typing import Any
 
 MARKETPLACE = {"source": {"source": "github", "repo": "LucasGois1/specmd"}, "autoUpdate": True}
 PLUGIN_ID = "specmd@specmd"
 SETTINGS = ".claude/settings.json"
+CODEX_CONFIG = ".codex/config.toml"
 
 
 def _merge_claude_settings(root: Path) -> bool:
@@ -36,11 +40,35 @@ def _merge_claude_settings(root: Path) -> bool:
     return True
 
 
+def _enable_in_codex(root: Path) -> bool:
+    """Add [plugins."specmd@specmd"] to the project's Codex config unless it already mentions SpecMD."""
+    path = root / CODEX_CONFIG
+    text = path.read_text(encoding="utf-8") if path.exists() else ""
+    try:
+        config = tomllib.loads(text)
+    except ValueError as error:
+        raise ValueError(f"{CODEX_CONFIG} não é TOML válido: {error}") from error
+    plugins = config.get("plugins", {})
+    if isinstance(plugins, dict) and any(isinstance(key, str) and key.split("@")[0] == "specmd" for key in plugins):
+        return False  # An existing entry, enabled or not, is the project's decision.
+    if not text.strip():
+        separator = ""
+    elif text.endswith("\n"):
+        separator = "\n"
+    else:
+        separator = "\n\n"
+    path.parent.mkdir(exist_ok=True)
+    path.write_text(text + separator + f'[plugins."{PLUGIN_ID}"]\nenabled = true\n', encoding="utf-8")
+    return True
+
+
 def initialize(root: Path) -> dict[str, Any]:
     root = Path(root).resolve(strict=True)
     changed = [SETTINGS] if _merge_claude_settings(root) else []
+    changed += [CODEX_CONFIG] if _enable_in_codex(root) else []
     return {
         "status": "initialized", "root": str(root), "changed": changed,
-        "message": (f"SpecMD habilitado para o time. Faça commit de {SETTINGS}: quem abrir o Claude Code neste "
-                    "repositório e confiar na pasta recebe o plugin. specmd.toml e .specmdignore são opcionais."),
+        "message": (f"SpecMD habilitado para o time. Faça commit de {SETTINGS} e {CODEX_CONFIG}: quem abrir o "
+                    "Claude Code neste repositório e confiar na pasta recebe o plugin; no Codex, quem tiver o plugin "
+                    "instalado o terá ativo neste projeto confiável. specmd.toml e .specmdignore são opcionais."),
     }

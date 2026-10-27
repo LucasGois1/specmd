@@ -50,7 +50,7 @@ class DemoTests(unittest.TestCase):
     def test_cli_init_enables_the_plugin_and_can_run_again(self):
         self.root.mkdir()
         code, result = self.cli("init", "--root", str(self.root))
-        self.assertEqual((code, result["status"], result["changed"]), (0, "initialized", [".claude/settings.json"]))
+        self.assertEqual((code, result["status"], result["changed"]), (0, "initialized", [".claude/settings.json", ".codex/config.toml"]))
         self.assertFalse((self.root / "specmd.toml").exists())
         code, result = self.cli("init", "--root", str(self.root))
         self.assertEqual((code, result["changed"]), (0, []))

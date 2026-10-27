@@ -116,4 +116,4 @@ Para testar um clone local, troque `LucasGois1/specmd` pelo caminho do clone.
 
 Depois de instalar ou atualizar, abra o `codex`, rode `/hooks` e confie nos quatro handlers do `specmd@specmd`; confira também que eles estão habilitados. O Codex guarda o hash do conteúdo do plugin junto da confiança, então cada atualização pede uma revisão nova.
 
-No Codex, o plugin é habilitado por usuário; o SpecMD só age em projetos com `specmd.toml`. Veja as [sessões nativas no Codex](../research/codex/native-session.md).
+No Codex, o plugin é instalado por usuário; o SpecMD age nos projetos com `specmd.toml` ou que o habilitam no próprio `.codex/config.toml` (o `specmd init` escreve essa entrada; o Codex só lê a configuração de projetos confiáveis). Veja as [sessões nativas no Codex](../research/codex/native-session.md).

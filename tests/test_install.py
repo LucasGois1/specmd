@@ -71,7 +71,7 @@ class InitializeTests(unittest.TestCase):
 
     def test_enables_the_plugin_and_declares_the_marketplace_for_the_team(self):
         result = initialize(self.root)
-        self.assertEqual(result["changed"], [".claude/settings.json"])
+        self.assertEqual(result["changed"], [".claude/settings.json", ".codex/config.toml"])
         settings = self.settings()
         self.assertEqual(settings["enabledPlugins"], {PLUGIN_ID: True})
         self.assertEqual(settings["extraKnownMarketplaces"]["specmd"]["source"],
@@ -87,6 +87,24 @@ class InitializeTests(unittest.TestCase):
         self.assertEqual(self.settings()["permissions"], {"allow": ["Bash(make test)"]})
         self.assertEqual(self.settings()["enabledPlugins"], {"other@team": True, PLUGIN_ID: True})
         self.assertEqual(initialize(self.root)["changed"], [])
+
+    def test_codex_config_keeps_its_content_and_an_existing_decision(self):
+        (self.root / ".codex").mkdir()
+        (self.root / ".codex/config.toml").write_text('model = "gpt-6-luna"\n')
+        initialize(self.root)
+        self.assertEqual((self.root / ".codex/config.toml").read_text(),
+                         'model = "gpt-6-luna"\n\n[plugins."specmd@specmd"]\nenabled = true\n')
+        self.assertEqual(initialize(self.root)["changed"], [])
+        (self.root / ".codex/config.toml").write_text('[plugins."specmd@specmd"]\nenabled = false\n')
+        self.assertEqual(initialize(self.root)["changed"], [])
+        self.assertIn("enabled = false", (self.root / ".codex/config.toml").read_text())
+
+    def test_invalid_codex_config_is_not_overwritten(self):
+        (self.root / ".codex").mkdir()
+        (self.root / ".codex/config.toml").write_text("x = [\n")
+        with self.assertRaises(ValueError):
+            initialize(self.root)
+        self.assertEqual((self.root / ".codex/config.toml").read_text(), "x = [\n")
 
     def test_invalid_settings_are_not_overwritten(self):
         (self.root / ".claude").mkdir()

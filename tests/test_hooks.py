@@ -75,6 +75,15 @@ class HookLifecycleTests(unittest.TestCase):
         self.assertEqual(entry["event"], "SessionStart")
         self.assertIn("SpecMD ativo", entry["reply"]["hookSpecificOutput"]["additionalContext"])
 
+    def test_codex_project_config_activates_without_specmd_toml(self):  # SMD-SCN-140
+        (self.root / "specmd.toml").unlink()
+        self.assertEqual(self.hook("SessionStart"), {})
+        (self.root / ".codex").mkdir()
+        (self.root / ".codex/config.toml").write_text('[plugins."specmd@specmd"]\nenabled = true\n')
+        self.assertIn("SpecMD ativo", self.hook("SessionStart")["hookSpecificOutput"]["additionalContext"])
+        (self.root / ".codex/config.toml").write_text('[plugins."specmd@specmd"]\nenabled = false\n')
+        self.assertEqual(self.hook("SessionStart"), {})
+
     def test_read_only_tools_return_without_touching_the_project(self):
         with patch.object(hooks, "find_root", side_effect=AssertionError("disk access")):
             self.assertEqual(hooks.handle_hook({"hook_event_name": "PostToolUse", "tool_name": "Read"}), {})

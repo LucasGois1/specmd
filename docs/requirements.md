@@ -361,7 +361,7 @@ Funcionalidade: Estado local
 
 ## SMD-REQ-026 — Instalação por repositório
 
-Instalar o plugin no escopo do projeto ou local já ativa o SpecMD no repositório, com os padrões; `specmd.toml` e `.specmdignore` são opcionais. `specmd init` (ou `/specmd:init`) declara o marketplace do SpecMD e habilita o plugin na configuração compartilhada do projeto, para que cada pessoa do time só precise aceitar a confiança da pasta. As dependências vêm com o plugin; a máquina precisa de Python 3.11 ou superior.
+Instalar o plugin no escopo do projeto ou local já ativa o SpecMD no repositório, com os padrões; `specmd.toml` e `.specmdignore` são opcionais. `specmd init` (ou `/specmd:init`) declara o marketplace do SpecMD e habilita o plugin na configuração compartilhada do projeto, para que cada pessoa do time só precise aceitar a confiança da pasta. No Codex, onde o plugin é instalado por usuário, o mesmo comando habilita o plugin no `.codex/config.toml` do projeto, e o SpecMD fica ativo nos projetos confiáveis que o habilitam ali, sem `specmd.toml` (aprovado pelo usuário em 27/10/2026). As dependências vêm com o plugin; a máquina precisa de Python 3.11 ou superior.
 
 ```gherkin
 # language: pt
@@ -372,6 +372,13 @@ Funcionalidade: Instalação por repositório
     Dado um repositório preparado pelo comando de início
     Quando um dev abre o agente na pasta e confia nela
     Então o plugin SpecMD é carregado sem instalação manual
+
+  @SMD-REQ-026 @SMD-SCN-140
+  Cenário: Projeto habilita o SpecMD no Codex
+    Dado um repositório preparado pelo comando de início, sem specmd.toml
+    E o plugin SpecMD instalado no Codex do dev
+    Quando o dev abre o Codex na pasta confiável
+    Então o SpecMD está ativo no projeto
 ```
 
 ## SMD-REQ-020 — Execução em Java, Python e Go
