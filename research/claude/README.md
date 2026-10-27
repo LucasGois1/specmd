@@ -1,43 +1,43 @@
-# Dispatch nativo no Claude Code
+# Native dispatch in Claude Code
 
-Este experimento carrega o plugin SpecMD em sessões reais do Claude Code, com modelo real, sobre projetos novos criados por `specmd demo`. Ele registra quais hooks o host despacha e que feedback o SpecMD devolve ao agente.
+This experiment loads the SpecMD plugin in real Claude Code sessions, with a real model, on new projects created by `specmd demo`. It records which hooks the host dispatches and what feedback SpecMD sends back to the agent.
 
-## Como reproduzir
+## How to reproduce
 
-Na raiz, depois de `pip install -e .` e com o CLI `claude` autenticado:
+At the root, after `pip install -e .` and with the `claude` CLI authenticated:
 
 ```sh
 python scripts/build_codex_plugin.py
 python research/claude/probe_headless.py
 ```
 
-O relatório padrão fica em `.specmd/local/claude-headless.json`; `--record` grava a evidência versionada em `evidence/`. `--use-clone` carrega o plugin do próprio clone em vez do bundle. O executável `claude` vem do `PATH`, o intérprete é o que roda o probe e o modelo é fixo (`haiku`): nenhum argumento escolhe comandos ou caminhos arbitrários. Cada execução cria demos novos em um diretório temporário e consome uma pequena cota do modelo.
+The default report goes to `.specmd/local/claude-headless.json`; `--record` writes the versioned evidence to `evidence/`. `--use-clone` loads the plugin from the clone itself instead of the bundle. The `claude` executable comes from `PATH`, the interpreter is the one running the probe and the model is fixed (`haiku`): no argument chooses arbitrary commands or paths. Each run creates new demos in a temporary directory and consumes a small model quota.
 
-A sessão usa `claude -p` com `--plugin-dir`, `--setting-sources project,local`, `--strict-mcp-config` e `--permission-mode acceptEdits`. As duas primeiras opções isolam o plugin de hooks, plugins e servidores MCP das configurações do usuário.
+The session uses `claude -p` with `--plugin-dir`, `--setting-sources project,local`, `--strict-mcp-config` and `--permission-mode acceptEdits`. The first two options isolate the plugin from hooks, plugins and MCP servers of the user's settings.
 
-## Casos
+## Cases
 
-| Caso | Pedido ao agente | O que se verifica |
+| Case | Request to the agent | What is checked |
 | --- | --- | --- |
-| `documentation_gap` | Documentar uma regra de frete sem alterar código. | Os hooks despacham sem falha e o feedback sobre `docs/frete.md` chega ao agente (pendência ou pedido de confirmação dos cenários). |
-| `code_breaks_scenario` | Somar uma taxa de 1 centavo no total. | Os cenários documentados falham e o `Stop` devolve o cenário, o passo e o erro ao agente. |
-| `implement_confirmed` | Implementar cenários já confirmados, com um passo ainda sem implementação. | O `Stop` executa os cenários; o estado final é registrado. |
+| `documentation_gap` | Document a shipping rule without changing code. | The hooks dispatch without failure and the feedback about `docs/shipping.md` (`docs/frete.md` in the recorded evidence, which predates the English translation) reaches the agent (a gap or a request to confirm the scenarios). |
+| `code_breaks_scenario` | Add a 1-cent fee to the total. | The documented scenarios fail and `Stop` sends the scenario, the step and the error back to the agent. |
+| `implement_confirmed` | Implement already confirmed scenarios, with one step still without implementation. | `Stop` runs the scenarios; the final state is recorded. |
 
-Em todos os casos: plugin carregado, `SessionStart` e `Stop` despachados, nenhuma falha de hook e nenhuma resposta que encerre a sessão.
+In all cases: plugin loaded, `SessionStart` and `Stop` dispatched, no hook failure and no response that ends the session.
 
-## Evidência registrada
+## Recorded evidence
 
-[evidence/headless-dispatch.json](evidence/headless-dispatch.json) identifica a versão do Claude Code, o modelo, os hooks despachados, o feedback devolvido e o estado final de cada caso. Caminhos locais foram substituídos por marcadores e outros plugins locais aparecem só como contagem.
+[evidence/headless-dispatch.json](evidence/headless-dispatch.json) identifies the Claude Code version, the model, the dispatched hooks, the feedback sent back and the final state of each case. Local paths were replaced by placeholders and other local plugins appear only as a count.
 
-Numa execução desta investigação (Claude Code 2.1.309, `claude-haiku-5-5`), o agente:
-- escreveu a regra de frete já com cenários, os apresentou e pediu confirmação, apontando a ambiguidade de "acima de 10000";
-- ao ver os cenários do carrinho falharem por causa da taxa, não alterou a documentação e perguntou se a regra mudou;
-- implementou o passo do cupom até os três cenários passarem.
+In one run of this investigation (Claude Code 2.1.309, `claude-haiku-5-5`), the agent:
+- wrote the shipping rule already with scenarios, presented them and asked for confirmation, pointing out the ambiguity of "acima de 10000" ("above 10000");
+- on seeing the cart scenarios fail because of the fee, did not change the documentation and asked whether the rule had changed;
+- implemented the coupon step until the three scenarios passed.
 
-Esse comportamento é do modelo naquela execução; o probe verifica o despacho e o feedback dos hooks, não garante como outro modelo responderá.
+That behavior belongs to the model in that run; the probe checks the dispatch and the feedback of the hooks, and does not guarantee how another model will respond.
 
-## Limites
+## Limits
 
-- O modo `-p` não exibe o diálogo de confiança do workspace e não há um dev real respondendo ao agente.
-- A instalação por marketplace não foi exercitada; o plugin foi carregado apenas para a sessão.
-- Hooks e plugins das configurações do usuário foram excluídos.
+- The `-p` mode does not show the workspace trust dialog and there is no real dev answering the agent.
+- Marketplace installation was not exercised; the plugin was loaded only for the session.
+- Hooks and plugins from the user's settings were excluded.

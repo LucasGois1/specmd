@@ -20,6 +20,8 @@ import subprocess
 import sys
 from typing import Any
 
+from .messages import text as t
+
 def _finding(kind: str, message: str, runner_id: str | None = None) -> dict:
     item = {"kind": kind, "message": message}
     if runner_id is not None:
@@ -30,12 +32,12 @@ def _finding(kind: str, message: str, runner_id: str | None = None) -> dict:
 def _inside(root: Path, relative: str) -> Path:
     path = Path(relative)
     if not relative or path.is_absolute() or ".." in path.parts:
-        raise ValueError("Caminhos do contrato devem ser relativos ao projeto.")
+        raise ValueError(t("Paths must be relative to the project.", "Caminhos do contrato devem ser relativos ao projeto."))
     current = root
     for part in path.parts:
         current = current / part
         if current.is_symlink():
-            raise ValueError("Caminhos de execução não podem atravessar links simbólicos.")
+            raise ValueError(t("Run paths cannot cross symbolic links.", "Caminhos de execução não podem atravessar links simbólicos."))
     current.resolve().relative_to(root)
     return current
 
@@ -43,19 +45,19 @@ def _inside(root: Path, relative: str) -> Path:
 def _document_scenarios(root: Path, document: Any, wip_tags: set[str]) -> list[dict]:
     """Expected scenarios of one inspected document, refusing a changed file."""
     if not isinstance(document, dict) or not isinstance(document.get("path"), str):
-        raise ValueError("Documento inválido na inspeção.")
+        raise ValueError(t("Invalid document in the inspection.", "Documento inválido na inspeção."))
     relative = document["path"]
     if hashlib.sha256(_inside(root, relative).read_bytes()).hexdigest() != document.get("sha256"):
-        raise ValueError("Documento mudou desde a inspeção: " + relative)
+        raise ValueError(t("Document changed since the inspection: ", "Documento mudou desde a inspeção: ") + relative)
     scenarios = document.get("scenarios")
     if not isinstance(scenarios, list):
-        raise ValueError("Documento sem registro de cenários: " + relative)
+        raise ValueError(t("Document without a scenario record: ", "Documento sem registro de cenários: ") + relative)
     expected = []
     for scenario in scenarios:
         valid = (isinstance(scenario, dict) and isinstance(scenario.get("id"), str) and scenario["id"]
                  and type(scenario.get("line")) is int and type(scenario.get("block")) is int)
         if not valid:
-            raise ValueError("Cenário sem identidade ou origem válida: " + relative)
+            raise ValueError(t("Scenario without a valid identity or origin: ", "Cenário sem identidade ou origem válida: ") + relative)
         if not wip_tags & set(scenario.get("tags", [])):
             expected.append({**scenario, "path": relative})
     return expected
@@ -85,17 +87,17 @@ def _features(root: Path, inspection: dict, wip_tags: set[str] = frozenset(),
 
     documents = inspection.get("documents")
     if not isinstance(documents, list):
-        raise ValueError("Inspeção sem inventário documental válido.")
+        raise ValueError(t("Inspection without a valid document inventory.", "Inspeção sem inventário documental válido."))
     expected = [item for document in documents for item in _document_scenarios(root, document, wip_tags)]
     if len({item["id"] for item in expected}) != len(expected):
-        raise ValueError("Identidades de cenário duplicadas na inspeção.")
+        raise ValueError(t("Duplicate scenario identities in the inspection.", "Identidades de cenário duplicadas na inspeção."))
     features = []
     for feature in extract_features(root, inspection, language):
         # The core preserves source coordinates by padding its parser input.
         # Bridge protocol carries raw content + first-content line explicitly.
         padding = "\n" * (feature["line"] - 1)
         if not feature["content"].startswith(padding):
-            raise ValueError("Extração de Gherkin sem o padding de origem esperado.")
+            raise ValueError(t("Gherkin extraction without the expected origin padding.", "Extração de Gherkin sem o padding de origem esperado."))
         features.append(_with_language({**feature, "content": feature["content"][len(padding):]}, language))
     return features, expected
 
@@ -136,39 +138,39 @@ def _matches(path: str, patterns: list[str] | None) -> bool:
 
 def _validate_report(report: Any, expected: list[dict], mode: str) -> list[dict]:
     if not isinstance(report, dict) or type(report.get("schema")) is not int or report["schema"] != 1:
-        raise ValueError("Bridge deve retornar um objeto JSON schema=1.")
+        raise ValueError(t("The bridge must return a JSON object with schema=1.", "Bridge deve retornar um objeto JSON schema=1."))
     if report.get("mode") != mode:
-        raise ValueError("Modo de evidência do bridge não corresponde ao runner configurado.")
+        raise ValueError(t("The bridge's evidence mode does not match the configured runner.", "Modo de evidência do bridge não corresponde ao runner configurado."))
     if report.get("dry_run") is not False:
-        raise ValueError("Bridge deve declarar dry_run=false; simulação de execução não comprova passos.")
+        raise ValueError(t("The bridge must declare dry_run=false; a simulated run does not prove the steps.", "Bridge deve declarar dry_run=false; simulação de execução não comprova passos."))
     if report.get("engine_failed") is not False or report.get("passed") is not True:
-        raise ValueError("O motor reportou falha ou não confirmou execução completa.")
+        raise ValueError(t("The engine reported a failure or did not confirm a complete run.", "O motor reportou falha ou não confirmou execução completa."))
     scenarios = report.get("scenarios")
     if not isinstance(scenarios, list) or not scenarios:
-        raise ValueError("Execução sem cenários observados.")
+        raise ValueError(t("Run without observed scenarios.", "Execução sem cenários observados."))
     identities = [item.get("id") if isinstance(item, dict) else None for item in scenarios]
     if any(not isinstance(item, str) for item in identities) or len(set(identities)) != len(identities):
-        raise ValueError("Execução retornou identidades ausentes ou duplicadas.")
+        raise ValueError(t("The run returned missing or duplicate identities.", "Execução retornou identidades ausentes ou duplicadas."))
     wanted = {item["id"]: item for item in expected}
     if set(identities) != set(wanted):
-        raise ValueError("Cenários executados não correspondem exatamente ao contrato atribuído.")
+        raise ValueError(t("The scenarios run do not match exactly the ones assigned.", "Cenários executados não correspondem exatamente ao contrato atribuído."))
     for observed in scenarios:
         origin = wanted[observed["id"]]
         if any(observed.get(key) != origin[key] for key in ("path", "block", "line")):
-            raise ValueError("Origem observada diverge do contrato: " + observed["id"])
+            raise ValueError(t("Observed origin differs from the documentation: ", "Origem observada diverge do contrato: ") + observed["id"])
         if observed.get("status") != "passed":
-            raise ValueError("Cenário não executado com sucesso: " + observed["id"])
+            raise ValueError(t("Scenario did not run successfully: ", "Cenário não executado com sucesso: ") + observed["id"])
         count = observed.get("steps_executed")
         if type(count) is not int or count < 1:
-            raise ValueError("Cenário sem passos efetivamente executados: " + observed["id"])
+            raise ValueError(t("Scenario without steps actually run: ", "Cenário sem passos efetivamente executados: ") + observed["id"])
         declared_count = origin.get("steps")
         if type(declared_count) is int and count < declared_count:
-            raise ValueError("Execução não comprovou todos os passos declarados: " + observed["id"])
+            raise ValueError(t("The run did not prove every declared step: ", "Execução não comprovou todos os passos declarados: ") + observed["id"])
         steps = observed.get("steps")
         if steps is not None and (not isinstance(steps, list) or not steps or any(
             not isinstance(step, dict) or step.get("status") != "passed" for step in steps
         ) or len(steps) != count):
-            raise ValueError("Passo pendente, indefinido, ignorado ou inconsistente: " + observed["id"])
+            raise ValueError(t("Pending, undefined, skipped or inconsistent step: ", "Passo pendente, indefinido, ignorado ou inconsistente: ") + observed["id"])
     return scenarios
 
 
@@ -221,8 +223,11 @@ class _Plan:
     measured: bool
 
 
-_NO_RUNNER = ("Nenhum runner para executar os cenários: crie os passos Python em tests/steps "
-              "(ou features/steps) ou configure [[runners]] no specmd.toml; para Java e Go, veja adapters/.")
+def _no_runner() -> str:
+    return t("No runner to run the scenarios: create the Python steps in tests/steps (or features/steps) or configure "
+             "[[runners]] in specmd.toml; for Java and Go, see adapters/.",
+             "Nenhum runner para executar os cenários: crie os passos Python em tests/steps "
+             "(ou features/steps) ou configure [[runners]] no specmd.toml; para Java e Go, veja adapters/.")
 
 
 def _expected(root: Path, inspection: dict, config: dict, only: set[str] | None,
@@ -231,7 +236,7 @@ def _expected(root: Path, inspection: dict, config: dict, only: set[str] | None,
     features, expected = _features(root, inspection, set(config.get("wip_tags", ["wip"])), config.get("gherkin_language"))
     if not expected:
         if not any(document.get("scenarios") for document in inspection.get("documents", [])):
-            raise ValueError("Nenhum cenário encontrado na documentação.")
+            raise ValueError(t("No scenario found in the documentation.", "Nenhum cenário encontrado na documentação."))
         result["passed"] = True  # Only work-in-progress scenarios: nothing is demanded.
         return None
     if only is not None:
@@ -245,20 +250,20 @@ def _expected(root: Path, inspection: dict, config: dict, only: set[str] | None,
 
 def _runner_settings(runner: Any, ids: set[str]) -> tuple[str, str, float, list[str] | None]:
     if not isinstance(runner, dict):
-        raise ValueError("Runner deve ser um mapa.")
+        raise ValueError(t("A runner must be a table.", "Runner deve ser um mapa."))
     identifier, language = runner.get("id"), runner.get("language")
     if not isinstance(identifier, str) or not identifier.strip() or identifier in ids:
-        raise ValueError("Runner deve ter identidade única não vazia.")
+        raise ValueError(t("A runner needs a unique, non-empty id.", "Runner deve ter identidade única não vazia."))
     if language not in {"python", "java", "go"}:
-        raise ValueError("Linguagem de runner não suportada: " + str(language))
+        raise ValueError(t("Unsupported runner language: ", "Linguagem de runner não suportada: ") + str(language))
     timeout = runner.get("timeout", 60)
     if type(timeout) not in {int, float} or not math.isfinite(timeout) or timeout <= 0:
-        raise ValueError("Timeout do runner deve ser um número positivo finito.")
+        raise ValueError(t("A runner timeout must be a finite positive number.", "Timeout do runner deve ser um número positivo finito."))
     patterns = runner.get("paths")
     if patterns is not None and (not isinstance(patterns, list) or not patterns or any(
         not isinstance(pattern, str) or not pattern for pattern in patterns
     )):
-        raise ValueError("paths deve ser uma lista não vazia de padrões.")
+        raise ValueError(t("paths must be a non-empty list of patterns.", "paths deve ser uma lista não vazia de padrões."))
     return identifier, language, timeout, patterns
 
 
@@ -269,7 +274,7 @@ def _runner_command(root: Path, runner: dict, language: str) -> tuple[list[str],
     if measured:
         steps = runner.get("steps", "tests/steps")
         if not isinstance(steps, str):
-            raise ValueError("steps deve ser um diretório relativo.")
+            raise ValueError(t("steps must be a relative directory.", "steps deve ser um diretório relativo."))
         _inside(root, steps)
         # Resolve alongside this exact runner copy: a plugin bootstrap's
         # sys.path is not inherited by a fresh Python subprocess, and
@@ -277,14 +282,14 @@ def _runner_command(root: Path, runner: dict, language: str) -> tuple[list[str],
         command = [_python_for(root, runner), str(Path(__file__).with_name("behave_worker.py")),
                    "--root", str(root), "--steps", steps]
     if not isinstance(command, list) or not command or any(not isinstance(arg, str) or not arg for arg in command):
-        raise ValueError("Runner exige command como lista de argumentos, sem shell.")
+        raise ValueError(t("A runner needs command as a list of arguments, without a shell.", "Runner exige command como lista de argumentos, sem shell."))
     return command, measured
 
 
 def _plans(root: Path, runners: Any, expected: list[dict]) -> list[_Plan]:
     """Assign each scenario to the first runner whose paths match it."""
     if not isinstance(runners, list) or not runners:
-        raise ValueError(_NO_RUNNER)
+        raise ValueError(_no_runner())
     plans: list[_Plan] = []
     taken: set[str] = set()
     for runner in runners:
@@ -295,7 +300,7 @@ def _plans(root: Path, runners: Any, expected: list[dict]) -> list[_Plan]:
         plans.append(_Plan(identifier, language, timeout, command, selected, measured))
     missing = sorted({item["path"] for item in expected if item["id"] not in taken})
     if missing:
-        raise ValueError("Nenhum runner cobre os cenários de: " + ", ".join(missing[:5]))
+        raise ValueError(t("No runner covers the scenarios of: ", "Nenhum runner cobre os cenários de: ") + ", ".join(missing[:5]))
     return [plan for plan in plans if plan.selected]
 
 
@@ -330,16 +335,16 @@ def _run_plan(root: Path, plan: _Plan, features: list[dict], origins: dict, conf
         try:
             report = json.loads(stdout)
         except (ValueError, TypeError) as error:
-            raise ValueError("Bridge não retornou um único relatório JSON válido.") from error
+            raise ValueError(t("The bridge did not return a single valid JSON report.", "Bridge não retornou um único relatório JSON válido.")) from error
         _collect(report, plan, origins, result, row)
         if exit_code != 0 and not result["failures"]:
-            raise ValueError("Processo do runner terminou com código " + str(exit_code))
+            raise ValueError(t("The runner process ended with code ", "Processo do runner terminou com código ") + str(exit_code))
         if exit_code == 0:
             _validate_report(report, plan.selected, "real")
             row["passed"] = True
     except subprocess.TimeoutExpired:
         row["timed_out"] = True
-        result["findings"].append(_finding("runner_timeout", "O processo do runner excedeu seu timeout.", plan.id))
+        result["findings"].append(_finding("runner_timeout", t("The runner process exceeded its timeout.", "O processo do runner excedeu seu timeout."), plan.id))
     except (OSError, ValueError, TypeError) as error:
         result["findings"].append(_finding("runner_failed", str(error), plan.id))
     result["runners"].append(row)
@@ -358,7 +363,7 @@ def execute_project(root: Path, inspection: dict, config: dict, only: set[str] |
     try:
         root = Path(root).resolve(strict=True)
         if not root.is_dir() or not isinstance(config, dict):
-            raise ValueError("Raiz/configuração inválida para execução.")
+            raise ValueError(t("Invalid root or configuration for a run.", "Raiz/configuração inválida para execução."))
         planned = _expected(root, inspection, config, None if only is None else set(only), result)
         if planned is None:
             return result

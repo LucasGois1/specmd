@@ -17,7 +17,7 @@ if not specmd_bootstrap.ensure(__file__):
         event = json.load(sys.stdin).get("hook_event_name")
     except (ValueError, AttributeError):
         event = None
-    message = {"systemMessage": "SpecMD: instale Python 3.11 ou superior (ou defina SPECMD_PYTHON) para ativar as verificações."}
+    message = {"systemMessage": "SpecMD: install Python 3.11 or later (or set SPECMD_PYTHON) to enable the checks."}
     print(json.dumps(message if event == "SessionStart" else {}, ensure_ascii=False))
     raise SystemExit(0)
 

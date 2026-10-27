@@ -1,232 +1,233 @@
-# Decisões de concepção e questões em aberto
+# Design decisions and open questions
 
-Este registro consolida a discussão que originou o projeto. As diretrizes abaixo foram expressas durante a concepção; isso não equivale a um recibo autenticado de aceite do conteúdo destes arquivos. Os detalhes técnicos continuam sendo propostas para revisão e experimentação.
+This record consolidates the discussion that originated the project. The guidelines below were expressed during the design; this is not equivalent to an authenticated receipt of acceptance of the content of these files. The technical details remain proposals for review and experimentation.
 
-## Diretrizes da discussão
+## Guidelines from the discussion
 
-| ID | Diretriz | Consequência |
+| ID | Guideline | Consequence |
 | --- | --- | --- |
-| D-001 | Markdown é a fonte canônica. | Explicação, requisitos e cenários permanecem no `.md`; nenhuma cópia editável `.feature` é necessária. |
-| D-002 | A execução não deve depender de arquivos `.feature`. | Demonstrar parsing e adaptação em memória; não assumir suporte nativo de Cucumber a Markdown. |
-| D-003 | O alinhamento precisa ser verificado nos dois sentidos. | Relacionar requisitos à implementação e mudanças relevantes de comportamento a uma intenção reconhecida. |
-| D-004 | Documentar uma suposição não a autoriza. | Distinguir comportamento acordado, proposta do agente e comportamento apenas observado no legado. |
-| D-005 | O contrato precisa de aceite humano explícito. | Vincular a decisão à versão apresentada, inclusive na especificação escrita em conjunto. |
-| D-006 | Alterar documentação contratual ou cenários exige nova revisão. | A versão aceita anterior não autoriza automaticamente uma nova versão. |
-| D-007 | Alterar código exige renovar evidências pertinentes. | Preservar o aceite quando a intenção não mudou; evitar aprovações humanas repetidas para tentativas de implementação. |
-| D-008 | O agente não pode emitir seu próprio aceite. | Separar as permissões de propor, aceitar e aplicar o gate. |
-| D-009 | Conteúdo, revisão e autoria precisam de rastreabilidade. | Usar identidade de conteúdo, diff, histórico Git e identidade autenticada dos eventos. |
-| D-010 | Documentos podem ser comportamentais, informativos ou mistos. | Exigir cenários das obrigações comportamentais e aceite da dispensa informativa. |
-| D-011 | Dispensa de Gherkin não é exclusão do inventário. | Monitorar documentos informativos para detectar mudanças que exijam revisão. |
-| D-012 | Hooks devem melhorar a experiência com agentes. | Conectar análises a eventos suportados, sem presumir equivalência entre Claude Code e Codex. |
-| D-013 | Aguardar o usuário é um estado legítimo. | Permitir devolução de controle sem marcar conclusão ou entrar em ciclos de bloqueio. |
-| D-014 | A análise deve ser incremental. | Reutilizar resultados válidos, mantendo reconciliação e invalidação corretas. |
-| D-015 | O índice não concede aprovação. | Tratar inventário e cache como dados derivados e reconstruíveis. |
-| D-016 | A classificação automática é auxiliar. | Separar checagens determinísticas de sugestões semânticas e decisões humanas. |
-| D-017 | O nome escolhido pelo usuário é SpecMD. | Usar `specmd` como nome do repositório e da interface proposta. Disponibilidade global de marca ou pacote não foi verificada. |
-| D-018 | O suporte inicial precisa contemplar pelo menos Java, Python e Go. | Pesquisar e testar adaptadores reais por linguagem antes de estabilizar a arquitetura; não presumir um parâmetro universal de Cucumber. |
-| D-019 | O usuário solicitou investigar sobreposição com Markdown with Gherkin antes de avançar. | A pesquisa encontrou antecedentes adicionais; comparar reutilização e a menor integração necessária, sem presumir novidade ou vantagem de um produto independente. |
-| D-020 | O usuário quer testar o SpecMD localmente no Codex com um agente real. | Preparar instalação e ensaios em uma instância de teste do Codex; a presença do CLI não equivale à instalação do adaptador SpecMD nem à validação de seus bloqueios. |
-| D-021 | Em 23/10/2026, o usuário redefiniu o produto: o SpecMD é um assistente, não uma auditoria. | Substitui D-005 e D-008 e o aceite assinado de D-006/D-009. A confirmação do dev é uma resposta na conversa; o plugin faz checagens determinísticas e devolve feedback sem encerrar a sessão. Autoridade, trust, assinaturas, revisão no navegador, `verify` protegido e bloqueio de implementação foram removidos. Ver a seção abaixo. |
-| D-022 | Em 24/10/2026, o usuário escolheu otimizar o desempenho para projetos com milhares de arquivos, inclusive executando só os cenários afetados. | Cache por documento, impressão digital do código pelo Git e seleção de cenários por cobertura. Implementada; ver [estado da implementação](implementation-status.md). |
-| D-023 | Avisar quando um cenário confirmado é enfraquecido ou removido. | Diff contra os cenários da última mensagem do dev; devolve ao agente só no sinal forte. Implementada em SMD-REQ-028. |
-| D-024 | Avisar quando um documento ignorado passa a declarar regras. | Só aviso, quando o arquivo muda. Implementada em SMD-REQ-029. |
-| D-025 | Adoção em legado por um comando que parte da documentação existente. | Lista todos os documentos, o dev filtra com o agente e os cenários nascem um documento por vez. Implementada em SMD-REQ-030; o `@wip` continua decisão do dev. |
-| D-026 | Suportar MDG (`.feature.md`) seguindo a especificação oficial. | Conversão para Gherkin em memória, preservando as linhas. Implementada em SMD-REQ-031. |
-| D-027 | Validar o Codex com LLM real e os eventos novos. | Depende de autenticação e da confiança nos hooks pelo usuário. Executada em 24/10/2026; ver [sessões nativas no Codex](../research/codex/native-session.md). |
-| D-028 | Medir o valor do SpecMD num piloto comparativo. | Grupo de comparação forte e avaliação por testes de aceite escondidos. Primeira rodada executada em 24/10/2026 com claude-haiku-5-5 e gpt-6-luna; ver [piloto](../research/pilot/README.md). |
+| D-001 | Markdown is the canonical source. | Explanation, requirements and scenarios stay in the `.md`; no editable `.feature` copy is needed. |
+| D-002 | The run must not depend on `.feature` files. | Demonstrate parsing and adaptation in memory; do not assume native Cucumber support for Markdown. |
+| D-003 | Alignment needs to be verified in both directions. | Relate requirements to the implementation, and relevant behavior changes to a recognized intent. |
+| D-004 | Documenting an assumption does not authorize it. | Distinguish agreed behavior, agent proposal and behavior merely observed in the legacy code. |
+| D-005 | The contract needs explicit human acceptance. | Bind the decision to the version presented, including for the specification written together. |
+| D-006 | Changing contractual documentation or scenarios requires a new review. | The previously accepted version does not automatically authorize a new version. |
+| D-007 | Changing code requires renewing the relevant evidence. | Preserve the acceptance when the intent did not change; avoid repeated human approvals for implementation attempts. |
+| D-008 | The agent cannot issue its own acceptance. | Separate the permissions to propose, to accept and to apply the gate. |
+| D-009 | Content, review and authorship need traceability. | Use content identity, diff, Git history and authenticated identity of the events. |
+| D-010 | Documents can be behavioral, informational or mixed. | Require scenarios for the behavioral obligations and acceptance for the informational exemption. |
+| D-011 | A Gherkin exemption is not an exclusion from the inventory. | Monitor informational documents to detect changes that require review. |
+| D-012 | Hooks must improve the experience with agents. | Connect analyses to supported events, without assuming equivalence between Claude Code and Codex. |
+| D-013 | Waiting for the user is a legitimate state. | Allow handing control back without marking completion or entering blocking loops. |
+| D-014 | The analysis must be incremental. | Reuse valid results, while keeping reconciliation and invalidation correct. |
+| D-015 | The index does not grant approval. | Treat inventory and cache as derived, rebuildable data. |
+| D-016 | Automatic classification is auxiliary. | Separate deterministic checks from semantic suggestions and human decisions. |
+| D-017 | The name chosen by the user is SpecMD. | Use `specmd` as the name of the repository and of the proposed interface. Global availability of the brand or package was not verified. |
+| D-018 | Initial support needs to cover at least Java, Python and Go. | Research and test real adapters per language before stabilizing the architecture; do not assume a universal Cucumber parameter. |
+| D-019 | The user asked to investigate the overlap with Markdown with Gherkin before moving forward. | The research found additional prior art; compare reuse and the smallest integration needed, without assuming novelty or an advantage of an independent product. |
+| D-020 | The user wants to test SpecMD locally in Codex with a real agent. | Prepare installation and trials in a test instance of Codex; the presence of the CLI is not equivalent to the installation of the SpecMD adapter nor to the validation of its blocks. |
+| D-021 | On 23/10/2026, the user redefined the product: SpecMD is an assistant, not an audit. | Replaces D-005 and D-008 and the signed acceptance of D-006/D-009. The developer's confirmation is a reply in the conversation; the plugin runs deterministic checks and sends feedback back without ending the session. Authority, trust, signatures, browser review, protected `verify` and implementation blocking were removed. See the section below. |
+| D-022 | On 24/10/2026, the user chose to optimize performance for projects with thousands of files, including running only the affected scenarios. | Per-document cache, code fingerprint through Git and scenario selection by coverage. Implemented; see [implementation status](implementation-status.md). |
+| D-023 | Warn when a confirmed scenario is weakened or removed. | Diff against the scenarios as of the developer's last message; sends back to the agent only on the strong signal. Implemented in SMD-REQ-028. |
+| D-024 | Warn when an ignored document starts declaring rules. | Notice only, when the file changes. Implemented in SMD-REQ-029. |
+| D-025 | Legacy adoption through a command that starts from the existing documentation. | Lists all documents, the developer filters with the agent and the scenarios are born one document at a time. Implemented in SMD-REQ-030; `@wip` remains the developer's decision. |
+| D-026 | Support MDG (`.feature.md`) following the official specification. | Conversion to Gherkin in memory, preserving the lines. Implemented in SMD-REQ-031. |
+| D-027 | Validate Codex with a real LLM and the new events. | Depends on authentication and on the user trusting the hooks. Run on 24/10/2026; see [native sessions in Codex](../research/codex/native-session.md). |
+| D-028 | Measure the value of SpecMD in a comparative pilot. | Strong comparison group and evaluation by hidden acceptance tests. First round run on 24/10/2026 with claude-haiku-5-5 and gpt-6-luna; see [pilot](../research/pilot/README.md). |
+| D-029 | On 27/10/2026, the user asked to translate the whole repository into English, so that more people can use the plugin. | Code, documentation and research are in English. The plugin's messages are in English by default, and `language = "pt"` in `specmd.toml` keeps them in Portuguese. Recorded evidence (fixtures, logs and pilot results) stays as it was recorded. Implemented in SMD-REQ-032. |
 
-## D-021 — Assistente, não auditoria (23/10/2026)
+## D-021 — Assistant, not audit (23/10/2026)
 
-O usuário descreveu o uso esperado com um exemplo: um sistema de pagamentos desenvolvido com agentes. O agente escreve a documentação do projeto; uma checagem confere se ela tem cenários de uso; se não tiver, o agente recebe esse feedback e conversa com o dev para confirmar os requisitos e escrever os cenários no próprio documento. O agente pergunta se está tudo certo, o dev confirma e o agente implementa. Ao final, uma análise confere se os cenários existem e passam; o que faltar volta para o agente.
+The user described the expected use with an example: a payment system developed with agents. The agent writes the project documentation; a check verifies whether it has usage scenarios; if it does not, the agent receives that feedback and talks to the developer to confirm the requirements and write the scenarios in the document itself. The agent asks whether everything is right, the developer confirms and the agent implements. At the end, an analysis checks whether the scenarios exist and pass; whatever is missing goes back to the agent.
 
-Consequências:
+Consequences:
 
-- A documentação com cenários embutidos é a fonte canônica das regras de negócio; não há `.feature` paralelo para divergir.
-- Não há fase de documentação: qualquer trabalho em Markdown dispara a análise. Nem todo Markdown descreve comportamento do sistema; esses ficam fora da análise e o agente pergunta ao dev quando houver dúvida.
-- Cenários novos ou alterados desde a última mensagem do dev não são cobrados até que ele os veja; a execução é cobrada quando o código muda.
-- O feedback é determinístico e limitado: o mesmo feedback repetido, ou o limite de repetições, deixa o agente parar. Erros internos viram aviso.
-- O plugin deve carregar sozinho quando alguém abre o agente no repositório (entrega planejada).
+- The documentation with embedded scenarios is the canonical source of the business rules; there is no parallel `.feature` to diverge.
+- There is no documentation phase: any work on Markdown triggers the analysis. Not every Markdown describes system behavior; those stay out of the analysis and the agent asks the developer when in doubt.
+- Scenarios that are new or changed since the developer's last message are not required until the developer sees them; the run is required when the code changes.
+- The feedback is deterministic and bounded: the same feedback repeated, or the repetition limit, lets the agent stop. Internal errors become warnings.
+- The plugin must load by itself when someone opens the agent in the repository (planned delivery).
 
-As linhas D-005, D-006, D-008 e D-009 da tabela acima, as escolhas técnicas sobre aceites autenticados e as decisões abertas sobre interface, granularidade e reaproveitamento de aceites ficam como histórico.
+Rows D-005, D-006, D-008 and D-009 of the table above, the technical choices about authenticated acceptances and the open decisions about interface, granularity and reuse of acceptances remain as history.
 
-## Evoluções escolhidas (24/10/2026)
+## Evolutions chosen (24/10/2026)
 
-Com o mínimo de D-021 validado em sessões reais, o usuário escolheu as evoluções D-022 a D-028 e aprovou o detalhamento abaixo, com as correções indicadas. Nada desta seção está implementado. Cada item vira um PR próprio; seus requisitos e cenários entram em [requirements.md](requirements.md) e são confirmados pelo usuário antes da implementação. Ordem combinada:
+With the D-021 minimum validated in real sessions, the user chose evolutions D-022 to D-028 and approved the detailing below, with the corrections indicated. Nothing in this section is implemented. Each item becomes its own PR; its requirements and scenarios go into [requirements.md](requirements.md) and are confirmed by the user before the implementation. Agreed order:
 
-1. Desempenho (D-022).
-2. Cenário enfraquecido ou removido (D-023) e documento ignorado que ganha regra (D-024).
-3. Adoção em legado (D-025).
+1. Performance (D-022).
+2. Weakened or removed scenario (D-023) and ignored document that gains a rule (D-024).
+3. Legacy adoption (D-025).
 4. MDG (D-026).
-5. Codex com LLM real (D-027), quando o usuário puder autenticar e confiar nos hooks.
-6. Piloto comparativo (D-028), quando os itens anteriores estiverem estáveis.
+5. Codex with a real LLM (D-027), when the user can authenticate and trust the hooks.
+6. Comparative pilot (D-028), when the previous items are stable.
 
-### D-022 — Desempenho em projetos grandes
+### D-022 — Performance in large projects
 
-Hoje cada `PostToolUse` relê e reanalisa todos os Markdown, a impressão digital do código faz `lstat` em todos os arquivos e o `Stop` executa todos os cenários. Em projetos com milhares de arquivos isso cresce com o repositório, não com a mudança.
+Today each `PostToolUse` rereads and reanalyzes every Markdown file, the code fingerprint runs `lstat` on every file and the `Stop` runs every scenario. In projects with thousands of files this grows with the repository, not with the change.
 
-Decidido:
+Decided:
 
-- **Cache por documento** em `.specmd/local/`, local e reconstruível: documento com o mesmo conteúdo reaproveita a análise anterior; só os vínculos entre documentos (IDs duplicados, requisitos sem cenário) são recalculados sobre o conjunto.
-- **Impressão digital do código pelo Git:** o commit atual mais os arquivos alterados ou novos, em vez de examinar o repositório inteiro.
-- **Só os cenários afetados:** cada execução registra os arquivos exercitados por cenário. Ao concluir, rodam os cenários que tocam arquivos alterados, os novos ou alterados e os que nunca rodaram. Sem cobertura disponível, roda tudo, como hoje; esse é o caso de Java e Go no início, e a cobertura deles (JaCoCo, `go test -cover`) fica para depois.
-- **Rede de segurança:** a execução completa continua disponível pelo CLI e no CI. A seleção pode errar (import dinâmico, arquivo de configuração lido em tempo de execução), e o feedback diz quando rodou só parte dos cenários.
-- **Benchmark** num repositório sintético da ordem de 5 mil Markdown e 50 mil arquivos, medido antes e depois. Meta: `PostToolUse` abaixo de 300 ms.
+- **Per-document cache** in `.specmd/local/`, local and rebuildable: a document with the same content reuses the previous analysis; only the links between documents (duplicate IDs, requirements without a scenario) are recomputed over the whole set.
+- **Code fingerprint through Git:** the current commit plus the changed or new files, instead of examining the whole repository.
+- **Only the affected scenarios:** each run records the files exercised by each scenario. On finishing, the scenarios that touch changed files, the new or changed ones and the ones that never ran are run. Without coverage available, everything runs, as today; that is the case of Java and Go at first, and their coverage (JaCoCo, `go test -cover`) is left for later.
+- **Safety net:** the full run remains available through the CLI and in CI. The selection can be wrong (dynamic import, configuration file read at run time), and the feedback says when only part of the scenarios ran.
+- **Benchmark** in a synthetic repository on the order of 5 thousand Markdown files and 50 thousand files, measured before and after. Goal: `PostToolUse` under 300 ms.
 
-Decidido com o usuário em 24/10/2026, com os cenários de [SMD-REQ-027](requirements.md): o `Stop` e `specmd run --affected` executam só os afetados; `specmd run` executa todos. O feedback informa quantos cenários ficaram de fora. A seleção é por função, não por arquivo: todo arquivo importado pelos passos aparece como usado por todos os cenários. Mudança nos passos, no `environment.py`, na configuração ou no nível do módulo executa todos; cenários que iniciam processos ou abrem conexões sempre executam.
+Decided with the user on 24/10/2026, with the scenarios of [SMD-REQ-027](requirements.md): the `Stop` and `specmd run --affected` run only the affected ones; `specmd run` runs all of them. The feedback reports how many scenarios were left out. The selection is per function, not per file: every file imported by the steps shows up as used by every scenario. A change in the steps, in `environment.py`, in the configuration or at the module level runs all of them; scenarios that start processes or open connections always run.
 
-### D-023 — Cenário enfraquecido ou removido
+### D-023 — Weakened or removed scenario
 
-Quando o agente apaga um cenário ou muda o valor esperado de um `Então` para o código passar, isso hoje passa calado.
+When the agent deletes a scenario or changes the expected value of a `Then` so that the code passes, today this goes unnoticed.
 
-Decidido:
+Decided:
 
-- **Base de comparação:** os cenários como estavam na última mensagem do dev. O hook passa a guardar o conteúdo dos cenários, não só a impressão digital.
-- **Mudanças distinguidas:** cenário removido, `Então` alterado, `Dado` ou `Quando` alterado, `@wip` adicionado e requisito removido.
-- **Aviso:** depois da edição, o agente recebe o diff exato; ao concluir, o dev vê o mesmo resumo, mesmo que tudo passe. O aviso é informativo, inclusive quando o próprio dev pediu a mudança.
-- **Devolução ao agente, uma vez,** só no sinal forte: o cenário falhava na última execução, o agente mudou o valor esperado dele e o código mudou no mesmo turno.
+- **Baseline for comparison:** the scenarios as they were at the developer's last message. The hook now stores the content of the scenarios, not only the fingerprint.
+- **Distinguished changes:** removed scenario, changed `Then`, changed `Given` or `When`, added `@wip` and removed requirement.
+- **Notice:** after the edit, the agent receives the exact diff; on finishing, the developer sees the same summary, even if everything passes. The notice is informative, including when the developer themselves asked for the change.
+- **Sent back to the agent, once,** only on the strong signal: the scenario was failing in the last run, the agent changed its expected value and the code changed in the same turn.
 
-### D-024 — Documento ignorado que ganha regra
+### D-024 — Ignored document that gains a rule
 
-Decidido:
+Decided:
 
-- Os arquivos ignorados, pelo `.specmdignore` ou pelos padrões, continuam sendo lidos de leve, só para detectar título `…-REQ-…`, bloco Gherkin ou palavra-chave MDG.
-- O aviso sai apenas quando o arquivo muda e passa a ter isso. Um README que sempre teve um exemplo de Gherkin não gera aviso.
-- O aviso oferece duas saídas: tirar o arquivo do `.specmdignore` (ou usar `!caminho`) ou mover a regra para um documento de comportamento. Em dúvida, o agente pergunta ao dev.
-- Só aviso; não devolve trabalho ao agente ao concluir.
+- Ignored files, whether through `.specmdignore` or the default patterns, are still read lightly, only to detect a `…-REQ-…` heading, a Gherkin block or an MDG keyword.
+- The notice is issued only when the file changes and starts having one of these. A README that always had a Gherkin example does not produce a notice.
+- The notice offers two ways out: take the file out of `.specmdignore` (or use `!path`) or move the rule to a behavior document. When in doubt, the agent asks the developer.
+- Notice only; it does not send work back to the agent on finishing.
 
-### D-025 — Adoção em legado
+### D-025 — Legacy adoption
 
-O usuário corrigiu a proposta inicial: o plugin não ordena nem filtra documentos por heurística (palavras como "deve" ou "não pode", números, limites). O fluxo decidido:
+The user corrected the initial proposal: the plugin does not sort or filter documents by heuristics (words such as "must" or "cannot", numbers, limits). The decided flow:
 
-1. Um comando específico (nome proposto: `/specmd:adopt`) lista todos os Markdown do projeto, menos os ignorados por padrão e as entradas que o time já tenha no `.specmdignore`.
-2. O agente apresenta a lista ao dev e separa com ele o que é documentação de comportamento. O que o dev mandar ignorar, o agente grava no `.specmdignore`.
-3. Com esse filtro feito, o agente analisa um documento por vez, propõe requisitos e cenários e mostra ao dev para confirmar.
-4. Depois da confirmação, segue o loop que já existe: passos, execução e feedback até passar.
-5. **Divergência entre documentação e código:** se um cenário falha porque o código faz outra coisa, o agente não corrige sozinho. Ele pergunta ao dev qual dos dois está certo.
+1. A specific command (proposed name: `/specmd:adopt`) lists all the Markdown files of the project, except the ones ignored by default and the entries the team already has in `.specmdignore`.
+2. The agent presents the list to the developer and separates with them what is behavior documentation. Whatever the developer says to ignore, the agent writes to `.specmdignore`.
+3. With that filter done, the agent analyzes one document at a time, proposes requirements and scenarios and shows them to the developer for confirmation.
+4. After the confirmation, the existing loop follows: steps, run and feedback until it passes.
+5. **Divergence between documentation and code:** if a scenario fails because the code does something else, the agent does not fix it alone. It asks the developer which of the two is right.
 
-Em aberto:
+Open:
 
-- Progresso da adoção: decidido em 24/10/2026 que não há estado próprio; a documentação e o `.specmdignore` bastam para retomar.
-- `@wip` na adoção: decidido em 24/10/2026 que continua decisão do dev; o agente implementa os passos de um documento antes de seguir.
-- Falha num cenário que nunca passou traz a orientação de divergência (pergunte ao dev qual vale), aprovada com SMD-REQ-030.
+- Adoption progress: decided on 24/10/2026 that there is no adoption-specific state; the documentation and `.specmdignore` are enough to resume.
+- `@wip` in the adoption: decided on 24/10/2026 that it remains the developer's decision; the agent implements the steps of one document before moving on.
+- A failure in a scenario that never passed comes with the divergence guidance (ask the developer which one holds), approved with SMD-REQ-030.
 
 ### D-026 — MDG (`.feature.md`)
 
-A especificação oficial ([MARKDOWN_WITH_GHERKIN.md](https://github.com/cucumber/gherkin/blob/main/MARKDOWN_WITH_GHERKIN.md)) e o tokenizador de referência em JavaScript foram conferidos em 24/10/2026:
+The official specification ([MARKDOWN_WITH_GHERKIN.md](https://github.com/cucumber/gherkin/blob/main/MARKDOWN_WITH_GHERKIN.md)) and the reference tokenizer in JavaScript were checked on 24/10/2026:
 
-- **Extensão:** `.feature.md` é obrigatória.
-- **Prosa:** o formato é um superconjunto do GitHub Flavored Markdown e admite prosa. Linhas que não são Gherkin (parágrafos, imagens, links) são ignoradas pelo parser.
-- **Palavras-chave e passos:** palavras-chave como títulos Markdown (`# Funcionalidade`, `## Regra`, `### Cenário`, `Esquema do Cenário`, `Exemplos`, `Contexto`); passos como itens de lista (`*` ou `-`).
-- **Tabelas e Doc Strings:** tabelas no formato GFM, indentadas com 2 a 5 espaços; blocos cercados são Doc Strings.
-- **Tags:** entre crases, na linha acima da palavra-chave.
-- **Estrutura:** uma funcionalidade por arquivo; o título `Funcionalidade` é opcional.
-- **Idioma:** não há `# language:`. O idioma é definido de forma global.
-- **Suporte:** o parser oficial existe só em JavaScript; Behave, Cucumber-JVM e Godog não leem o formato.
+- **Extension:** `.feature.md` is mandatory.
+- **Prose:** the format is a superset of GitHub Flavored Markdown and allows prose. Lines that are not Gherkin (paragraphs, images, links) are ignored by the parser.
+- **Keywords and steps:** keywords as Markdown headings (`# Feature`, `## Rule`, `### Scenario`, `Scenario Outline`, `Examples`, `Background`); steps as list items (`*` or `-`).
+- **Tables and Doc Strings:** tables in GFM format, indented by 2 to 5 spaces; fenced blocks are Doc Strings.
+- **Tags:** in backticks, on the line above the keyword.
+- **Structure:** one feature per file; the `Feature` heading is optional.
+- **Language:** there is no `# language:`. The language is defined globally.
+- **Support:** the official parser exists only in JavaScript; Behave, Cucumber-JVM and Godog do not read the format.
 
-Decidido:
+Decided:
 
-- **Escopo:** `*.feature.md` é lido como MDG; os demais `.md` continuam com blocos cercados marcados como `gherkin`. Num `.feature.md`, um bloco cercado é Doc String, como na especificação, e os dois estilos não se misturam no mesmo arquivo.
-- **Conversão:** o SpecMD converte MDG em Gherkin clássico em memória, preservando os números de linha. Motores e bridges não mudam.
-- **Idioma:** vem do `gherkin_language` do `specmd.toml`.
-- **Requisitos:** títulos que não são palavra-chave, como `## PAG-REQ-001 — Estorno`, são prosa para o MDG e continuam valendo como requisito pela posição.
+- **Scope:** `*.feature.md` is read as MDG; the other `.md` files keep using fenced blocks marked as `gherkin`. In a `.feature.md`, a fenced block is a Doc String, as in the specification, and the two styles do not mix in the same file.
+- **Conversion:** SpecMD converts MDG into classic Gherkin in memory, preserving the line numbers. Engines and bridges do not change.
+- **Language:** comes from `gherkin_language` in `specmd.toml`.
+- **Requirements:** headings that are not keywords, such as `## PAY-REQ-001 — Refund`, are prose for MDG and still count as a requirement by their position.
 
-Em aberto:
+Open:
 
-- ID de requisito no título da `Regra`: aceito, decidido em 24/10/2026.
-- Idiomas: todos os do Gherkin, pelo `gherkin_language`, decidido em 24/10/2026. Os bridges Java e Go não leem o campo `language` do protocolo; o SpecMD insere o cabeçalho `# language:` no texto enviado a eles.
+- Requirement ID in the `Rule` heading: accepted, decided on 24/10/2026.
+- Languages: all of Gherkin's languages, through `gherkin_language`, decided on 24/10/2026. The Java and Go bridges do not read the protocol's `language` field; SpecMD inserts the `# language:` header in the text sent to them.
 
-### D-027 — Codex com LLM real
+### D-027 — Codex with a real LLM
 
-Decidido:
+Decided:
 
-- Conferir na versão instalada do Codex:
-  - os eventos disponíveis, inclusive `UserPromptSubmit`;
-  - se o `Stop` aceita `decision: block`;
-  - se `additionalContext` funciona no início da sessão e depois de ferramentas.
-- Testar a raiz do projeto sem `CLAUDE_PROJECT_DIR`.
-- Repetir o roteiro de quatro turnos já exercitado no Claude Code.
-- Dependências do usuário: a autenticação do Codex na máquina e a confiança nos hooks pelo `/hooks`, que é uma ação humana.
+- Check in the installed version of Codex:
+  - the available events, including `UserPromptSubmit`;
+  - whether `Stop` accepts `decision: block`;
+  - whether `additionalContext` works at session start and after tools.
+- Test the project root without `CLAUDE_PROJECT_DIR`.
+- Repeat the four-turn script already exercised in Claude Code.
+- User dependencies: Codex authentication on the machine and trusting the hooks through `/hooks`, which is a human action.
 
-Executado em 24/10/2026 com o Codex 0.163 e `gpt-6-luna`: os quatro eventos, `additionalContext` no início e depois de ferramentas e o bloqueio do `Stop` funcionaram; ver [sessões nativas no Codex](../research/codex/native-session.md).
+Run on 24/10/2026 with Codex 0.163 and `gpt-6-luna`: the four events, `additionalContext` at the start and after tools, and the `Stop` block worked; see [native sessions in Codex](../research/codex/native-session.md).
 
-Em aberto: como ativar o SpecMD no Codex sem o `.claude/settings` do projeto (hoje, pelo `specmd.toml`, ou por um mecanismo equivalente do Codex).
+Open: how to activate SpecMD in Codex without the project's `.claude/settings` (today, through `specmd.toml`, or through an equivalent Codex mechanism).
 
-### D-028 — Piloto comparativo
+### D-028 — Comparative pilot
 
-Decidido:
+Decided:
 
-- **Tarefas:** de 6 a 10, em dois apps de exemplo (carrinho e pagamentos), com armadilhas plantadas: limite ambíguo, regra que contradiz a documentação e pedido que tenta inventar uma regra.
-- **Grupo de comparação forte:** o mesmo repositório, a mesma documentação, os mesmos testes e um `CLAUDE.md` que manda manter a documentação, sem o SpecMD.
-- **Dev simulado com intenção escondida:** um roteiro, ou um LLM no papel de dev, responde conforme uma especificação que o agente não vê.
-- **Avaliação independente:** testes de aceite escondidos codificam a intenção real.
-- **Métricas:**
-  - regras inventadas que passaram;
-  - omissões;
-  - turnos até terminar;
-  - falsos bloqueios;
-  - latência dos hooks (p50 e p95);
-  - tokens e custo.
-- **Repetições:** de 3 a 5 por tarefa.
+- **Tasks:** 6 to 10, in two example apps (cart and payments), with planted traps: an ambiguous limit, a rule that contradicts the documentation and a request that tries to invent a rule.
+- **Strong comparison group:** the same repository, the same documentation, the same tests and a `CLAUDE.md` that says to keep the documentation up to date, without SpecMD.
+- **Simulated developer with hidden intent:** a script, or an LLM playing the developer, answers according to a specification the agent does not see.
+- **Independent evaluation:** hidden acceptance tests encode the real intent.
+- **Metrics:**
+  - invented rules that got through;
+  - omissions;
+  - turns until done;
+  - false blocks;
+  - hook latency (p50 and p95);
+  - tokens and cost.
+- **Repetitions:** 3 to 5 per task.
 
-Em aberto:
+Open:
 
-- Quais modelos usar, o que define o custo.
-- As metas, definidas antes de medir.
+- Which models to use, which determines the cost.
+- The goals, defined before measuring.
 
-### Ideias levantadas e não escolhidas agora
+### Ideas raised and not chosen for now
 
-Continuam disponíveis para escolhas futuras:
+They remain available for future choices:
 
-- mudança de comportamento sem documentação ("regra inventada") detectada ao concluir;
-- marcador para exemplos de Gherkin que não devem rodar;
-- CI e relatório por requisito no PR;
-- bug vira cenário de regressão;
-- contexto da tarefa com os requisitos relacionados;
-- orientação para transformar prosa vaga em cenário;
+- behavior change without documentation ("invented rule") detected on finishing;
+- a marker for Gherkin examples that must not run;
+- CI and a per-requirement report on the PR;
+- a bug becomes a regression scenario;
+- task context with the related requirements;
+- guidance to turn vague prose into a scenario;
 - Windows;
-- reaproveitar o ecossistema (Spec Kit, OpenSpec, Tracey);
-- teste de mutação nos cenários;
-- verificadores além de Gherkin;
-- comparação entre agentes;
-- prontidão de release.
+- reusing the ecosystem (Spec Kit, OpenSpec, Tracey);
+- mutation testing on the scenarios;
+- verifiers beyond Gherkin;
+- comparison between agents;
+- release readiness.
 
-## Escolhas técnicas propostas
+## Proposed technical choices
 
-Estas escolhas são hipóteses de implementação, sujeitas à validação:
+These choices are implementation hypotheses, subject to validation:
 
-- Núcleo CLI independente, com saída estruturada e adaptadores pequenos para cada agente.
-- Markdown comum com frontmatter e blocos Gherkin identificados.
-- SHA-256 dos bytes dos documentos e manifesto determinístico contendo caminhos e hashes.
-- Aceites externos autenticados, ou artefatos assinados cuja autoridade permaneça fora do alcance do agente.
-- Evidência de execução vinculada ao contrato, código, testes, configuração e ambiente pertinentes.
-- Checagem protegida de integração além dos hooks locais.
-- Índice local reconstruível; começar com armazenamento simples antes de otimizar consultas.
-- Escopo e política protegidos para impedir autoisenção, exclusões silenciosas ou substituição do verificador.
+- Independent CLI core, with structured output and small adapters for each agent.
+- Plain Markdown with front matter and identified Gherkin blocks.
+- SHA-256 of the documents' bytes and a deterministic manifest containing paths and hashes.
+- Authenticated external acceptances, or signed artifacts whose authority stays out of the agent's reach.
+- Run evidence bound to the relevant contract, code, tests, configuration and environment.
+- Protected integration check beyond the local hooks.
+- Rebuildable local index; start with simple storage before optimizing queries.
+- Protected scope and policy to prevent self-exemption, silent exclusions or replacement of the verifier.
 
-## Decisões ainda abertas
+## Decisions still open
 
-| Questão | Como decidir |
+| Question | How to decide |
 | --- | --- |
-| Licença | Decisão explícita do mantenedor; visibilidade pública não escolhe uma licença automaticamente. |
-| Linguagem e distribuição do núcleo | Comparar integração do parser/runner, instalação e manutenção. |
-| Runner inicial | Spike demonstrando execução em memória, origem no Markdown e resultados estruturados. |
-| Primeiro agente integrado | Priorizar a preparação de testes locais no Codex, verificando versão, APIs, hooks e capacidade real de bloquear eventos antes de anunciar suporte. |
-| Interface e armazenamento de aceites | Demonstrar identidade, conteúdo exato revisado, revogação e separação de credenciais. |
-| Granularidade dos aceites | Comparar aceite por documento, requisito ou conjunto, sem perder o contexto aprovado. |
-| Política de reaproveitamento de aceites | Definir efeitos de renomeação, retorno a conteúdo antigo, mudança de contexto e revogação. |
-| Política de bloqueio | Definir o que pausa implementação, conclusão da tarefa ou integração, e o alcance das dependências. |
-| Requisitos não funcionais | Escolher adaptadores específicos quando Gherkin não for o mecanismo adequado. |
-| Compatibilidade de formato | Encaminhada por D-026: blocos cercados nos `.md` comuns e MDG oficial nos `.feature.md`, sem dialeto concorrente. Faltam os pontos em aberto de D-026. |
+| License | Explicit decision by the maintainer; public visibility does not choose a license automatically. |
+| Language and distribution of the core | Compare parser/runner integration, installation and maintenance. |
+| Initial runner | Spike demonstrating in-memory runs, origin in the Markdown and structured results. |
+| First integrated agent | Prioritize preparing local tests in Codex, verifying version, APIs, hooks and the real ability to block events before announcing support. |
+| Acceptance interface and storage | Demonstrate identity, exact reviewed content, revocation and separation of credentials. |
+| Acceptance granularity | Compare acceptance per document, requirement or set, without losing the approved context. |
+| Acceptance reuse policy | Define the effects of renaming, reverting to old content, context change and revocation. |
+| Blocking policy | Define what pauses implementation, task completion or integration, and the reach of the dependencies. |
+| Non-functional requirements | Choose specific adapters when Gherkin is not the appropriate mechanism. |
+| Format compatibility | Addressed by D-026: fenced blocks in plain `.md` files and official MDG in `.feature.md` files, with no competing dialect. The open points of D-026 remain. |
 
-## Evoluções a considerar após o núcleo
+## Evolutions to consider after the core
 
-- Contexto da tarefa preparado a partir dos contratos aplicáveis.
-- Revisão de mudanças orientada a requisitos, evidências e alterações de contrato.
-- Continuidade entre sessões e agentes com pendências e evidências atuais.
-- Conversão de incidentes e bugs em cenários de regressão e justificativas registradas.
-- Análise de impacto com cobertura e incertezas explícitas.
-- Testes de mutação direcionados para avaliar a força das verificações.
-- Comparação de agentes por atendimento aos critérios, retrabalho e esforço de revisão.
-- Verificadores de compatibilidade, acessibilidade, arquitetura e desempenho.
+- Task context prepared from the applicable contracts.
+- Change review oriented by requirements, evidence and contract changes.
+- Continuity across sessions and agents with current gaps and evidence.
+- Conversion of incidents and bugs into regression scenarios and recorded justifications.
+- Impact analysis with explicit coverage and uncertainties.
+- Targeted mutation testing to assess the strength of the checks.
+- Comparison of agents by how well they meet the criteria, rework and review effort.
+- Compatibility, accessibility, architecture and performance verifiers.
 
-Essas capacidades não integram automaticamente o MVP. Sua inclusão depende de demonstrar benefício no [plano de validação](validation-plan.md) e de manter a sequência do [roadmap](roadmap.md).
+These capabilities are not automatically part of the MVP. Their inclusion depends on demonstrating benefit in the [validation plan](validation-plan.md) and on keeping the sequence of the [roadmap](roadmap.md).

@@ -21,4 +21,4 @@ for command in commands:
 evidence = {"observed_at_utc": datetime.now(timezone.utc).isoformat(), "scope": "Help/version only; no plugin installed, trust modified, credentials inspected, or model session started.", "commands": results}
 (root / "evidence" / "cli-help.json").write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 assert all(result["exit"] == 0 for result in results)
-print("5 comandos help/version concluídos; nenhum plugin instalado")
+print("5 help/version commands completed; no plugin installed")

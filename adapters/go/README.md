@@ -1,15 +1,16 @@
-# Adaptador Go / Godog
+# Go / Godog adapter
 
-Integração experimental real com Godog `v0.16.0`. O chamador envia os blocos
-Gherkin extraídos dos Markdown por JSON; o pacote os executa em memória por
-`godog.Options.FeatureContents`. Nenhum `.feature` é criado ou descoberto.
+Real experimental integration with Godog `v0.16.0`. The caller sends the Gherkin
+blocks extracted from the Markdown files as JSON; the package runs them in
+memory through `godog.Options.FeatureContents`. No `.feature` is created or
+discovered.
 
-## Integrar com a aplicação
+## Integrating with the application
 
-O ponto de integração é `Run(input, ScenarioInitializer)`, ou `Serve(stdin,
-stdout, ScenarioInitializer)` para um subprocesso usado pelo núcleo SpecMD.
-Registre os passos reais da sua aplicação no initializer; o exemplo em
-`cmd/specmd-example` chama uma função `Add` e verifica seu resultado.
+The integration point is `Run(input, ScenarioInitializer)`, or `Serve(stdin,
+stdout, ScenarioInitializer)` for a subprocess used by the SpecMD core.
+Register your application's real steps in the initializer; the example in
+`cmd/specmd-example` calls an `Add` function and checks its result.
 
 ```go
 func main() {
@@ -17,9 +18,10 @@ func main() {
 }
 ```
 
-O módulo usa um caminho de exemplo (`example.com/specmd/adapters/go`). Dentro
-de outro módulo, use um `replace` para este diretório até definir o caminho de
-distribuição. A biblioteca não oferece um conjunto universal de passos.
+The module uses an example path (`example.com/specmd/adapters/go`). Inside
+another module, use a `replace` pointing to this directory until the
+distribution path is defined. The library does not offer a universal set of
+steps.
 
 ```sh
 go test ./...
@@ -27,43 +29,43 @@ go build -o specmd-go-example ./cmd/specmd-example
 ./specmd-go-example < input.json
 ```
 
-Requer Go `1.25.0` e as dependências fixadas em `go.mod`/`go.sum`. A primeira
-resolução de dependências pode exigir rede; não instale ferramentas globalmente.
+Requires Go `1.25.0` and the dependencies pinned in `go.mod`/`go.sum`. The first
+dependency resolution may require network access; do not install tools globally.
 
-No `specmd.toml` schema2 do projeto, configure seu executável com os passos registrados:
+In the project's schema2 `specmd.toml`, configure your executable with the registered steps:
 
 ```toml
 [[runners]]
 id = "go"
 language = "go"
-command = ["/caminho/specmd-go-runner"]
+command = ["/path/to/specmd-go-runner"]
 timeout = 60
 ```
 
-Se houver outros runners, distribua documentos com `paths` sem atribuir o mesmo cenário a dois motores.
+If there are other runners, distribute documents with `paths` without assigning the same scenario to two engines.
 
-## Protocolo
+## Protocol
 
-Entrada schema 1: `features` contém `{path, block, line, content}`; `line` é a
-primeira linha do corpo do bloco no Markdown. `expected_scenarios` contém
-`{id, path, block, line}`; aqui `line` é a linha do cabeçalho do cenário.
-O ID deve ser uma tag própria `@SMD-…-SCN-…` do cenário.
+schema 1 input: `features` contains `{path, block, line, content}`; `line` is the
+first line of the block's body in the Markdown. `expected_scenarios` contains
+`{id, path, block, line}`; here `line` is the line of the scenario's heading.
+The ID must be the scenario's own `@SMD-…-SCN-…` tag.
 
-Saída: um único objeto JSON com `schema:1`, `mode:"real"`, `dry_run:false`,
-`engine_failed`, `passed` e resultados com origem, status, `steps_executed` e
-estados de cada passo. Logs do runner vão para stderr. Exit code 0 só ocorre
-quando todos os cenários esperados passam, exatamente uma vez, com passos
-executados. IDs ausentes, extras, duplicados e origens divergentes falham.
+Output: a single JSON object with `schema:1`, `mode:"real"`, `dry_run:false`,
+`engine_failed`, `passed` and results with origin, status, `steps_executed` and
+the states of each step. Runner logs go to stderr. Exit code 0 only occurs
+when all expected scenarios pass, exactly once, with steps run. Missing,
+extra and duplicate IDs and divergent origins fail.
 
-Este incremento aceita cenários simples e Background. Rule e Scenario Outline
-são recusados explicitamente, inclusive quando o chamador envia IDs de
-instâncias de Examples. Não há filtros por tags ou dry-run no protocolo.
+This increment accepts simple scenarios and Background. Rule and Scenario Outline
+are explicitly rejected, including when the caller sends IDs of Examples
+instances. There are no tag filters or dry-run in the protocol.
 
-O initializer e os passos são código confiado pelo desenvolvedor: podem ler e
-alterar o ambiente como qualquer teste de aplicação. `Serve` redireciona stdout
-normal do Go para stderr, mas código que escreve diretamente no descritor pode
-contornar isso; o chamador precisa recusar saída extra ou inválida.
+The initializer and the steps are code trusted by the developer: they can read
+and change the environment like any application test. `Serve` redirects Go's
+normal stdout to stderr, but code that writes directly to the descriptor can
+get around that; the caller must reject extra or invalid output.
 
-Esse relatório é evidência de execução, não aceite humano nem autorização de
-conclusão. Passos vazios ou asserções fracas continuam exigindo revisão. O gate
-do núcleo deve vincular a evidência ao contrato, código e configuração atuais.
+This report is evidence of execution, not human acceptance nor authorization
+to complete. Empty steps or weak assertions still require review. The core's
+gate must bind the evidence to the current contract, code and configuration.

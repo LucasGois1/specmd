@@ -38,7 +38,7 @@ def main() -> int:
         env["GOSUMDB"] = "off"
     version = subprocess.run([args.go, "version"], env=env, text=True, capture_output=True, timeout=15)
     if version.returncode or not version.stdout.startswith("go version go"):
-        print("O executável informado não é um SDK Go válido: " + version.stdout + version.stderr, file=sys.stderr)
+        print("The given executable is not a valid Go SDK: " + version.stdout + version.stderr, file=sys.stderr)
         return 2
     build = ROOT / ".build"
     build.mkdir(exist_ok=True)
@@ -66,12 +66,12 @@ def main() -> int:
         try:
             result = json.loads(process.stdout)
         except json.JSONDecodeError:
-            problems.append(f"{case}: saída JSON inválida; processo={process.returncode}")
+            problems.append(f"{case}: invalid JSON output; process={process.returncode}")
             continue
         ok = result["gate_allowed"] is expected["gate"] and len(result["observed_scenarios"]) == expected["observed"]
         ok = ok and process.returncode == (0 if expected["gate"] else 1)
         if not ok:
-            problems.append(f"{case}: resultado divergente da matriz")
+            problems.append(f"{case}: result diverges from the matrix")
         cases.append({"case": case, "adapter_exit": process.returncode, "runner_exit": result["runner_exit"], "gate_allowed": result["gate_allowed"], "observed": len(result["observed_scenarios"]), "matches_expected": ok})
         print(json.dumps(cases[-1], ensure_ascii=False))
 
@@ -85,7 +85,7 @@ def main() -> int:
     except json.JSONDecodeError:
         stdin_ok = False
     if not stdin_ok:
-        problems.append("stdin do adaptador não passou")
+        problems.append("adapter stdin did not pass")
 
     transport_cases = []
     for transport, expected_gate, expected_observed in (("vfs", True, 2), ("vfs-dir", False, 0)):
@@ -97,12 +97,12 @@ def main() -> int:
         ok = ok and process.returncode == (0 if expected_gate else 1)
         transport_cases.append({"transport": transport, "runner_exit": result["runner_exit"], "adapter_exit": process.returncode, "gate_allowed": result["gate_allowed"], "observed": len(result["observed_scenarios"]), "matches_expected": ok})
         if not ok:
-            problems.append(f"{transport}: resultado divergente da matriz")
+            problems.append(f"{transport}: result diverges from the matrix")
         print(json.dumps(transport_cases[-1], ensure_ascii=False))
 
     feature_files = sorted(str(path.relative_to(ROOT)) for path in ROOT.rglob("*.feature"))
     if feature_files:
-        problems.append("Arquivos .feature inesperados: " + ", ".join(feature_files))
+        problems.append("Unexpected .feature files: " + ", ".join(feature_files))
     summary = {
         "observed_at_utc": datetime.now(timezone.utc).isoformat(),
         "go": version.stdout.strip(),
@@ -117,7 +117,7 @@ def main() -> int:
         "harness_passed": not problems,
         "problems": problems,
         "source_files_sha256": {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in ("main.go", "system.go", CONTRACT, "empty.md", "reference.md", "go.mod", "go.sum", "run_experiment.py")},
-        "scope": "Experimento técnico; não implementa aceite humano, proteção CI ou prova de completude de requisitos.",
+        "scope": "Technical experiment; does not implement human acceptance, CI protection or proof of requirement completeness.",
     }
     (evidence / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     for problem in problems:

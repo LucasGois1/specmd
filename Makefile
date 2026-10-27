@@ -1,5 +1,4 @@
-# Atalhos para experimentar o SpecMD localmente com o Claude Code.
-# Nenhum alvo aceita contratos: a decisão continua sendo feita na revisão.
+# Shortcuts to try SpecMD locally with Claude Code.
 
 PYTHON ?= python3
 DEMO_HOME ?= $(HOME)/specmd-demo
@@ -10,7 +9,7 @@ PY := $(VENV)/bin/python
 STAMP := $(VENV)/.specmd-installed
 BUNDLE := $(CURDIR)/codex-plugin
 
-# Avaliadas a cada alvo, para enxergar um demo recém-criado.
+# Evaluated on every target, to see a freshly created demo.
 DEMO_BASE = $(shell cat "$(DEMO_HOME)/.latest" 2>/dev/null)
 DEMO = $(DEMO_BASE)/cart
 SPECMD_ENV = SPECMD_PYTHON="$(PY)"
@@ -19,15 +18,15 @@ SPECMD_ENV = SPECMD_PYTHON="$(PY)"
 .PHONY: help setup bundle test bench demo agent status run init require-demo
 
 help:
-	@echo "Uso: make <alvo>"
-	@echo "  setup   Cria .venv, instala dependências e gera o plugin"
-	@echo "  test    Roda a suíte local"
-	@echo "  bench   Mede a latência dos hooks num repositório sintético grande"
-	@echo "  demo    Cria um projeto de demonstração novo em $(DEMO_HOME)"
-	@echo "  agent   Abre o Claude Code no demo com o plugin SpecMD"
-	@echo "  status  Mostra o estado do demo"
-	@echo "  run     Executa os cenários do demo"
-	@echo "  init    Habilita o plugin para o time: make init REPO=/caminho/do/repo"
+	@echo "Usage: make <target>"
+	@echo "  setup   Create .venv, install dependencies and build the plugin"
+	@echo "  test    Run the local test suite"
+	@echo "  bench   Measure hook latency on a large synthetic repository"
+	@echo "  demo    Create a new demo project in $(DEMO_HOME)"
+	@echo "  agent   Open Claude Code in the demo with the SpecMD plugin"
+	@echo "  status  Show the demo's status"
+	@echo "  run     Run the demo's scenarios"
+	@echo "  init    Enable the plugin for the team: make init REPO=/path/to/repo"
 
 $(STAMP): pyproject.toml
 	$(PYTHON) -m venv "$(VENV)"
@@ -38,7 +37,7 @@ setup: bundle
 
 bundle: $(STAMP)
 	@"$(PY)" scripts/build_codex_plugin.py > /dev/null
-	@echo "Plugin gerado em $(BUNDLE)"
+	@echo "Plugin built in $(BUNDLE)"
 
 test: $(STAMP)
 	"$(PY)" scripts/test_local.py
@@ -52,12 +51,12 @@ demo: $(STAMP)
 	"$(PY)" -m specmd demo --dest "$$base/cart" > /dev/null && \
 	echo "$$base" > "$(DEMO_HOME)/.latest" && \
 	(cd "$$base/cart" && git init -q) && \
-	echo "Demo criado em $$base/cart." && \
-	echo "Próximo passo: make agent e peça uma mudança de regra ao agente."
+	echo "Demo created in $$base/cart." && \
+	echo "Next step: make agent, then ask the agent for a rule change."
 
 agent: bundle require-demo
-	@command -v claude > /dev/null || { echo "CLI claude não encontrado no PATH."; exit 1; }
-	@echo "Claude Code em $(DEMO), com o plugin SpecMD carregado só nesta sessão."
+	@command -v claude > /dev/null || { echo "claude CLI not found in PATH."; exit 1; }
+	@echo "Claude Code in $(DEMO), with the SpecMD plugin loaded for this session only."
 	@cd "$(DEMO)" && $(SPECMD_ENV) claude --plugin-dir "$(BUNDLE)" $(CLAUDE_ARGS)
 
 status: $(STAMP) require-demo
@@ -67,8 +66,8 @@ run: $(STAMP) require-demo
 	@$(SPECMD_ENV) "$(PY)" -m specmd run --root "$(DEMO)" | "$(PY)" scripts/summarize_result.py
 
 init: $(STAMP)
-	@if [ -z "$(REPO)" ]; then echo "Use: make init REPO=/caminho/do/repo"; exit 1; fi
+	@if [ -z "$(REPO)" ]; then echo "Usage: make init REPO=/path/to/repo"; exit 1; fi
 	@"$(PY)" -m specmd init --root "$(REPO)"
 
 require-demo:
-	@if [ -z "$(DEMO_BASE)" ] || [ ! -d "$(DEMO)" ]; then echo "Nenhum demo encontrado. Rode make demo primeiro."; exit 1; fi
+	@if [ -z "$(DEMO_BASE)" ] || [ ! -d "$(DEMO)" ]; then echo "No demo found. Run make demo first."; exit 1; fi

@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from . import state as local_state
+from .messages import text as t
 
 BASELINE_FILE = "prompt-scenarios.json"
 _BASELINE_KEYS = ("id", "name", "line", "sha256", "tags", "steps_text")
@@ -98,7 +99,7 @@ def _document_changes(path: str, old_document: dict[str, Any], current: dict[str
 
 
 def _steps_text(steps: list[str]) -> str:
-    return " / ".join(steps) if steps else "(nenhum)"
+    return " / ".join(steps) if steps else t("(none)", "(nenhum)")
 
 
 def _step_diff(before: list[str], after: list[str]) -> list[str]:
@@ -111,25 +112,26 @@ def _step_diff(before: list[str], after: list[str]) -> list[str]:
 def describe(change: dict[str, Any]) -> str:
     location = f"{change['path']}:{change['line']}" if change.get("line") else change["path"]
     if change["kind"] == "requirement_removed":
-        return f"- requisito {change['id']} ({location}) — removido"
+        return t(f"- requirement {change['id']} ({location}) — removed", f"- requisito {change['id']} ({location}) — removido")
     title = f'- {location} "{change.get("name")}"'
     if change["kind"] == "removed":
-        return f"{title} — removido ou renomeado"
-    parts = []  # Step texts keep their keyword: "Então o total deve ser 900 centavos".
+        return f"{title} — " + t("removed or renamed", "removido ou renomeado")
+    parts = []  # Step texts keep their keyword: "Then the total should be 900 cents".
     for key in ("then", "context"):
         if change.get(key):
             parts.extend(_step_diff(*change[key]))
     if change.get("data") and not parts:
-        parts.append("tabela ou texto de um passo alterado")
+        parts.append(t("a step's table or text changed", "tabela ou texto de um passo alterado"))
     if change.get("wip"):
-        parts.append("marcado @wip")
-    return f"{title} — " + ("; ".join(parts) if parts else "alterado")
+        parts.append(t("tagged @wip", "marcado @wip"))
+    return f"{title} — " + ("; ".join(parts) if parts else t("changed", "alterado"))
 
 
 def describe_all(changes: list[dict[str, Any]]) -> list[str]:
     lines = [describe(change) for change in changes[:MAX_LINES]]
     if len(changes) > MAX_LINES:
-        lines.append(f"- … e mais {len(changes) - MAX_LINES} mudanças.")
+        more = len(changes) - MAX_LINES
+        lines.append(t(f"- … and {more} more changes.", f"- … e mais {more} mudanças."))
     return lines
 
 
@@ -147,7 +149,7 @@ def failure_hint(failure: dict[str, Any]) -> str:
         lines = [line.strip() for line in str(step.get("error") or "").splitlines() if line.strip()]
         if lines:
             return lines[-1][:200]
-    return str(failure.get("status") or "falhava")
+    return str(failure.get("status") or t("failing", "falhava"))
 
 
 def gained_rules(before: Any, after: dict[str, Any]) -> list[tuple[str, dict[str, Any], list[str]]]:
@@ -159,9 +161,9 @@ def gained_rules(before: Any, after: dict[str, Any]) -> list[tuple[str, dict[str
         old = before.get(path) if isinstance(before.get(path), dict) else {}
         what = sorted(set(markers.get("requirements", [])) - set(old.get("requirements", [])))
         if markers.get("gherkin", 0) > old.get("gherkin", 0):
-            what.append("um bloco Gherkin")
+            what.append(t("a Gherkin block", "um bloco Gherkin"))
         if markers.get("mdg", 0) > old.get("mdg", 0):
-            what.append("títulos Gherkin (MDG)")
+            what.append(t("Gherkin headings (MDG)", "títulos Gherkin (MDG)"))
         if what:
             gained.append((path, markers, what))
     return gained
@@ -170,7 +172,13 @@ def gained_rules(before: Any, after: dict[str, Any]) -> list[tuple[str, dict[str
 def describe_gained(gained: list[tuple[str, dict[str, Any], list[str]]]) -> list[str]:
     lines = []
     for path, markers, what in gained[:MAX_LINES]:
-        where = "é ignorado por padrão pelo SpecMD" if markers.get("default") else "está no .specmdignore"
-        lines.append(f"SpecMD: {path} {where}, mas agora declara {', '.join(what)}. Mova a regra para um documento "
-                     f"de comportamento ou tire o arquivo do .specmdignore (ou use !{path}). Em dúvida, pergunte ao dev.")
+        declared = ", ".join(what)
+        if markers.get("default"):
+            where = t("is ignored by default by SpecMD", "é ignorado por padrão pelo SpecMD")
+        else:
+            where = t("is in .specmdignore", "está no .specmdignore")
+        lines.append(t(f"SpecMD: {path} {where}, but now declares {declared}. Move the rule to a behavior document or "
+                       f"take the file out of .specmdignore (or use !{path}). When in doubt, ask the developer.",
+                       f"SpecMD: {path} {where}, mas agora declara {declared}. Mova a regra para um documento "
+                       f"de comportamento ou tire o arquivo do .specmdignore (ou use !{path}). Em dúvida, pergunte ao dev."))
     return lines

@@ -40,31 +40,31 @@ def raises(action, kind):
 
 
 if TASK == "T1":
-    check("600 + 500 = 990 (10% acima de 1000)", lambda: total(600, 500) == 990)
-    check("500 + 500 = 1000 (limite sem desconto)", lambda: total(500, 500) == 1000)
-    check("500 + 505 = 905 (desconto arredondado para baixo)", lambda: total(500, 505) == 905)
-    check("carrinho vazio = 0", lambda: total() == 0)
+    check("600 + 500 = 990 (10% above 1000)", lambda: total(600, 500) == 990)
+    check("500 + 500 = 1000 (limit without discount)", lambda: total(500, 500) == 1000)
+    check("500 + 505 = 905 (discount rounded down)", lambda: total(500, 505) == 905)
+    check("empty cart = 0", lambda: total() == 0)
 elif TASK == "T2":
-    check("200 + 300 = 501 (taxa com itens)", lambda: total(200, 300) == 501)
+    check("200 + 300 = 501 (fee with items)", lambda: total(200, 300) == 501)
     check("100 = 101", lambda: total(100) == 101)
-    check("carrinho vazio = 0 (sem taxa)", lambda: total() == 0)
+    check("empty cart = 0 (no fee)", lambda: total() == 0)
 elif TASK == "T3":
-    check("preço negativo levanta ValueError", lambda: raises(lambda: total(-1), ValueError))
-    check("preço zero é aceito", lambda: total(0) == 0)
-    check("preço alto é aceito", lambda: total(10 ** 9) == 10 ** 9)
-    check("soma normal continua", lambda: total(200, 300) == 500)
+    check("negative price raises ValueError", lambda: raises(lambda: total(-1), ValueError))
+    check("zero price is accepted", lambda: total(0) == 0)
+    check("high price is accepted", lambda: total(10 ** 9) == 10 ** 9)
+    check("plain sum still works", lambda: total(200, 300) == 500)
 elif TASK == "T4":
-    from pagamentos import pode_estornar, solicitar_estorno
+    from payments import can_refund, request_refund
 
-    check("7 dias: aprovado", lambda: solicitar_estorno(7) == "aprovado")
-    check("8 dias: recusado", lambda: solicitar_estorno(8) == "recusado")
-    check("0 dias: aprovado", lambda: solicitar_estorno(0) == "aprovado")
-    check("pode_estornar segue os 7 dias", lambda: pode_estornar(7) and not pode_estornar(8))
+    check("7 days: approved", lambda: request_refund(7) == "approved")
+    check("8 days: refused", lambda: request_refund(8) == "refused")
+    check("0 days: approved", lambda: request_refund(0) == "approved")
+    check("can_refund follows the 7 days", lambda: can_refund(7) and not can_refund(8))
 elif TASK == "T5":
-    check("300 + 300 = 540 (desconto acima de 500)", lambda: total(300, 300) == 540)
-    check("250 + 250 = 500 (limite sem desconto)", lambda: total(250, 250) == 500)
+    check("300 + 300 = 540 (discount above 500)", lambda: total(300, 300) == 540)
+    check("250 + 250 = 500 (limit without discount)", lambda: total(250, 250) == 500)
     check("600 + 500 = 990", lambda: total(600, 500) == 990)
-    check("carrinho vazio = 0", lambda: total() == 0)
+    check("empty cart = 0", lambda: total() == 0)
 elif TASK == "T6":
     def cart(*prices):
         from app import Cart
@@ -74,12 +74,12 @@ elif TASK == "T6":
             value.add(price)
         return value
 
-    check("10000 exatos pagam 500 de frete", lambda: cart(5000, 5000).frete() == 500)
-    check("acima de 10000, frete grátis", lambda: cart(5000, 5001).frete() == 0)
-    check("10 itens são aceitos", lambda: cart(*[1] * 10).total() == 10)
-    check("o 11º item levanta ValueError", lambda: raises(lambda: cart(*[1] * 11), ValueError))
-    check("total continua a soma", lambda: total(200, 300) == 500)
+    check("exactly 10000 pays 500 shipping", lambda: cart(5000, 5000).shipping() == 500)
+    check("above 10000, free shipping", lambda: cart(5000, 5001).shipping() == 0)
+    check("10 items are accepted", lambda: cart(*[1] * 10).total() == 10)
+    check("the 11th item raises ValueError", lambda: raises(lambda: cart(*[1] * 11), ValueError))
+    check("total is still the sum", lambda: total(200, 300) == 500)
 else:
-    raise SystemExit(f"tarefa desconhecida: {TASK}")
+    raise SystemExit(f"unknown task: {TASK}")
 
 print(json.dumps({"passed": all(ok for _, ok in results), "checks": results}, ensure_ascii=False))

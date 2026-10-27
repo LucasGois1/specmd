@@ -1,110 +1,110 @@
-# Experimento Go: Markdown canônico com Godog
+# Go experiment: canonical Markdown with Godog
 
-Este diretório contém um protótipo isolado de integração, não a implementação do SpecMD. Ele extrai blocos Gherkin de Markdown com Goldmark e os entrega ao Godog por conteúdo em memória, sem exigir ou produzir arquivos `.feature`.
+This directory contains an isolated integration prototype, not the SpecMD implementation. It extracts Gherkin blocks from Markdown with Goldmark and hands them to Godog as in-memory content, without requiring or producing `.feature` files.
 
-**Executado:** os 11 probes da matriz ampliada coincidiram com o esperado. Dois cenários reais passaram pelo caminho em memória; asserção incorreta, passo indefinido, pendência, filtros incompletos e ausência de cenários foram recusados pelo gate. O estado e a data UTC estão em [evidence/summary.json](evidence/summary.json), com hashes das fontes executadas. Esse resultado é uma prova técnica restrita à integração exercitada.
+**Run:** the 11 probes of the extended matrix matched what was expected. Two real scenarios passed through the in-memory path; incorrect assertion, undefined step, pending step, incomplete filters and absence of scenarios were rejected by the gate. The state and the UTC date are in [evidence/summary.json](evidence/summary.json), with hashes of the sources run. This result is a technical proof restricted to the integration exercised.
 
-## Versões fixadas
+## Pinned versions
 
 - Godog: `v0.16.0`.
 - Goldmark: `v1.7.13`.
-- SDK usado no ambiente de pesquisa: Go `1.25.0`, Linux/amd64, instalado de forma portátil fora do repositório.
-- SHA-256 do arquivo oficial `go1.25.0.linux-amd64.tar.gz`, conferido na preparação: `2852af0cb20a13139b3448992e69b868e50ed0f8a1e5940ee1de9e19a123b613`.
+- SDK used in the research environment: Go `1.25.0`, Linux/amd64, installed portably outside the repository.
+- SHA-256 of the official file `go1.25.0.linux-amd64.tar.gz`, checked during preparation: `2852af0cb20a13139b3448992e69b868e50ed0f8a1e5940ee1de9e19a123b613`.
 
-As dependências diretas estão em [go.mod](go.mod); os checksums resolvidos ficam em `go.sum` após a preparação. SDK, caches e binário de build não devem ser publicados.
+The direct dependencies are in [go.mod](go.mod); the resolved checksums go into `go.sum` after preparation. SDK, caches and the build binary must not be published.
 
-## Reprodução
+## Reproduction
 
-Use um SDK Go real; neste ambiente `/usr/bin/go` não era o compilador Go. O caminho portátil foi `/tmp/specmd-go-sdk/go/bin/go`.
+Use a real Go SDK; in this environment `/usr/bin/go` was not the Go compiler. The portable path was `/tmp/specmd-go-sdk/go/bin/go`.
 
-Na pasta deste documento, prepare as dependências com acesso à rede:
+In this document's folder, prepare the dependencies with network access:
 
 ```sh
 GOTOOLCHAIN=local GOPATH=/tmp/specmd-go-path GOCACHE=/tmp/specmd-go-build-cache GOMODCACHE=/tmp/specmd-go-mod-cache /tmp/specmd-go-sdk/go/bin/go mod tidy
 ```
 
-Com as dependências disponíveis, compile e execute a matriz sem acesso ao proxy de módulos:
+With the dependencies available, compile and run the matrix without access to the module proxy:
 
 ```sh
 python3 run_experiment.py --go /tmp/specmd-go-sdk/go/bin/go --offline
 ```
 
-O harness tem timeout finito de compilação e de cada caso. Ele grava JSON e logs em `evidence/`. Seu código final `0` significa que os resultados observados coincidiram com a matriz, inclusive as falhas deliberadas. Isso não significa que todos os cenários passaram nem que todos os casos foram autorizados pelo gate.
+The harness has a finite timeout for compilation and for each case. It writes JSON and logs to `evidence/`. Its final code `0` means that the observed results matched the matrix, including the deliberate failures. It does not mean that all scenarios passed nor that all cases were authorized by the gate.
 
-## Caminho de execução
+## Execution path
 
-1. Ler [contract.md](contract.md), que contém dois blocos Gherkin em português.
-2. Construir o AST Markdown com Goldmark e selecionar nós `FencedCodeBlock` da linguagem `gherkin`.
-3. Identificar IDs de cenário e registrar documento, bloco e linha da tag.
-4. Entregar os conteúdos ao Godog por `Options.FeatureContents`, usando nomes de origem como `contract.md#gherkin-1`.
-5. Executar step definitions contra as funções reais em [system.go](system.go).
-6. Registrar o resultado do runner separadamente da decisão do gate do experimento.
+1. Read [contract.md](contract.md), which contains two Gherkin blocks in Portuguese.
+2. Build the Markdown AST with Goldmark and select `FencedCodeBlock` nodes of the `gherkin` language.
+3. Identify scenario IDs and record document, block and tag line.
+4. Hand the contents to Godog through `Options.FeatureContents`, using origin names such as `contract.md#gherkin-1`.
+5. Run step definitions against the real functions in [system.go](system.go).
+6. Record the runner's result separately from the experiment gate's decision.
 
-Linhas em branco são prefixadas ao conteúdo em memória para manter o alinhamento das linhas dos diagnósticos com o Markdown original. Esse padding é uma transformação em memória; não cria um arquivo Gherkin separado. Os campos `scenario_origins` e `observed_scenarios[].origin` são produzidos pelo extrator e apontam para a linha da tag de ID. São distintos das posições impressas pelo próprio Godog: os logs positivos mostram `contract.md#gherkin-1:15` e `contract.md#gherkin-2:49`, linhas dos cenários.
+Blank lines are prefixed to the in-memory content to keep the diagnostics' lines aligned with the original Markdown. This padding is an in-memory transformation; it does not create a separate Gherkin file. The fields `scenario_origins` and `observed_scenarios[].origin` are produced by the extractor and point to the line of the ID tag. They are distinct from the positions printed by Godog itself: the positive logs show `contract.md#gherkin-1:15` and `contract.md#gherkin-2:49`, the scenario lines.
 
-As tags são usadas para selecionar os casos do experimento. A extração das cercas usa o parser Markdown; a interpretação dos passos e da sintaxe Gherkin cabe ao Godog. A pequena busca de IDs nas tags serve à rastreabilidade do protótipo e não constitui um parser Gherkin próprio.
+The tags are used to select the experiment's cases. Extracting the fences uses the Markdown parser; interpreting the steps and the Gherkin syntax is up to Godog. The small search for IDs in the tags serves the prototype's traceability and does not constitute a Gherkin parser of its own.
 
-## Matriz pretendida
+## Intended matrix
 
-| Caso | Exercício | Gate esperado |
+| Case | Exercise | Expected gate |
 | --- | --- | --- |
-| `pass` | Soma e cancelamento em blocos distintos, com duas asserções corretas. | Permitir. |
-| `failure` | A soma real é 5, mas o cenário exige 99. | Recusar. |
-| `undefined` | Um passo não possui definição registrada. | Recusar. |
-| `pending` | Um passo retorna `godog.ErrPending`; Godog relata um passo pendente e dois skipped. | Recusar. |
-| `filtered` | Filtro exclui todos os cenários esperados. | Recusar, inclusive se o runner retornar 0. |
-| `partial` | Apenas um dos dois cenários obrigatórios é selecionado. | Recusar, inclusive se o runner retornar 0. |
-| `zero` | Bloco Gherkin tem funcionalidade, mas nenhum cenário. | Recusar. |
-| `no-gherkin` | Markdown não contém Gherkin. | Recusar antes de invocar o runner. |
-| stdin do adaptador | O próprio adaptador recebe Markdown por stdin e executa os casos positivos. | Permitir. |
+| `pass` | Addition and cancellation in distinct blocks, with two correct assertions. | Allow. |
+| `failure` | The real sum is 5, but the scenario requires 99. | Reject. |
+| `undefined` | A step has no registered definition. | Reject. |
+| `pending` | A step returns `godog.ErrPending`; Godog reports one pending step and two skipped. | Reject. |
+| `filtered` | A filter excludes all expected scenarios. | Reject, even if the runner returns 0. |
+| `partial` | Only one of the two required scenarios is selected. | Reject, even if the runner returns 0. |
+| `zero` | A Gherkin block has a feature, but no scenario. | Reject. |
+| `no-gherkin` | Markdown contains no Gherkin. | Reject before invoking the runner. |
+| adapter stdin | The adapter itself receives Markdown through stdin and runs the positive cases. | Allow. |
 
-O gate do experimento exige a execução dos IDs esperados exatamente uma vez, resultado positivo e retorno adequado do runner. A lista esperada é explícita na matriz; ela não é deduzida apenas dos cenários que o runner decidiu executar.
+The experiment's gate requires running the expected IDs exactly once, a positive result and an appropriate return from the runner. The expected list is explicit in the matrix; it is not inferred only from the scenarios that the runner decided to run.
 
-O caso `no-gherkin` é negativo porque essa matriz exige IDs comportamentais e não oferece uma dispensa aceita. Ele não representa o tratamento do produto para um documento informativo com classificação e dispensa humanas válidas; esse mecanismo está fora do protótipo.
+The `no-gherkin` case is negative because this matrix requires behavioral IDs and offers no accepted exemption. It does not represent the product's handling of an informational document with a valid human classification and exemption; that mechanism is outside the prototype.
 
-## API de conteúdo e filesystem virtual
+## Content API and virtual filesystem
 
-`godog.Options` e `godog.Feature` são nomes públicos exportados, embora sejam aliases de tipos definidos internamente. O protótipo importa somente `github.com/cucumber/godog`; não importa pacotes `internal`. A opção `FeatureContents` possui comentário oficial documentando a entrega de conteúdo em bytes. Como a versão é `0.x`, não se presume estabilidade universal ou indefinida.
+`godog.Options` and `godog.Feature` are exported public names, although they are aliases of internally defined types. The prototype imports only `github.com/cucumber/godog`; it does not import `internal` packages. The `FeatureContents` option has an official comment documenting the delivery of content as bytes. Since the version is `0.x`, universal or indefinite stability is not presumed.
 
-O caminho `bytes` instala um `fs.FS` que recusa qualquer `Open`. Os casos executados registraram **zero aberturas** nesse filesystem do runner, demonstrando que os conteúdos foram consumidos pela API em memória.
+The `bytes` path installs an `fs.FS` that rejects any `Open`. The cases run recorded **zero opens** on that runner filesystem, demonstrating that the contents were consumed through the in-memory API.
 
-Também foram executados dois probes com `testing/fstest.MapFS`, da biblioteca padrão:
+Two probes were also run with `testing/fstest.MapFS`, from the standard library:
 
-| Transporte | Entrada do Godog | Resultado observado |
+| Transport | Godog input | Observed result |
 | --- | --- | --- |
-| `bytes` | `FeatureContents`, com nomes `.md#gherkin-N`. | Dois cenários passam; nenhum acesso ao filesystem do runner. |
-| `vfs` | `Options.FS` com conteúdos extraídos em memória e caminhos `.md#gherkin-N` explícitos. | Dois cenários passam, sem arquivos físicos `.feature`. |
-| `vfs-dir` | O mesmo filesystem virtual, mas com descoberta pelo diretório `.`. | Zero cenários e runner `0`; gate recusa. |
+| `bytes` | `FeatureContents`, with `.md#gherkin-N` names. | Two scenarios pass; no access to the runner's filesystem. |
+| `vfs` | `Options.FS` with contents extracted in memory and explicit `.md#gherkin-N` paths. | Two scenarios pass, without physical `.feature` files. |
+| `vfs-dir` | The same virtual filesystem, but with discovery through the `.` directory. | Zero scenarios and runner `0`; gate rejects. |
 
-A diferença é explicada pela fonte: a descoberta por diretório filtra o sufixo `.feature`, enquanto um caminho explícito é aberto e interpretado como Gherkin sem exigir essa extensão. Isso não faz do Godog um parser de Markdown cercado: os probes de VFS recebem Gherkin já extraído do `.md` pelo adaptador.
+The difference is explained by the source: directory discovery filters on the `.feature` suffix, while an explicit path is opened and interpreted as Gherkin without requiring that extension. That does not make Godog a parser of fenced Markdown: the VFS probes receive Gherkin already extracted from the `.md` by the adapter.
 
-`FeatureContents` é o caminho mais direto validado neste experimento. A alternativa VFS também foi comprovada com caminhos explícitos, mas uma varredura de diretório não encontra esses nomes Markdown.
+`FeatureContents` is the most direct path validated in this experiment. The VFS alternative was also proven with explicit paths, but a directory scan does not find those Markdown names.
 
-## CLI nativo: fonte inspecionada, sem execução direta
+## Native CLI: source inspected, no direct execution
 
-Na versão `v0.16.0`, o comando oficial `godog run` se declara deprecated e recomenda integração com `testing.T`. Sua documentação apresenta argumentos como caminhos de features. O código encaminha stdin ao binário gerado, mas isso, isoladamente, não implementa entrada de texto Gherkin pelo stdin.
+In version `v0.16.0`, the official `godog run` command declares itself deprecated and recommends integration with `testing.T`. Its documentation presents arguments as feature paths. The code forwards stdin to the generated binary, but that, by itself, does not implement Gherkin text input through stdin.
 
-A leitura conjunta do binding de flags e dos caminhos do parser não mostrou uma opção CLI que popula `FeatureContents` a partir de uma string de argumento ou de stdin. Essa é uma conclusão da inspeção da versão fixada; **o CLI oficial não foi compilado nem exercitado neste experimento**. O suporte stdin executado pertence ao adaptador em `main.go`, que lê Markdown e chama a API pública.
+Reading the flag binding and the parser paths together showed no CLI option that populates `FeatureContents` from an argument string or from stdin. This is a conclusion from inspecting the pinned version; **the official CLI was neither compiled nor exercised in this experiment**. The stdin support that was run belongs to the adapter in `main.go`, which reads Markdown and calls the public API.
 
-## Limites
+## Limits
 
-- `-source -` é uma interface implementada neste adaptador. Não demonstra suporte nativo de stdin no CLI do Godog.
-- A utilização programática de Godog é específica desta versão e deste ecossistema. Não implica suporte equivalente em Cucumber-JVM, Cucumber.js ou outros runners.
-- O protótipo não implementa aceite humano, assinaturas, inventário completo, proteção contra edição maliciosa do gate ou integração CI protegida.
-- O resultado positivo comprova o comportamento dos exemplos exercitados, sem demonstrar a completude dos requisitos.
-- Cenários deliberadamente incorretos neste documento de pesquisa são instrumentos do experimento; não são novos requisitos de produto aceitos.
+- `-source -` is an interface implemented in this adapter. It does not demonstrate native stdin support in the Godog CLI.
+- The programmatic use of Godog is specific to this version and this ecosystem. It does not imply equivalent support in Cucumber-JVM, Cucumber.js or other runners.
+- The prototype does not implement human acceptance, signatures, a complete inventory, protection against malicious editing of the gate or protected CI integration.
+- The positive result proves the behavior of the examples exercised, without demonstrating the completeness of the requirements.
+- Deliberately incorrect scenarios in this research document are instruments of the experiment; they are not new accepted product requirements.
 
-## Fontes oficiais para conferência
+## Official sources for checking
 
-- [Release Godog v0.16.0](https://github.com/cucumber/godog/releases/tag/v0.16.0).
-- [Options na versão v0.16.0](https://github.com/cucumber/godog/blob/v0.16.0/options.go).
-- [Opções e conteúdos de features na versão v0.16.0](https://github.com/cucumber/godog/blob/v0.16.0/internal/flags/options.go).
-- [Alias público `Feature`, test_context.go](https://github.com/cucumber/godog/blob/v0.16.0/test_context.go#L371-L372).
-- [Execução do Godog na versão v0.16.0](https://github.com/cucumber/godog/blob/v0.16.0/run.go).
-- [Parser: filtro de diretório e leitura de bytes](https://github.com/cucumber/godog/blob/v0.16.0/internal/parser/parser.go).
-- [CLI: argumentos, depreciação e encaminhamento de stdin](https://github.com/cucumber/godog/blob/v0.16.0/cmd/godog/internal/cmd_run.go).
-- [Flags do runner](https://github.com/cucumber/godog/blob/v0.16.0/internal/flags/flags.go).
+- [Godog v0.16.0 release](https://github.com/cucumber/godog/releases/tag/v0.16.0).
+- [Options in version v0.16.0](https://github.com/cucumber/godog/blob/v0.16.0/options.go).
+- [Options and feature contents in version v0.16.0](https://github.com/cucumber/godog/blob/v0.16.0/internal/flags/options.go).
+- [Public `Feature` alias, test_context.go](https://github.com/cucumber/godog/blob/v0.16.0/test_context.go#L371-L372).
+- [Godog execution in version v0.16.0](https://github.com/cucumber/godog/blob/v0.16.0/run.go).
+- [Parser: directory filter and byte reading](https://github.com/cucumber/godog/blob/v0.16.0/internal/parser/parser.go).
+- [CLI: arguments, deprecation and stdin forwarding](https://github.com/cucumber/godog/blob/v0.16.0/cmd/godog/internal/cmd_run.go).
+- [Runner flags](https://github.com/cucumber/godog/blob/v0.16.0/internal/flags/flags.go).
 - [Goldmark v1.7.13](https://github.com/yuin/goldmark/tree/v1.7.13).
-- [Arquivo oficial do SDK Go 1.25.0](https://go.dev/dl/go1.25.0.linux-amd64.tar.gz).
+- [Official Go 1.25.0 SDK file](https://go.dev/dl/go1.25.0.linux-amd64.tar.gz).
 
-As fontes do Godog citadas acima foram inspecionadas no módulo local obtido pelo toolchain, com versão e checksums de `go.sum`. Os caminhos de conteúdo, VFS e stdin do adaptador foram executados; a análise do CLI nativo foi somente estática.
+The Godog sources cited above were inspected in the local module obtained by the toolchain, with version and checksums from `go.sum`. The adapter's content, VFS and stdin paths were run; the analysis of the native CLI was static only.

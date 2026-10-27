@@ -1,152 +1,152 @@
-# Plano de implementação
+# Implementation plan
 
-> **Histórico, anterior à [D-021](decisions.md).** Este documento descreve o desenho com aceite assinado, autoridade, trust e bloqueio de implementação, removido em 23/10/2026. Para o produto atual, veja [produto](product.md) e [estado da implementação](implementation-status.md).
+> **Historical, predates [D-021](decisions.md).** This document describes the design with signed acceptance, authority, trust and implementation blocking, removed on 23/10/2026. For the current product, see [product](product.md) and [implementation status](implementation-status.md).
 
-> Planejamento de referência. O [estado da implementação](implementation-status.md) descreve a versão experimental atual; critérios de produção não ficam atendidos apenas pela existência de código ou de testes simulados.
+> Reference planning. The [implementation status](implementation-status.md) describes the current experimental version; production criteria are not met merely because code or simulated tests exist.
 
-Este plano transforma a [proposta de produto](product.md) e os [requisitos](requirements.md) em entregas verificáveis. Alterações de comportamento descobertas durante a implementação devem voltar ao contrato para revisão; o backlog não deve se tornar uma segunda fonte de requisitos.
+This plan turns the [product proposal](product.md) and the [requirements](requirements.md) into verifiable deliverables. Behavior changes discovered during implementation must go back to the contract for review; the backlog must not become a second source of requirements.
 
-## Fronteira do primeiro produto
+## Boundary of the first product
 
-O MVP deve demonstrar um fluxo completo: descobrir Markdown, identificar pendências de classificação, ajudar o usuário a formular cenários, obter aceite de uma versão, suspender implementação comportamental dependente enquanto esse aceite estiver pendente, executar os cenários diretamente do Markdown e impedir a conclusão ou integração quando faltarem aceites ou evidências válidas. O suporte inicial precisa contemplar pelo menos Java, Python e Go, com adaptadores de execução próprios e limites verificados. A capacidade real de suspender ações locais deve ser demonstrada no host escolhido ou declarada como limitação; o bloqueio protegido de integração permanece obrigatório.
+The MVP must demonstrate a complete flow: discover Markdown, identify classification gaps, help the user formulate scenarios, obtain acceptance of a version, suspend dependent behavioral implementation while that acceptance is pending, run the scenarios directly from the Markdown, and prevent completion or integration when acceptances or valid evidence are missing. Initial support must cover at least Java, Python and Go, with dedicated execution adapters and verified limits. The actual ability to suspend local actions must be demonstrated on the chosen host or declared as a limitation; the protected integration block remains mandatory.
 
-O Markdown é a fonte canônica. O usuário não mantém arquivos `.feature`, e a execução não pode exigir sua criação como etapa intermediária obrigatória. A integração com um runner real deve ser demonstrada por parsing e adaptação em memória. Se o runner escolhido exigir arquivos `.feature`, o spike deve registrar essa incompatibilidade e avaliar outro mecanismo, sem flexibilizar silenciosamente o requisito.
+Markdown is the canonical source. The user does not maintain `.feature` files, and execution cannot require creating them as a mandatory intermediate step. Integration with a real runner must be demonstrated through in-memory parsing and adaptation. If the chosen runner requires `.feature` files, the spike must record that incompatibility and evaluate another mechanism, without silently relaxing the requirement.
 
-O agente pode propor contratos, cenários e dispensas. A autoridade de aceite permanece separada de suas credenciais. Hooks locais orientam e controlam o fluxo conforme a capacidade real da plataforma; uma checagem protegida aplica a política de integração.
+The agent may propose contracts, scenarios and exemptions. The acceptance authority remains separate from the agent's credentials. Local hooks guide and control the flow according to the platform's actual capability; a protected check enforces the integration policy.
 
-## Experimento implementado e próxima validação
+## Implemented experiment and next validation
 
-A [pesquisa dos runners](runner-feasibility.md) produziu evidências iniciais de execução em Java, Python e Go. O fluxo local agora integra contrato, revisão no navegador, decisão assinada, execução e hooks; `specmd demo` cria um carrinho com dois cenários para experimentar. Os testes automáticos usam decisões sintéticas identificadas como fixtures.
+The [runner research](runner-feasibility.md) produced initial evidence of execution in Java, Python and Go. The local flow now integrates contract, browser review, signed decision, run and hooks; `specmd demo` creates a shopping cart with two scenarios to experiment with. The automated tests use synthetic decisions identified as fixtures.
 
-O núcleo experimental usa Python e Behave, com bridges Java/Cucumber-JVM e Go/Godog. Codex é o primeiro host exercitado; Claude possui adaptador e testes de protocolo. A validação humana no ambiente do usuário, a autoridade autenticada isolada e o piloto comparativo continuam necessários.
+The experimental core uses Python and Behave, with Java/Cucumber-JVM and Go/Godog bridges. Codex is the first host exercised; Claude has an adapter and protocol tests. Human validation in the user's environment, isolated authenticated authority and the comparative pilot are still needed.
 
-A demonstração deve permitir concluir com contrato aceito e cenários executados com sucesso; pedir novo aceite após mudança contratual; invalidar evidências pertinentes após mudança de código; e recusar cenários obrigatórios ausentes, filtrados, indefinidos ou ignorados. Deve também permitir aguardar revisão humana e retomar o trabalho sem declarar uma conclusão indevida. A checagem protegida permanece necessária para avaliar tentativas de contornar os controles locais.
+The demonstration must allow completing with an accepted contract and successfully run scenarios; requesting new acceptance after a contract change; invalidating pertinent evidence after a code change; and rejecting mandatory scenarios that are missing, filtered, undefined or skipped. It must also allow waiting for human review and resuming the work without declaring an undue completion. The protected check remains necessary to evaluate attempts to bypass the local controls.
 
-Incluir uma tarefa em que o agente inventa uma regra, escreve testes verdes e propõe documentá-la depois. Avaliar se a revisão expõe essa decisão e permite ao humano rejeitá-la, sem prometer detecção automática infalível. Comparar as tarefas com revisão humana e CI bem configurados, medindo desalinhamentos, esforço de revisão e bloqueios indevidos conforme o [plano de validação](validation-plan.md).
+Include a task in which the agent invents a rule, writes green tests and proposes documenting it later. Evaluate whether the review exposes that decision and lets the human reject it, without promising infallible automatic detection. Compare the tasks against well-configured human review and CI, measuring misalignments, review effort and undue blocks according to the [validation plan](validation-plan.md).
 
-O experimento automatizado demonstra funcionamento conjunto com ator de agente simulado e testes reais de aplicação. O [guia de integração](experimental-codex.md) separa protocolo, instalação e execução com modelo real. Um template de CI e o modo `verify --require-real` não instalam fronteiras de permissões, regras de branch ou uma identidade humana autenticada. A implementação não representa aceite humano de uma nova versão contratual nem valida utilidade do produto.
+The automated experiment demonstrates joint operation with a simulated agent actor and real application tests. The [integration guide](experimental-codex.md) separates protocol, installation and execution with a real model. A CI template and the `verify --require-real` mode do not install permission boundaries, branch rules or an authenticated human identity. The implementation does not represent human acceptance of a new contract version, nor does it validate the product's usefulness.
 
-## Marcos e dependências
+## Milestones and dependencies
 
-| Marco | Objetivo | Dependências | Saída verificável |
+| Milestone | Objective | Dependencies | Verifiable output |
 | --- | --- | --- | --- |
-| R0 — Reaproveitamento e posicionamento | Mapear o que MDG, ferramentas de SDD, rastreabilidade, reviews e gates existentes já resolvem. | [Pesquisa de antecedentes](positioning.md) e configuração comparável do problema. | Mapa de sobreposição e hipótese de lacuna; nenhum subsistema próprio é presumido necessário. |
-| M0 — Viabilidade de execução | Demonstrar cenários reais vindos de Markdown em Java, Python e Go, sem arquivos `.feature` obrigatórios. | Seleção de candidatos a parser e runner por linguagem. | Em cada linguagem: cenário que passa, outro que falha, passo indefinido e origem corretamente reportada; ausência de cenários não recebe OK. |
-| M1 — Decisões técnicas mínimas | Escolher a stack do núcleo, os runners e o primeiro ambiente de agentes, priorizando reutilização. | R0, resultados de M0 e verificação das capacidades das plataformas. | Decisões registradas, versões fixadas para o protótipo, componentes reaproveitados e limitações documentadas. |
-| M2 — Núcleo e inventário | Produzir um inventário e manifesto determinísticos dos documentos no escopo. | M1 e política inicial de descoberta. | Mesma revisão gera o mesmo manifesto; adições, alterações, exclusões e renomeações são identificadas. |
-| M3 — Classificação e revisão | Representar documentos comportamentais, informativos, mistos e pendentes. | M2 e proposta de formato. | Novo documento e documento alterado geram pendência; uma dispensa depende de aceite válido da versão. |
-| M4 — Aceite autenticado | Vincular uma decisão humana ao conteúdo e escopo revisados. | M2, M3 e definição da autoridade confiável. | O agente não consegue emitir um aceite válido com suas próprias permissões; conteúdo alterado não herda o aceite anterior. |
-| M5 — Extração e execução | Integrar parsing, IDs, mapa de origem e adaptadores Java, Python e Go demonstrados em M0. | M0, M1 e formato estabilizado para o MVP. | Resultados normalizados por cenário apontam para documento, bloco e requisito nas três linguagens; não há cópia `.feature` a manter. |
-| M6 — Evidências e decisão de conclusão | Relacionar contrato aceito, código executado e resultados atuais. | M4 e M5. | Resultado antigo, cenário ignorado, passo ausente ou contrato pendente impedem uma conclusão válida conforme a política. |
-| M7 — Primeiro adaptador | Conectar o núcleo a um ambiente de agentes verificado. | M6 e matriz de capacidades do ambiente escolhido. | Fluxo permite revisão humana e retomada, diferencia espera de conclusão e não entra em ciclos de hooks. |
-| M8 — Integração protegida | Aplicar a mesma política fora do controle do agente. | M6 e definição das permissões no provedor Git/CI. | Ignorar hooks locais não permite integrar uma revisão que viole o gate protegido. |
-| M9 — Piloto de produto | Comparar o fluxo com o processo atual de desenvolvimento. | M7, M8 e protocolo de avaliação definido previamente. | Dados sobre conclusões incorretas, revisão humana, bloqueios indevidos e custo do mecanismo. |
+| R0 — Reuse and positioning | Map what MDG, SDD tools, traceability, reviews and existing gates already solve. | [Background research](positioning.md) and a comparable setup of the problem. | Overlap map and gap hypothesis; no in-house subsystem is presumed necessary. |
+| M0 — Execution feasibility | Demonstrate real scenarios coming from Markdown in Java, Python and Go, without mandatory `.feature` files. | Selection of parser and runner candidates per language. | In each language: a scenario that passes, another that fails, an undefined step and correctly reported origin; an absence of scenarios does not get an OK. |
+| M1 — Minimum technical decisions | Choose the core stack, the runners and the first agent environment, prioritizing reuse. | R0, M0 results and verification of platform capabilities. | Recorded decisions, versions pinned for the prototype, reused components and documented limitations. |
+| M2 — Core and inventory | Produce a deterministic inventory and manifest of the in-scope documents. | M1 and initial discovery policy. | The same revision generates the same manifest; additions, changes, deletions and renames are identified. |
+| M3 — Classification and review | Represent behavioral, informational, mixed and pending documents. | M2 and format proposal. | A new document and a changed document generate a gap; an exemption depends on valid acceptance of the version. |
+| M4 — Authenticated acceptance | Bind a human decision to the reviewed content and scope. | M2, M3 and definition of the trusted authority. | The agent cannot issue a valid acceptance with its own permissions; changed content does not inherit the previous acceptance. |
+| M5 — Extraction and execution | Integrate parsing, IDs, source map and the Java, Python and Go adapters demonstrated in M0. | M0, M1 and a format stabilized for the MVP. | Normalized per-scenario results point to document, block and requirement in all three languages; there is no `.feature` copy to maintain. |
+| M6 — Evidence and completion decision | Relate accepted contract, executed code and current results. | M4 and M5. | An old result, a skipped scenario, a missing step or a pending contract prevent a valid completion according to the policy. |
+| M7 — First adapter | Connect the core to a verified agent environment. | M6 and capability matrix of the chosen environment. | The flow allows human review and resumption, distinguishes waiting from completion and does not enter hook loops. |
+| M8 — Protected integration | Enforce the same policy outside the agent's control. | M6 and definition of permissions in the Git/CI provider. | Ignoring local hooks does not allow integrating a revision that violates the protected gate. |
+| M9 — Product pilot | Compare the flow with the current development process. | M7, M8 and an evaluation protocol defined in advance. | Data on incorrect completions, human review, undue blocks and the mechanism's cost. |
 
-M4 e M5 podem avançar em paralelo depois que o formato necessário estiver acordado. M7 só deve prometer bloqueios que o ambiente realmente oferece. M8 pode exigir infraestrutura ou configuração fora do repositório; essa dependência precisa estar explícita no piloto.
+M4 and M5 can advance in parallel once the necessary format is agreed. M7 should only promise blocks that the environment actually offers. M8 may require infrastructure or configuration outside the repository; that dependency must be explicit in the pilot.
 
-## Trabalho de cada marco
+## Work for each milestone
 
-### M0 — Spike técnico que precede o compromisso com uma stack
+### M0 — Technical spike that precedes committing to a stack
 
-- Criar um fixture Markdown com Gherkin e implementações de passos reais na stack candidata.
-- Extrair blocos por um parser de Markdown, preservando posições no arquivo original.
-- Interpretar Gherkin e alimentar o mecanismo de execução em memória, usando interfaces suportadas ou assumindo explicitamente o custo de manter um adaptador.
-- Demonstrar resultados positivos, negativos e de passos indefinidos, com correspondência entre tags e origem.
-- Verificar que nenhum arquivo `.feature` é necessário para configurar ou executar o fixture.
-- Registrar versões, APIs utilizadas, limitações e risco de manutenção. Não apresentar esse experimento como integração completa com Claude Code ou Codex.
+- Create a Markdown fixture with Gherkin and real step implementations in the candidate stack.
+- Extract blocks with a Markdown parser, preserving positions in the original file.
+- Interpret Gherkin and feed the execution mechanism in memory, using supported interfaces or explicitly taking on the cost of maintaining an adapter.
+- Demonstrate positive, negative and undefined-step results, with correspondence between tags and origin.
+- Verify that no `.feature` file is needed to configure or run the fixture.
+- Record versions, APIs used, limitations and maintenance risk. Do not present this experiment as a complete integration with Claude Code or Codex.
 
-### M2–M3 — Descoberta e classificação antes da análise cara
+### M2–M3 — Discovery and classification before expensive analysis
 
-- Definir um escopo inicial de documentos próprios do projeto e uma política protegida de exclusão de dependências e arquivos gerados.
-- Incluir documentos novos e ainda não rastreados pelo Git no trabalho local.
-- Calcular hashes sobre conteúdo bem definido e gerar o manifesto em serialização determinística.
-- Manter o índice local reconstruível e separado dos aceites.
-- Registrar a classificação proposta, os requisitos e as relações conhecidas, sem tratar uma sugestão da IA como decisão humana.
-- Invalidar análises afetadas por mudanças de conteúdo, contexto, política, analisador ou referências compartilhadas.
-- Permitir revisão por conjunto coerente de mudanças, com acesso ao conteúdo completo e ao diff original.
+- Define an initial scope of the project's own documents and a protected policy for excluding dependencies and generated files.
+- Include new documents not yet tracked by Git in local work.
+- Compute hashes over well-defined content and generate the manifest with deterministic serialization.
+- Keep the local index rebuildable and separate from acceptances.
+- Record the proposed classification, the requirements and the known relations, without treating an AI suggestion as a human decision.
+- Invalidate analyses affected by changes in content, context, policy, analyzer or shared references.
+- Allow review by coherent set of changes, with access to the full content and the original diff.
 
-### M4 — Aprovação de uma versão identificável
+### M4 — Approval of an identifiable version
 
-- Escolher um canal autenticado no qual o agente possa solicitar, mas não conceder, o aceite.
-- Associar a decisão à identidade do usuário, repositório, escopo, hash revisado, revisão apresentada e momento da ação.
-- Definir como consultar validade e revogação e qual regra vale para reapresentar uma versão anteriormente aceita.
-- Proteger as autoridades confiáveis e a política de verificação contra alterações feitas pelo próprio agente.
-- Manter o aceite de uma versão anterior no histórico sem usá-lo para autorizar conteúdo novo.
-- Tratar dispensas de Gherkin como decisões sujeitas ao mesmo vínculo de versão.
+- Choose an authenticated channel in which the agent can request, but not grant, acceptance.
+- Associate the decision with the user's identity, repository, scope, reviewed hash, presented revision and the moment of the action.
+- Define how to check validity and revocation, and which rule applies to re-presenting a previously accepted version.
+- Protect the trusted authorities and the verification policy against changes made by the agent itself.
+- Keep the acceptance of a previous version in the history without using it to authorize new content.
+- Treat Gherkin exemptions as decisions subject to the same version binding.
 
-### M5–M6 — Verificação sem segunda fonte documental
+### M5–M6 — Verification without a second documentary source
 
-- Validar sintaxe, identidade de requisitos e cenários e vínculos declarados.
-- Distinguir bloco executável de exemplo de sintaxe conforme o [formato proposto](format.md).
-- Relacionar resultados ao contrato, revisão do código, implementações dos passos, configuração e runner utilizados.
-- Expor cenários não encontrados, filtrados, ignorados, pendentes ou sem implementação. Ausência de execução não conta como sucesso.
-- Invalidar evidências pertinentes depois de alterações no código ou no mecanismo de teste.
-- Tornar visíveis mudanças de contrato e de testes que possam enfraquecer a obrigação.
-- Explicar o alcance da evidência: executar cenários não prova a completude da especificação nem a qualidade de todas as asserções.
+- Validate syntax, the identity of requirements and scenarios, and declared links.
+- Distinguish an executable block from a syntax example according to the [proposed format](format.md).
+- Relate results to the contract, code revision, step implementations, configuration and runner used.
+- Expose scenarios that are not found, filtered, skipped, pending or without implementation. An absence of execution does not count as success.
+- Invalidate pertinent evidence after changes to the code or to the test mechanism.
+- Make visible contract and test changes that could weaken the obligation.
+- Explain the reach of the evidence: running scenarios does not prove the completeness of the specification nor the quality of all assertions.
 
-### M7–M8 — Integração com agentes e aplicação da política
+### M7–M8 — Integration with agents and policy enforcement
 
-- Documentar os eventos efetivamente disponíveis e suas capacidades: observar, fornecer feedback, interromper uma ação ou bloquear uma transição.
-- Executar descoberta e checks baratos durante o trabalho e reservar verificações mais caras para mudanças relevantes e pontos de conclusão.
-- Representar explicitamente `waiting_human_review`. Devolver o controle ao usuário nesse estado é permitido; declarar a tarefa concluída não é.
-- Aplicar o gate pré-implementação ao trabalho comportamental dependente de contrato pendente; distinguir bloqueio real de orientação e registrar limitações do host.
-- Reconciliar o estado efetivo no fechamento, sem confiar apenas em eventos de um watcher ou no cache.
-- Configurar a checagem protegida sobre a revisão que será integrada e testar tentativas de contornar os hooks locais.
-- Documentar o que a instalação local não consegue garantir quando o agente controla o próprio ambiente.
+- Document the events actually available and their capabilities: observe, provide feedback, interrupt an action or block a transition.
+- Run discovery and cheap checks during the work and reserve more expensive verifications for relevant changes and completion points.
+- Explicitly represent `waiting_human_review`. Returning control to the user in that state is allowed; declaring the task complete is not.
+- Apply the pre-implementation gate to behavioral work that depends on a pending contract; distinguish real blocking from guidance and record host limitations.
+- Reconcile the effective state at closing, without relying only on a watcher's events or on the cache.
+- Configure the protected check over the revision that will be integrated and test attempts to bypass the local hooks.
+- Document what the local installation cannot guarantee when the agent controls its own environment.
 
-## Critérios de saída do MVP
+## MVP exit criteria
 
-- [ ] Existe uma demonstração ponta a ponta com cenários executados diretamente do Markdown.
-- [ ] Adaptadores de execução Java, Python e Go têm versões e limites verificados; parsing sozinho não conta como execução.
-- [ ] Não é necessário manter nem materializar arquivos `.feature` para usar essa demonstração.
-- [ ] Documentos novos, alterados e dispensados têm estados distintos e rastreáveis.
-- [ ] O usuário revisa o conteúdo exato ao qual seu aceite será vinculado.
-- [ ] O agente não pode produzir esse aceite com as credenciais disponíveis no cenário de instalação declarado.
-- [ ] A conclusão exige aceite aplicável e evidências atuais, com falhas e ausências explícitas.
-- [ ] O estado de espera por usuário não causa uma falsa conclusão nem um ciclo de encerramento.
-- [ ] A suspensão pré-implementação foi demonstrada no host escolhido ou sua ausência de suporte foi declarada, sem prometer prevenção local inexistente.
-- [ ] O primeiro adaptador tem capacidades verificadas, sem presumir equivalência entre Claude Code e Codex.
-- [ ] O gate protegido identifica violações mesmo quando os hooks locais não são usados.
-- [ ] Os casos determinísticos e os limites semânticos do [plano de validação](validation-plan.md) foram exercitados e registrados.
+- [ ] There is an end-to-end demonstration with scenarios run directly from the Markdown.
+- [ ] The Java, Python and Go execution adapters have verified versions and limits; parsing alone does not count as execution.
+- [ ] It is not necessary to maintain or materialize `.feature` files to use this demonstration.
+- [ ] New, changed and exempted documents have distinct and traceable states.
+- [ ] The user reviews the exact content to which their acceptance will be bound.
+- [ ] The agent cannot produce that acceptance with the credentials available in the declared installation scenario.
+- [ ] Completion requires applicable acceptance and current evidence, with explicit failures and absences.
+- [ ] The waiting-for-the-user state causes neither a false completion nor a stop loop.
+- [ ] Pre-implementation suspension has been demonstrated on the chosen host, or its lack of support has been declared, without promising nonexistent local prevention.
+- [ ] The first adapter has verified capabilities, without presuming equivalence between Claude Code and Codex.
+- [ ] The protected gate identifies violations even when the local hooks are not used.
+- [ ] The deterministic cases and the semantic limits of the [validation plan](validation-plan.md) have been exercised and recorded.
 
-Esses itens são critérios planejados. As caixas permanecem desmarcadas até existirem evidências e revisão correspondentes.
+These items are planned criteria. The boxes remain unchecked until the corresponding evidence and review exist.
 
-## Expansões depois do piloto
+## Expansions after the pilot
 
-As seguintes oportunidades ficam fora do compromisso inicial, salvo decisão explícita de escopo:
+The following opportunities are outside the initial commitment, unless there is an explicit scope decision:
 
-- Segundo adaptador de agente, reutilizando o núcleo e a política.
-- Revisão de PR organizada por requisito, mudança de comportamento e evidências.
-- Continuidade entre sessões e coordenação de obrigações entre múltiplos agentes.
-- Sugestões de impacto a partir de relações entre documentos, módulos e testes.
-- Testes de mutação direcionados e revisão assistida da força das asserções.
-- Transformação de incidentes em cenários de regressão e registro de justificativas.
-- Adaptadores para verificações de API, acessibilidade, arquitetura e desempenho.
-- Comparação de agentes e modelos por atendimento aos critérios, esforço humano e custo.
-- Visões de prontidão de release e verificações pertinentes após deploy.
+- A second agent adapter, reusing the core and the policy.
+- PR review organized by requirement, behavior change and evidence.
+- Continuity across sessions and coordination of obligations among multiple agents.
+- Impact suggestions based on relations between documents, modules and tests.
+- Targeted mutation testing and assisted review of assertion strength.
+- Turning incidents into regression scenarios and recording rationales.
+- Adapters for API, accessibility, architecture and performance checks.
+- Comparison of agents and models by how well they meet the criteria, human effort and cost.
+- Release readiness views and pertinent post-deploy checks.
 
-Cada expansão deve justificar o problema observado, reutilizar os vínculos existentes e apresentar benefício líquido frente ao esforço de manutenção. Não se pretende construir simultaneamente uma plataforma de requisitos, um orquestrador completo e uma suíte geral de testes.
+Each expansion must justify the observed problem, reuse the existing links and show a net benefit relative to the maintenance effort. There is no intent to simultaneously build a requirements platform, a complete orchestrator and a general-purpose test suite.
 
-## Decisões ainda em aberto
+## Decisions still open
 
-| Decisão | O que precisa ser resolvido |
+| Decision | What needs to be resolved |
 | --- | --- |
-| Stack e runner inicial | Escolha após demonstrar execução real em memória e manutenção viável do adaptador. |
-| Primeiro ambiente de agentes | Seleção após verificar APIs e capacidades das versões candidatas. |
-| Autoridade de aceite | Serviço próprio, mecanismo do provedor Git ou outra solução autenticada com separação de permissões. |
-| Forma de hospedagem | Definir o que pode operar localmente e qual autoridade/verificador precisa existir fora do alcance do agente. |
-| Política de reaproveitamento e revogação | Estabelecer validade de aceites antigos, contexto, escopo e revogações. |
-| Escopo do bloqueio | Tarefa, trabalho dependente ou projeto inteiro, além do bloqueio de integração. |
-| Sintaxe e granularidade | Estabilizar documento versus seção, marcação de blocos executáveis e referências permitidas. |
-| Licença | Escolher explicitamente antes de anunciar condições de uso ou distribuição. |
-| Metas do piloto | Definir limiares de utilidade e custo antes de analisar os resultados. |
+| Initial stack and runner | Choice after demonstrating real in-memory execution and viable adapter maintenance. |
+| First agent environment | Selection after verifying the APIs and capabilities of the candidate versions. |
+| Acceptance authority | In-house service, Git provider mechanism or another authenticated solution with separation of permissions. |
+| Hosting model | Define what can operate locally and which authority/verifier must exist out of the agent's reach. |
+| Reuse and revocation policy | Establish the validity of old acceptances, context, scope and revocations. |
+| Scope of the block | Task, dependent work or the entire project, in addition to the integration block. |
+| Syntax and granularity | Stabilize document versus section, marking of executable blocks and allowed references. |
+| License | Choose explicitly before announcing terms of use or distribution. |
+| Pilot goals | Define usefulness and cost thresholds before analyzing the results. |
 
-## Referências
+## References
 
-- [Requisitos e cenários](requirements.md)
-- [Arquitetura](architecture.md)
-- Aceite e fronteiras de confiança (removido por [D-021](decisions.md))
-- [Formato documental](format.md)
-- [Índice e processamento incremental](indexing.md)
-- [Integrações com agentes](integrations.md)
-- [Plano de validação](validation-plan.md)
+- [Requirements and scenarios](requirements.md)
+- [Architecture](architecture.md)
+- Acceptance and trust boundaries (removed by [D-021](decisions.md))
+- [Document format](format.md)
+- [Index and incremental processing](indexing.md)
+- [Agent integrations](integrations.md)
+- [Validation plan](validation-plan.md)

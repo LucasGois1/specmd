@@ -3,87 +3,87 @@ specmd:
   schema: 1
   id: SMD-DOC-QUICKSTART
   kind: reference
-  exemption_reason: "Instruções de uso do protótipo, sem requisitos adicionais do produto."
+  exemption_reason: "Usage instructions for the prototype, with no additional product requirements."
 ---
 
-# Experimentar SpecMD localmente
+# Try SpecMD locally
 
-Use Python 3.11 ou superior e o CLI `claude` autenticado.
+Use Python 3.11 or later and an authenticated `claude` CLI.
 
-## Atalho com make
+## Shortcut with make
 
-Na raiz do clone:
+At the root of the clone:
 
-| Comando | O que faz |
+| Command | What it does |
 | --- | --- |
-| `make setup` | Cria `.venv`, instala as dependências e gera o plugin em `codex-plugin/`. |
-| `make demo` | Cria um demo novo em `~/specmd-demo/<data-hora>/cart`, já com `git init`. |
-| `make agent` | Abre o Claude Code no último demo com o plugin carregado só nessa sessão. |
-| `make status` | Resume o estado do último demo. |
-| `make run` | Executa os cenários do último demo e resume o resultado. |
-| `make test` | Roda a suíte local. |
-| `make init REPO=…` | Habilita o plugin para o time num repositório seu. |
+| `make setup` | Creates `.venv`, installs the dependencies and generates the plugin in `codex-plugin/`. |
+| `make demo` | Creates a new demo in `~/specmd-demo/<date-time>/cart`, already with `git init`. |
+| `make agent` | Opens Claude Code in the latest demo with the plugin loaded for that session only. |
+| `make status` | Summarizes the state of the latest demo. |
+| `make run` | Runs the scenarios of the latest demo and summarizes the result. |
+| `make test` | Runs the local test suite. |
+| `make init REPO=…` | Enables the plugin for the team in one of your repositories. |
 
-`DEMO_HOME` muda a pasta dos demos. `CLAUDE_ARGS` repassa opções ao `claude`, por exemplo `--setting-sources project,local` para não carregar hooks e plugins das suas configurações. Cada `make demo` cria uma pasta nova; demos anteriores não são apagados.
+`DEMO_HOME` changes the demos folder. `CLAUDE_ARGS` passes options on to `claude`, for example `--setting-sources project,local` to avoid loading hooks and plugins from your own settings. Each `make demo` creates a new folder; earlier demos are not deleted.
 
-## No seu repositório
+## In your repository
 
-Dentro do Claude Code, no seu repositório:
+Inside Claude Code, in your repository:
 
 ```
 /plugin marketplace add LucasGois1/specmd
-/plugin install specmd@specmd        → escopo do projeto ou local
+/plugin install specmd@specmd        → project or local scope
 ```
 
-Instalado no escopo do projeto ou local, o plugin já está ativo, com os padrões:
-- todo Markdown é analisado, menos `README.md`, `CHANGELOG.md`, `AGENTS.md`, `CLAUDE.md`, `LICENSE*`, `.github/` e semelhantes;
-- os passos Python em `tests/steps`, `features/steps` ou `steps` são usados para executar os cenários.
+Installed in the project or local scope, the plugin is already active, with the defaults:
+- every Markdown file is analysed, except `README.md`, `CHANGELOG.md`, `AGENTS.md`, `CLAUDE.md`, `LICENSE*`, `.github/` and similar;
+- the Python steps in `tests/steps`, `features/steps` or `steps` are used to run the scenarios.
 
-Uma instalação só no escopo de usuário não ativa repositórios sozinha.
+An installation only in the user scope does not activate repositories on its own.
 
-Para o time: `/specmd:init` (ou `make init REPO=…` a partir deste clone) declara o marketplace e habilita o plugin no `.claude/settings.json` do projeto, sem mexer no resto. Faça commit desse arquivo; quem abrir o Claude Code no repositório e confiar na pasta recebe o plugin.
+For the team: `/specmd:init` (or `make init REPO=…` from this clone) declares the marketplace and enables the plugin in the project's `.claude/settings.json`, without touching anything else. Commit that file; whoever opens Claude Code in the repository and trusts the folder gets the plugin.
 
-Num projeto que já tem documentação, `/specmd:adopt` conduz a adoção: lista os documentos sem cenários, você diz quais não descrevem comportamento (vão para o `.specmdignore`) e o agente propõe os cenários de um documento por vez, com sua confirmação. Se um cenário novo falha porque o código faz outra coisa, ele pergunta qual dos dois vale.
+In a project that already has documentation, `/specmd:adopt` drives the adoption: it lists the documents without scenarios, you say which ones do not describe behaviour (they go into `.specmdignore`) and the agent proposes the scenarios one document at a time, with your confirmation. If a new scenario fails because the code does something else, it asks which of the two is right.
 
-O estado local fica em `.specmd/local/`, que se ignora sozinho no Git.
+Local state lives in `.specmd/local/`, which ignores itself in Git.
 
-O plugin não fixa versão no manifesto, então cada commit da `main` do SpecMD é uma versão nova. Com o marketplace declarado pelo `/specmd:init` (`autoUpdate: true`), o Claude Code atualiza sozinho. Num marketplace adicionado à mão, use `/plugin marketplace update specmd`, depois `claude plugin update specmd@specmd` e `/reload-plugins`.
+The plugin does not pin a version in the manifest, so each commit on SpecMD's `main` is a new version. With the marketplace declared by `/specmd:init` (`autoUpdate: true`), Claude Code updates on its own. In a marketplace added by hand, use `/plugin marketplace update specmd`, then `claude plugin update specmd@specmd` and `/reload-plugins`.
 
-## Um roteiro de teste
+## A test script
 
-1. `make demo` e `make agent`.
-2. Peça uma regra nova: "adicione desconto de 10% para totais acima de 1000 centavos". O agente deve escrever o requisito e os cenários no Markdown e pedir sua confirmação. Se ele escrever documentação sem cenários, o SpecMD avisa.
-3. Confirme. O agente implementa; ao concluir, os cenários são executados e qualquer falha volta para ele com o passo e o erro.
-4. Peça algo que contrarie a documentação, por exemplo "some uma taxa de 1 centavo no total". Os cenários existentes falham e o agente deve perguntar se a regra mudou.
+1. `make demo` and `make agent`.
+2. Ask for a new rule: "add a 10% discount for totals above 1000 cents". The agent should write the requirement and the scenarios in the Markdown and ask for your confirmation. If it writes documentation without scenarios, SpecMD warns about it.
+3. Confirm. The agent implements; on completion, the scenarios are run and any failure goes back to it with the step and the error.
+4. Ask for something that contradicts the documentation, for example "add a 1 cent fee to the total". The existing scenarios fail and the agent should ask whether the rule changed.
 
-## Sem make
+## Without make
 
 ```sh
 python3 -m venv .venv
 .venv/bin/python -m pip install -e .
-.venv/bin/python -m specmd demo --dest /caminho/novo/cart
-cd /caminho/novo/cart && git init -q
-SPECMD_PYTHON=/caminho/do/specmd/.venv/bin/python claude --plugin-dir /caminho/do/specmd
+.venv/bin/python -m specmd demo --dest /path/to/new/cart
+cd /path/to/new/cart && git init -q
+SPECMD_PYTHON=/path/to/specmd/.venv/bin/python claude --plugin-dir /path/to/specmd
 ```
 
-Comandos do CLI, todos com `--root` (padrão: diretório atual):
+CLI commands, all with `--root` (default: current directory):
 
-| Comando | Resultado |
+| Command | Result |
 | --- | --- |
-| `specmd init` | Declara o marketplace e habilita o plugin no `.claude/settings.json` do projeto. |
-| `specmd inventory` | Documentos, requisitos, cenários e pendências da documentação. |
-| `specmd check` | Pendências e o resultado da última execução, se ainda atual. |
-| `specmd run` | Executa todos os cenários e guarda o resultado para os hooks. |
-| `specmd adopt` | Documentos sem cenários e requisitos sem cenário, em ordem de caminho, para a adoção em legado. |
-| `specmd run --affected` | Executa só os cenários afetados pela mudança desde a última execução, como ao concluir. |
+| `specmd init` | Declares the marketplace and enables the plugin in the project's `.claude/settings.json`. |
+| `specmd inventory` | Documents, requirements, scenarios and documentation gaps. |
+| `specmd check` | Gaps and the result of the last run, if still current. |
+| `specmd run` | Runs all scenarios and stores the result for the hooks. |
+| `specmd adopt` | Documents without scenarios and requirements without a scenario, in path order, for legacy adoption. |
+| `specmd run --affected` | Runs only the scenarios affected by the change since the last run, as on completion. |
 
-Códigos de saída: 0 sem pendências, 1 documentação pendente ou cenários falhando, 2 erro ou projeto sem `specmd.toml`.
+Exit codes: 0 no gaps, 1 documentation gaps or failing scenarios, 2 error or project without `specmd.toml`.
 
-## Formato
+## Format
 
-Um documento só precisa de cenários em blocos ```gherkin; frontmatter é opcional. Requisitos podem ter ID no título (`## PAG-REQ-001 — Estorno`) e os cenários logo abaixo ficam ligados a eles. Markdown que não descreve comportamento vai para o `.specmdignore`. Detalhes em [formato](format.md).
+A document only needs scenarios in ```gherkin blocks; front matter is optional. Requirements may have an ID in the heading (`## PAY-REQ-001 — Refund`) and the scenarios right below are linked to them. Markdown that does not describe behaviour goes into `.specmdignore`. Details in [format](format.md).
 
-O `specmd.toml` é opcional. Sem `[[runners]]`, os passos Python em `tests/steps`, `features/steps` ou `steps` são usados; para outro diretório, declare:
+`specmd.toml` is optional. Without `[[runners]]`, the Python steps in `tests/steps`, `features/steps` or `steps` are used; for another directory, declare:
 
 ```toml
 [[runners]]
@@ -92,28 +92,28 @@ language = "python"
 steps = "tests/steps"
 ```
 
-Java e Go usam um `command` de bridge; veja [adapters](../adapters/README.md).
+Java and Go use a bridge `command`; see [adapters](../adapters/README.md).
 
 ## Codex
 
-O mesmo `hooks/hooks.json` serve ao Codex. O marketplace `specmd` (`.agents/plugins/marketplace.json`) aponta para o bundle versionado em `codex-plugin/`, gerado a partir das fontes por `scripts/build_codex_plugin.py`.
+The same `hooks/hooks.json` serves Codex. The `specmd` marketplace (`.agents/plugins/marketplace.json`) points to the bundle versioned in `codex-plugin/`, generated from the sources by `scripts/build_codex_plugin.py`.
 
-Instalação, uma vez:
+Installation, once:
 
 ```sh
 codex plugin marketplace add LucasGois1/specmd
 codex plugin add specmd@specmd
 ```
 
-Atualização:
+Update:
 
 ```sh
 codex plugin marketplace upgrade specmd
 codex plugin add specmd@specmd
 ```
 
-Para testar um clone local, troque `LucasGois1/specmd` pelo caminho do clone.
+To test a local clone, replace `LucasGois1/specmd` with the path of the clone.
 
-Depois de instalar ou atualizar, abra o `codex`, rode `/hooks` e confie nos quatro handlers do `specmd@specmd`; confira também que eles estão habilitados. O Codex guarda o hash do conteúdo do plugin junto da confiança, então cada atualização pede uma revisão nova.
+After installing or updating, open `codex`, run `/hooks` and trust the four handlers of `specmd@specmd`; also check that they are enabled. Codex stores the hash of the plugin content together with the trust, so each update asks for a new review.
 
-No Codex, o plugin é instalado por usuário; o SpecMD age nos projetos com `specmd.toml` ou que o habilitam no próprio `.codex/config.toml` (o `specmd init` escreve essa entrada; o Codex só lê a configuração de projetos confiáveis). Veja as [sessões nativas no Codex](../research/codex/native-session.md).
+In Codex, the plugin is installed per user; SpecMD acts in projects that have a `specmd.toml` or that enable it in their own `.codex/config.toml` (`specmd init` writes that entry; Codex only reads the configuration of trusted projects). See the [native sessions in Codex](../research/codex/native-session.md).

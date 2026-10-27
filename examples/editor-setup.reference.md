@@ -3,30 +3,30 @@ specmd:
   schema: 1
   id: SMD-EX-DOC-002
   kind: reference
-  exemption_reason: "Orientações sobre o editor do colaborador; não estabelece comportamentos do produto desenvolvido."
+  exemption_reason: "Guidance about the contributor's editor; does not establish behaviors of the product being developed."
 ---
 
-# Exemplo: configuração do editor
+# Example: editor setup
 
-Este documento ilustra uma proposta de classificação como referência. A justificativa no frontmatter foi escrita pelo agente e precisa de aceite humano vinculado a esta versão. Não há dispensa aprovada nem recibo de aceite neste exemplo.
+This document illustrates a proposed classification as reference. The justification in the frontmatter was written by the agent and needs human acceptance bound to this version. There is no approved exemption nor acceptance receipt in this example.
 
-## Sugestões locais
+## Local suggestions
 
-Para facilitar a leitura da documentação, o colaborador pode:
+To make reading the documentation easier, the contributor can:
 
-- Habilitar números de linha.
-- Usar a pré-visualização de Markdown do editor.
-- Exibir espaços e quebras de linha durante a revisão de um diff.
-- Manter uma aba com o documento completo enquanto consulta suas alterações.
+- Enable line numbers.
+- Use the editor's Markdown preview.
+- Show whitespace and line breaks while reviewing a diff.
+- Keep a tab with the complete document open while checking their changes.
 
-Essas sugestões são preferências de edição. Não definem entradas, respostas, permissões ou efeitos externos do software que será desenvolvido.
+These suggestions are editing preferences. They do not define inputs, responses, permissions or external effects of the software that will be developed.
 
-## Por que não há Gherkin
+## Why there is no Gherkin
 
-Não foram incluídos cenários artificiais para verificar preferências de editor. A dispensa depende de o usuário concordar que o conteúdo revisado não estabelece obrigações comportamentais do produto.
+No artificial scenarios were included to check editor preferences. The exemption depends on the user agreeing that the reviewed content does not establish behavioral obligations of the product.
 
-Depois de aceita, essa classificação permite reutilizar a análise enquanto o conteúdo e o contexto aplicável permanecerem válidos. O arquivo continua no inventário e suas alterações continuam sendo detectadas.
+Once accepted, this classification allows reusing the analysis while the content and the applicable context remain valid. The file stays in the inventory and its changes are still detected.
 
-Se alguém acrescentar aqui uma regra de negócio, o hash mudará e a classificação deverá ser reavaliada. O agente poderá propor transformar o documento em misto ou mover a regra para um contrato apropriado; não poderá manter uma dispensa antiga para o conteúdo novo.
+If someone adds a business rule here, the hash will change and the classification must be reassessed. The agent may propose turning the document into a mixed one or moving the rule to an appropriate contract; it may not keep an old exemption for the new content.
 
-Consulte o [formato proposto](../docs/format.md), o [índice incremental](../docs/indexing.md) e o mecanismo de aceite (removido por [D-021](../docs/decisions.md)).
+See the [proposed format](../docs/format.md), the [incremental index](../docs/indexing.md) and the acceptance mechanism (removed by [D-021](../docs/decisions.md)).

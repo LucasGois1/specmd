@@ -1,40 +1,40 @@
 ---
 name: specmd
-description: Convenções do SpecMD para documentação com cenários BDD. Use ao escrever ou alterar documentação de comportamento, requisitos ou cenários Gherkin, ao decidir se um Markdown precisa de cenários, ou quando o SpecMD devolver pendências ou cenários falhando.
+description: SpecMD conventions for documentation with BDD scenarios. Use when writing or changing behavior documentation, requirements or Gherkin scenarios, when deciding whether a Markdown file needs scenarios, or when SpecMD reports gaps or failing scenarios.
 ---
 
-# Trabalhar com o SpecMD
+# Working with SpecMD
 
-A documentação Markdown é a fonte canônica das regras de negócio. Os cenários Gherkin ficam no próprio documento e são, ao mesmo tempo, a especificação e o teste de aceitação. Não crie arquivos `.feature`.
+The Markdown documentation is the canonical source of the business rules. The Gherkin scenarios live in the document itself and are both the specification and the acceptance test. Do not create `.feature` files.
 
-## Escrever documentação de comportamento
+## Writing behavior documentation
 
-- Descreva cada regra num documento. Um requisito pode ter ID no título, com prefixo livre: `## PAG-REQ-001 — Estorno em até 7 dias`.
-- Logo abaixo do requisito, escreva um bloco ```gherkin com cenários concretos (valores reais, casos de borda). Os cenários abaixo de um título de requisito ficam ligados a ele; uma tag `@PAG-REQ-001` muda a ligação.
-- Use `# language: pt` no bloco quando escrever em português.
-- Cenários que ainda não devem ser cobrados levam `@wip`, mas só quando o dev decidir. Não marque `@wip` por conta própria: cenários que aguardam confirmação já não são cobrados.
+- Describe each rule in a document. A requirement can have an ID in its heading, with any prefix: `## PAY-REQ-001 — Refund within 7 days`.
+- Right below the requirement, write a ```gherkin block with concrete scenarios (real values, edge cases). The scenarios below a requirement heading are linked to it; a `@PAY-REQ-001` tag changes the link.
+- English is Gherkin's default. When writing scenarios in another language, declare it in the block, for example `# language: pt`.
+- Scenarios that should not be enforced yet are tagged `@wip`, but only when the developer decides. Do not tag `@wip` on your own: scenarios awaiting confirmation are already not enforced.
 
-## Confirmar com o dev
+## Confirming with the developer
 
-- Depois de escrever ou mudar cenários, mostre-os ao dev e pergunte se estão corretos antes de implementar. Aponte ambiguidades (limites, arredondamentos, exceções).
-- Não mude um cenário existente para fazer o código passar sem confirmar com o dev: se o código pedido contraria a documentação, pergunte se a regra mudou.
-- Se o código existente contradiz a documentação, não corrija nenhum dos dois sozinho: mostre a diferença ao dev e pergunte qual vale.
+- After writing or changing scenarios, show them to the developer and ask whether they are correct before implementing. Point out ambiguities (limits, rounding, exceptions).
+- Do not change an existing scenario to make the code pass without confirming with the developer: if the requested code contradicts the documentation, ask whether the rule changed.
+- If the existing code contradicts the documentation, do not fix either one on your own: show the difference to the developer and ask which one holds.
 
 ## Markdown with Gherkin
 
-- Um arquivo `*.feature.md` usa o formato MDG do Cucumber: palavras-chave como títulos (`### Cenário:`), passos como itens de lista (`* Dado …`), tabelas indentadas de 2 a 5 espaços e prosa livre entre eles. Não use blocos ```gherkin nesses arquivos: ali, um bloco cercado após um passo é o texto do passo.
-- O MDG não aceita `# language:`; o idioma vem de `gherkin_language` no `specmd.toml`.
+- A `*.feature.md` file uses Cucumber's MDG format: keywords as headings (`### Scenario:`), steps as list items (`* Given …`), tables indented by 2 to 5 spaces and free prose between them. Do not use ```gherkin blocks in these files: there, a fenced block after a step is the step's text.
+- MDG does not accept `# language:`; the language comes from `gherkin_language` in `specmd.toml`.
 
-## Markdown que não descreve comportamento
+## Markdown that does not describe behavior
 
-- README, CHANGELOG, guias de setup, notas e ADRs técnicos vão para o `.specmdignore` na raiz (padrões no estilo `.gitignore`).
-- Se for claramente o caso, adicione você mesmo. Em dúvida, pergunte ao dev se o documento precisa de cenários; se descrever comportamento, recomende escrevê-los.
+- README, CHANGELOG, setup guides, notes and technical ADRs go into `.specmdignore` at the root (`.gitignore`-style patterns).
+- When that is clearly the case, add it yourself. When in doubt, ask the developer whether the document needs scenarios; if it describes behavior, recommend writing them.
 
-## Feedback do SpecMD
+## SpecMD feedback
 
-- Depois de editar Markdown, o SpecMD aponta documentos sem cenários, requisitos sem cenário e Gherkin inválido.
-- Se você remover um cenário, mudar o que ele espera, marcá-lo com `@wip` ou remover um requisito, o SpecMD mostra a mudança para você e para o dev. Se um cenário que falhava teve o valor esperado alterado junto com o código, ele pede para restaurar o cenário, a menos que o dev tenha pedido a mudança.
-- Se um documento do `.specmdignore` passar a declarar requisitos ou cenários, mova a regra para um documento de comportamento ou tire o arquivo do `.specmdignore`.
-- Num projeto com documentação antiga, `/specmd:adopt` lista os documentos sem cenários. Separe com o dev o que vai para o `.specmdignore` e trate um documento por vez. Se um cenário que nunca passou falha porque o código faz outra coisa, é divergência: pergunte ao dev qual vale antes de mudar qualquer um dos dois.
-- Ao concluir uma implementação, ele executa os cenários afetados pela mudança e devolve o cenário, o passo, a linha, a mensagem de erro e, para passos sem implementação, um trecho para começar. Implemente até ficar verde.
-- Para conferir a qualquer momento, sem instalar nada, use `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/specmd_cli.py" check --root "$(pwd)"` (pendências e última execução) ou `... run --root "$(pwd)"` (executa todos os cenários; com `--affected`, só os afetados pela mudança). O início da sessão traz o mesmo comando com o caminho completo.
+- After you edit Markdown, SpecMD points out documents without scenarios, requirements without a scenario and invalid Gherkin.
+- If you remove a scenario, change what it expects, tag it `@wip` or remove a requirement, SpecMD shows the change to you and to the developer. If a failing scenario had its expected value changed together with the code, it asks you to restore the scenario, unless the developer asked for the change.
+- If a document in `.specmdignore` starts declaring requirements or scenarios, move the rule to a behavior document or take the file out of `.specmdignore`.
+- In a project with existing documentation, `/specmd:adopt` lists the documents without scenarios. Sort out with the developer what goes into `.specmdignore` and handle one document at a time. If a scenario that never passed fails because the code does something else, that is a divergence: ask the developer which one holds before changing either.
+- When you finish an implementation, it runs the scenarios affected by the change and reports the scenario, the step, the line, the error message and, for steps without an implementation, a snippet to start from. Implement until it is green.
+- To check at any time, without installing anything, use `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/specmd_cli.py" check --root "$(pwd)"` (gaps and last run) or `... run --root "$(pwd)"` (runs every scenario; with `--affected`, only the ones affected by the change). The session start shows the same command with the full path.

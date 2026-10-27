@@ -9,7 +9,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from specmd import hooks
+from specmd import hooks, messages
 from specmd import state as hook_state
 from specmd.demo import create_demo
 from specmd.runner import default_runners
@@ -22,22 +22,21 @@ specmd:
   kind: behavioral
 ---
 
-# Cupons
+# Coupons
 
-## SMD-DEMO-REQ-003 — Cupom de desconto
+## SMD-DEMO-REQ-003 — Discount coupon
 
-Um cupom DEZ aplica 10% de desconto.
+A TEN coupon applies a 10% discount.
 """
 SCENARIO = """
 ```gherkin
-# language: pt
-Funcionalidade: Cupom
+Feature: Coupon
 
   @SMD-DEMO-REQ-003 @SMD-DEMO-SCN-003
-  Cenário: Cupom DEZ
-    Dado um carrinho vazio
-    Quando eu adicionar itens de 500 e 500 centavos
-    Então o total deve ser 1000 centavos
+  Scenario: TEN coupon
+    Given an empty cart
+    When I add items of 500 and 500 cents
+    Then the total should be 1000 cents
 ```
 """
 
@@ -73,16 +72,27 @@ class HookLifecycleTests(unittest.TestCase):
             hooks.run_hook()
         entry = json.loads(log.read_text().splitlines()[0])
         self.assertEqual(entry["event"], "SessionStart")
-        self.assertIn("SpecMD ativo", entry["reply"]["hookSpecificOutput"]["additionalContext"])
+        self.assertIn("SpecMD is active", entry["reply"]["hookSpecificOutput"]["additionalContext"])
 
     def test_codex_project_config_activates_without_specmd_toml(self):  # SMD-SCN-140
         (self.root / "specmd.toml").unlink()
         self.assertEqual(self.hook("SessionStart"), {})
         (self.root / ".codex").mkdir()
         (self.root / ".codex/config.toml").write_text('[plugins."specmd@specmd"]\nenabled = true\n')
-        self.assertIn("SpecMD ativo", self.hook("SessionStart")["hookSpecificOutput"]["additionalContext"])
+        self.assertIn("SpecMD is active", self.hook("SessionStart")["hookSpecificOutput"]["additionalContext"])
         (self.root / ".codex/config.toml").write_text('[plugins."specmd@specmd"]\nenabled = false\n')
         self.assertEqual(self.hook("SessionStart"), {})
+
+    def test_messages_follow_the_project_language(self):  # SMD-SCN-142
+        self.addCleanup(messages.use, "en")
+        config = self.root / "specmd.toml"
+        config.write_text('language = "pt"\n' + config.read_text())
+        context = self.hook("SessionStart")["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("SpecMD ativo neste repositório.", context)
+        self.assertIn("mostre-os ao dev e peça confirmação", context)
+        self.hook("UserPromptSubmit")
+        self.edit_app("return sum(self.prices)", "return sum(self.prices) + 1")
+        self.assertIn("2 de 2 cenários da documentação não passaram.", self.hook("Stop")["reason"])
 
     def test_read_only_tools_return_without_touching_the_project(self):
         with patch.object(hooks, "find_root", side_effect=AssertionError("disk access")):
@@ -96,20 +106,20 @@ class HookLifecycleTests(unittest.TestCase):
         with patch.object(hooks, "find_root", side_effect=AssertionError("disk access")):
             self.assertEqual(post("Edit", str(self.root / "app.py")), {})
             self.assertEqual(post("Write", "tests/steps/cart_steps.py"), {})
-        for tool, path in (("Write", "docs/novo.MD"), ("Edit", ".specmdignore"), ("Edit", "specmd.toml"),
+        for tool, path in (("Write", "docs/new.MD"), ("Edit", ".specmdignore"), ("Edit", "specmd.toml"),
                            ("Bash", "app.py"), ("Edit", None)):
             with self.subTest(tool=tool, path=path), \
                     patch.object(hooks, "find_root", return_value=None) as find_root:
                 post(tool, path)
                 find_root.assert_called_once()
 
-    def test_session_start_summarizes_documentation_and_conventions(self):
+    def test_session_start_summarizes_documentation_and_conventions(self):  # SMD-SCN-141
         reply = self.hook("SessionStart")
         context = reply["hookSpecificOutput"]["additionalContext"]
-        self.assertIn("1 (2 cenários)", context)
-        self.assertIn("mostre-os ao dev e peça confirmação", context)
-        self.assertIn("marcar @wip é decisão do dev", context)
-        self.assertIn("Se o código existente contradiz a documentação, não corrija nenhum dos dois sozinho", context)
+        self.assertIn("1 (2 scenarios)", context)
+        self.assertIn("show them to the developer and ask for confirmation", context)
+        self.assertIn("tagging @wip is the developer's decision", context)
+        self.assertIn("If existing code contradicts the documentation, do not fix either one on your own", context)
         self.assertIn("scripts/specmd_cli.py", context)
         self.assertIn(f"run --root {self.root}", context)
         state = hook_state.load(self.root)
@@ -118,11 +128,11 @@ class HookLifecycleTests(unittest.TestCase):
 
     def test_documentation_gap_is_reported_after_the_edit_and_once_at_stop(self):
         self.hook("SessionStart")
-        (self.root / "docs/cupons.md").write_text(GAP_DOC)
+        (self.root / "docs/coupons.md").write_text(GAP_DOC)
         context = self.hook("PostToolUse", tool_name="Write")["hookSpecificOutput"]["additionalContext"]
-        self.assertIn("docs/cupons.md", context)
-        self.assertIn("não possui cenário", context)
-        self.assertIn("pergunte ao dev", context)
+        self.assertIn("docs/coupons.md", context)
+        self.assertIn("Document without Gherkin scenarios", context)
+        self.assertIn("ask the developer", context)
         self.assertEqual(self.hook("PostToolUse", tool_name="Edit"), {})
         first = self.hook("Stop", stop_hook_active=False)
         self.assertEqual(first["decision"], "block")
@@ -133,11 +143,11 @@ class HookLifecycleTests(unittest.TestCase):
 
     def test_documentation_only_changes_wait_for_the_developer(self):
         self.hook("SessionStart")
-        (self.root / "docs/cupons.md").write_text(GAP_DOC + SCENARIO)
+        (self.root / "docs/coupons.md").write_text(GAP_DOC + SCENARIO)
         context = self.hook("PostToolUse", tool_name="Write")["hookSpecificOutput"]["additionalContext"]
-        self.assertIn("peça confirmação antes de implementar", context)
+        self.assertIn("ask for confirmation before implementing", context)
         reply = self.hook("Stop")
-        self.assertIn("aguardando sua confirmação", reply["systemMessage"])
+        self.assertIn("awaiting your confirmation", reply["systemMessage"])
         self.assertNotIn("last_run", hook_state.load(self.root))
 
     def test_code_change_verifies_even_scenarios_written_in_the_same_turn(self):
@@ -145,11 +155,11 @@ class HookLifecycleTests(unittest.TestCase):
         # the agent wrote them and the code in the following turn.
         self.hook("SessionStart")
         self.hook("UserPromptSubmit")
-        (self.root / "docs/cupons.md").write_text(GAP_DOC + SCENARIO)
+        (self.root / "docs/coupons.md").write_text(GAP_DOC + SCENARIO)
         self.edit_app("return sum(self.prices)", "return sum(self.prices) + 0")
         reply = self.hook("Stop")
-        self.assertIn("3 cenários passando", reply["systemMessage"])
-        self.assertIn("mudaram depois da última mensagem do dev", reply["systemMessage"])
+        self.assertIn("3 scenarios passing", reply["systemMessage"])
+        self.assertIn("changed after the developer's last message", reply["systemMessage"])
         self.assertTrue(hook_state.load(self.root)["last_run"]["passed"])
         self.hook("UserPromptSubmit")
         self.assertEqual(self.hook("Stop"), {})
@@ -157,12 +167,12 @@ class HookLifecycleTests(unittest.TestCase):
     def test_failing_scenario_written_with_the_code_is_fed_back_with_a_reminder(self):
         self.hook("SessionStart")
         self.hook("UserPromptSubmit")
-        (self.root / "docs/cupons.md").write_text(GAP_DOC + SCENARIO.replace("1000 centavos\n```", "900 centavos\n```"))
+        (self.root / "docs/coupons.md").write_text(GAP_DOC + SCENARIO.replace("1000 cents\n```", "900 cents\n```"))
         self.edit_app("return sum(self.prices)", "return sum(self.prices) + 0")
         reply = self.hook("Stop")
         self.assertEqual(reply["decision"], "block")
-        self.assertIn("Total observado 1000; esperado 900", reply["reason"])
-        self.assertIn("se ele ainda não os confirmou", reply["reason"])
+        self.assertIn("Observed total 1000; expected 900", reply["reason"])
+        self.assertIn("if they have not confirmed them yet", reply["reason"])
 
     def test_no_code_change_in_the_session_demands_no_execution(self):
         self.hook("SessionStart")
@@ -176,51 +186,51 @@ class HookLifecycleTests(unittest.TestCase):
         self.edit_app("return sum(self.prices)", "return sum(self.prices) + 1")
         first = self.hook("Stop")
         self.assertEqual(first["decision"], "block")
-        self.assertIn("2 de 2 cenários", first["reason"])
-        self.assertIn("Total observado 501; esperado 500", first["reason"])
+        self.assertIn("2 of 2 documented scenarios", first["reason"])
+        self.assertIn("Observed total 501; expected 500", first["reason"])
         repeated = self.hook("Stop", stop_hook_active=True)
-        self.assertIn("ainda não passam", repeated["systemMessage"])
+        self.assertIn("still failing", repeated["systemMessage"])
         self.edit_app("return sum(self.prices) + 1", "return sum(self.prices)")
         fixed = self.hook("Stop", stop_hook_active=True)
-        self.assertIn("2 cenários passando", fixed["systemMessage"])
+        self.assertIn("2 scenarios passing", fixed["systemMessage"])
         self.assertEqual(self.hook("Stop"), {})
 
     def test_committing_after_a_green_run_does_not_run_again(self):
         self.hook("SessionStart")
         self.hook("UserPromptSubmit")
         self.edit_app("return sum(self.prices)", "return sum(self.prices) + 0")
-        self.assertIn("2 cenários passando", self.hook("Stop")["systemMessage"])
+        self.assertIn("2 scenarios passing", self.hook("Stop")["systemMessage"])
         git = ["git", "-C", str(self.root), "-c", "user.name=t", "-c", "user.email=t@t"]
         subprocess.run([*git, "add", "-A"], check=True)
         subprocess.run([*git, "commit", "-q", "-m", "x"], check=True)
-        with patch("specmd.workflow.run_project", side_effect=AssertionError("executou de novo")):
+        with patch("specmd.workflow.run_project", side_effect=AssertionError("ran again")):
             self.assertEqual(self.hook("Stop"), {})
 
-    @unittest.skipUnless(sys.version_info >= (3, 12), "cobertura por cenário exige Python 3.12+")
+    @unittest.skipUnless(sys.version_info >= (3, 12), "per-scenario coverage requires Python 3.12+")
     def test_later_changes_run_only_the_affected_scenarios_and_say_so(self):
         self.hook("SessionStart")
         self.hook("UserPromptSubmit")
         self.edit_app("self.prices.append(price_cents)", "self.prices.append(price_cents + 0)")
-        self.assertIn("2 cenários passando", self.hook("Stop")["systemMessage"])
+        self.assertIn("2 scenarios passing", self.hook("Stop")["systemMessage"])
         self.edit_app("price_cents + 0", "price_cents + 1")
         failing = self.hook("Stop")
         self.assertEqual(failing["decision"], "block")
-        self.assertIn("1 de 1 cenário afetado pela mudança não passou; 1 cenário não executa o código alterado.",
+        self.assertIn("1 of 1 scenario affected by the change failed; 1 scenario does not run the changed code.",
                       failing["reason"])
         self.edit_app("price_cents + 1", "price_cents")
         fixed = self.hook("Stop", stop_hook_active=True)
-        self.assertIn("1 cenário afetado pela mudança, passando; 1 cenário não executa o código alterado.",
+        self.assertIn("1 scenario affected by the change, passing; 1 scenario does not run the changed code.",
                       fixed["systemMessage"])
 
     def test_undefined_steps_come_back_with_a_snippet(self):
         self.hook("SessionStart")
-        (self.root / "docs/cupons.md").write_text(GAP_DOC + SCENARIO.replace(
-            "    Então", '    E eu aplicar o cupom "DEZ"\n    Então'))
+        (self.root / "docs/coupons.md").write_text(GAP_DOC + SCENARIO.replace(
+            "    Then", '    And I apply the coupon "TEN"\n    Then'))
         self.hook("UserPromptSubmit")
         self.edit_app("return sum(self.prices)", "return sum(self.prices) + 0")
         reply = self.hook("Stop")
         self.assertEqual(reply["decision"], "block")
-        self.assertIn("Passo sem implementação", reply["reason"])
+        self.assertIn("Step without implementation", reply["reason"])
         self.assertIn("def step_impl(context)", reply["reason"])
 
     def test_steps_directory_is_found_without_runner_configuration(self):
@@ -229,14 +239,14 @@ class HookLifecycleTests(unittest.TestCase):
         self.hook("SessionStart")
         self.hook("UserPromptSubmit")
         self.edit_app("return sum(self.prices)", "return sum(self.prices) + 0")
-        self.assertIn("2 cenários passando", self.hook("Stop")["systemMessage"])
+        self.assertIn("2 scenarios passing", self.hook("Stop")["systemMessage"])
 
     def test_block_cap_lets_the_agent_stop(self):
         for index in range(hooks.MAX_BLOCKS):
-            self.assertEqual(hooks._block_once(self.root, f"sig-{index}", "motivo", "resumo")["decision"], "block")
-        self.assertEqual(hooks._block_once(self.root, "sig-new", "motivo", "resumo"), {"systemMessage": "resumo"})
+            self.assertEqual(hooks._block_once(self.root, f"sig-{index}", "reason", "summary")["decision"], "block")
+        self.assertEqual(hooks._block_once(self.root, "sig-new", "reason", "summary"), {"systemMessage": "summary"})
         self.hook("UserPromptSubmit")
-        self.assertEqual(hooks._block_once(self.root, "sig-new", "motivo", "resumo")["decision"], "block")
+        self.assertEqual(hooks._block_once(self.root, "sig-new", "reason", "summary")["decision"], "block")
 
     def test_project_root_from_environment_not_payload(self):
         self.assertEqual(hooks.find_root(), self.root)
@@ -256,15 +266,15 @@ class HookLifecycleTests(unittest.TestCase):
         (self.root / ".claude").mkdir()
         (self.root / ".claude/settings.json").write_text(json.dumps({"enabledPlugins": {"specmd@specmd": True}}))
         self.assertEqual(hooks.find_root(), self.root)
-        self.assertIn("SpecMD ativo", self.hook("SessionStart")["hookSpecificOutput"]["additionalContext"])
+        self.assertIn("SpecMD is active", self.hook("SessionStart")["hookSpecificOutput"]["additionalContext"])
         (self.root / ".claude/settings.local.json").write_text(json.dumps({"enabledPlugins": {"specmd@specmd": False}}))
         self.assertIsNone(hooks.find_root())
-        (self.root / ".claude/settings.local.json").write_text(json.dumps({"enabledPlugins": {"outro@time": True}}))
+        (self.root / ".claude/settings.local.json").write_text(json.dumps({"enabledPlugins": {"other@team": True}}))
         self.assertEqual(hooks.find_root(), self.root)
 
     def test_internal_errors_never_stop_the_session(self):
         for event in ("SessionStart", "UserPromptSubmit", "PostToolUse", "Stop"):
-            with self.subTest(event=event), patch.object(hooks, "handle_hook", side_effect=RuntimeError("falha")), \
+            with self.subTest(event=event), patch.object(hooks, "handle_hook", side_effect=RuntimeError("boom")), \
                     patch("sys.stdin", io.StringIO(json.dumps({"hook_event_name": event}))), \
                     contextlib.redirect_stdout(io.StringIO()) as output:
                 self.assertEqual(hooks.run_hook(), 0)
@@ -272,7 +282,7 @@ class HookLifecycleTests(unittest.TestCase):
             self.assertNotIn("continue", reply)
             self.assertNotIn("decision", reply)
             if event in {"SessionStart", "Stop"}:
-                self.assertIn("falha", reply["systemMessage"])
+                self.assertIn("boom", reply["systemMessage"])
         with patch("sys.stdin", io.StringIO("{")), contextlib.redirect_stdout(io.StringIO()) as output:
             hooks.run_hook()
         self.assertEqual(json.loads(output.getvalue()), {})

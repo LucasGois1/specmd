@@ -1,17 +1,17 @@
-# Formato da documentação
+# Documentation format
 
-A documentação é Markdown comum. O SpecMD lê os blocos ```gherkin de cada documento e os executa em memória; não há arquivo `.feature` para manter.
+The documentation is plain Markdown. SpecMD reads the ```gherkin blocks of each document and runs them in memory; there is no `.feature` file to maintain.
 
-## Quais documentos entram
+## Which documents are included
 
-Todo Markdown do projeto (`.md` e `.markdown`), inclusive arquivos novos ainda não versionados, exceto:
+Every Markdown file in the project (`.md` and `.markdown`), including new files not yet versioned, except:
 
-- arquivos ignorados pelo Git;
-- diretórios de dependências e builds (`node_modules`, `.venv`, `build`, `dist` e semelhantes) e o estado `.specmd/`;
-- arquivos de projeto que raramente descrevem comportamento: `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `SUPPORT.md`, `LICENSE*`, `NOTICE*`, `AUTHORS*`, `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.github/`, `.claude/` e `.codex/`;
-- o que casar com o `.specmdignore` na raiz, que é opcional.
+- files ignored by Git;
+- dependency and build directories (`node_modules`, `.venv`, `build`, `dist` and similar) and the `.specmd/` state;
+- project files that rarely describe behaviour: `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `SUPPORT.md`, `LICENSE*`, `NOTICE*`, `AUTHORS*`, `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `.github/`, `.claude/` and `.codex/`;
+- whatever matches `.specmdignore` at the root, which is optional.
 
-Uma linha `!README.md` no `.specmdignore` traz de volta um arquivo ignorado por padrão. O `.specmdignore` usa padrões no estilo `.gitignore`: comentários com `#`, `!` para negar, `/` no fim para diretórios, `/` no início ou no meio para ancorar na raiz, `*`, `?` e `**`. Ele lista o Markdown que não descreve comportamento do sistema:
+A `!README.md` line in `.specmdignore` brings back a file ignored by default. `.specmdignore` uses `.gitignore`-style patterns: comments with `#`, `!` to negate, a trailing `/` for directories, a leading or middle `/` to anchor at the root, `*`, `?` and `**`. It lists the Markdown that does not describe system behaviour:
 
 ```gitignore
 README.md
@@ -20,95 +20,96 @@ docs/setup/
 notes/**/*.md
 ```
 
-O agente cria o arquivo e adiciona entradas quando é claro que o documento não descreve comportamento e pergunta ao dev quando há dúvida.
+The agent creates the file and adds entries when it is clear that the document does not describe behaviour, and asks the developer when in doubt.
 
-## O que um documento precisa ter
+## What a document needs
 
-Pelo menos um bloco ```gherkin com cenários. Frontmatter é opcional e ignorado.
+At least one ```gherkin block with scenarios. Front matter is optional and ignored.
 
-Requisitos com ID são opcionais e recomendados. Um título que começa com um ID terminado em `-REQ-…` declara o requisito; o prefixo é livre:
+Requirements with an ID are optional and recommended. A heading that starts with an ID ending in `-REQ-…` declares the requirement; the prefix is free:
 
 ````markdown
-## PAG-REQ-001 — Estorno em até 7 dias
+## PAY-REQ-001 — Refund within 7 days
 
-Um pagamento pode ser estornado em até 7 dias corridos.
+A payment can be refunded within 7 calendar days.
 
 ```gherkin
-# language: pt
-Funcionalidade: Estorno
+Feature: Refund
 
-  Cenário: Estorno no sexto dia
-    Dado um pagamento feito há 6 dias
-    Quando o cliente pedir o estorno
-    Então o estorno deve ser aprovado
+  Scenario: Refund on the sixth day
+    Given a payment made 6 days ago
+    When the customer requests the refund
+    Then the refund should be approved
 ```
 ````
 
 ## Markdown with Gherkin (`.feature.md`)
 
-Um arquivo `*.feature.md` é lido no formato oficial [Markdown with Gherkin](https://github.com/cucumber/gherkin/blob/main/MARKDOWN_WITH_GHERKIN.md) do Cucumber, em vez de blocos cercados:
+A `*.feature.md` file is read in Cucumber's official [Markdown with Gherkin](https://github.com/cucumber/gherkin/blob/main/MARKDOWN_WITH_GHERKIN.md) format, instead of fenced blocks:
 
-- palavras-chave são títulos Markdown (`# Funcionalidade:`, `## Regra:`, `### Cenário:`, `### Esquema do Cenário:`, `#### Exemplos:`, `## Contexto:`);
-- passos são itens de lista (`* Dado …` ou `- Quando …`);
-- tabelas são tabelas GFM indentadas de 2 a 5 espaços;
-- um bloco cercado logo após um passo é o texto do passo (Doc String); fora disso, é prosa;
-- tags ficam entre crases na linha acima da palavra-chave (`` `@rapido` ``);
-- qualquer outra linha é prosa. O arquivo é uma funcionalidade; sem título `Funcionalidade`, a primeira linha dá o nome.
+- keywords are Markdown headings (`# Feature:`, `## Rule:`, `### Scenario:`, `### Scenario Outline:`, `#### Examples:`, `## Background:`);
+- steps are list items (`* Given …` or `- When …`);
+- tables are GFM tables indented by 2 to 5 spaces;
+- a fenced block right after a step is the step's text (Doc String); elsewhere, it is prose;
+- tags go between backticks on the line above the keyword (`` `@fast` ``);
+- any other line is prose. The file is one feature; without a `Feature` heading, the first line gives the name.
 
-O MDG não tem `# language:`: o idioma vem de `gherkin_language` no `specmd.toml`. Títulos com ID de requisito funcionam como nos outros documentos, inclusive o da `Regra`:
+MDG has no `# language:`: the language comes from `gherkin_language` in `specmd.toml`. Headings with a requirement ID work as in the other documents, including the `Rule` one:
 
 ````markdown
-# Funcionalidade: Estornos
+# Feature: Refunds
 
-Um pagamento pode ser estornado em até 7 dias corridos.
+A payment can be refunded within 7 calendar days.
 
-## Regra: PAG-REQ-001 — Estorno em até 7 dias
+## Rule: PAY-REQ-001 — Refund within 7 days
 
-### Cenário: Estorno no sexto dia
-* Dado um pagamento feito há 6 dias
-* Quando o cliente pedir o estorno
-* Então o estorno deve ser aprovado
+### Scenario: Refund on the sixth day
+* Given a payment made 6 days ago
+* When the customer requests the refund
+* Then the refund should be approved
 ````
 
-## Ligação entre cenário e requisito
+## Link between scenario and requirement
 
-- Um cenário fica ligado ao requisito do título mais próximo acima do seu bloco. Subtítulos dentro da seção (por exemplo `### Cenários`) mantêm a ligação.
-- Uma tag `@…-REQ-…` no cenário, na regra ou na funcionalidade substitui a ligação pela posição.
-- Cenários antes de qualquer requisito são do documento como um todo.
-- Requisito sem cenário é uma pendência, e tag que aponta para um requisito inexistente também.
+- A scenario is linked to the requirement of the nearest heading above its block. Subheadings inside the section (for example `### Scenarios`) keep the link.
+- A `@…-REQ-…` tag on the scenario, the rule or the feature replaces the link by position.
+- Scenarios before any requirement belong to the document as a whole.
+- A requirement without a scenario is a gap, and so is a tag that points to a nonexistent requirement.
 
-## Identidade dos cenários
+## Scenario identity
 
-- Sem tag, o ID é `caminho::nome do cenário`. Nomes repetidos no mesmo documento recebem `#2`, `#3` e assim por diante.
-- Uma tag `@…-SCN-…` define um ID estável, que precisa ser único no projeto. Um cenário aceita no máximo uma.
-- Cada linha de `Exemplos` de um `Esquema do Cenário` vira uma instância `ID:row:<exemplo>:<linha>`.
+- Without a tag, the ID is `path::scenario name`. Repeated names in the same document get `#2`, `#3` and so on.
+- A `@…-SCN-…` tag defines a stable ID, which must be unique in the project. A scenario accepts at most one.
+- Each `Examples` row of a `Scenario Outline` becomes an instance `ID:row:<example>:<line>`.
 
-## Linguagem e cenários em andamento
+## Language and work-in-progress scenarios
 
-- `# language: pt` no bloco define o idioma do Gherkin; `gherkin_language = "pt"` no `specmd.toml` define o padrão do projeto.
-- Cenários com uma tag de `wip_tags` (padrão `@wip`) aparecem na documentação mas não são executados nem cobrados. Marcar `@wip` é decisão do dev; o agente é orientado a não marcar por conta própria.
+- `# language: pt` in the block sets the Gherkin language (here, Portuguese); `gherkin_language = "pt"` in `specmd.toml` sets the project default.
+- `language = "pt"` in `specmd.toml` shows SpecMD's own messages in Portuguese; the default is English. It does not change the Gherkin language.
+- Scenarios with a tag from `wip_tags` (default `@wip`) appear in the documentation but are neither run nor required. Marking `@wip` is the developer's decision; the agent is instructed not to mark it on its own.
 
 ## specmd.toml
 
-Opcional. Sem ele valem os padrões abaixo; o SpecMD fica ativo num repositório quando o plugin está habilitado no escopo do projeto ou local (`enabledPlugins` em `.claude/settings.json` ou `.claude/settings.local.json`) ou quando existe um `specmd.toml`.
+Optional. Without it the defaults below apply; SpecMD is active in a repository when the plugin is enabled in the project or local scope (`enabledPlugins` in `.claude/settings.json` or `.claude/settings.local.json`) or when a `specmd.toml` exists.
 
 ```toml
+language = "en"             # SpecMD's messages: "en" (default) or "pt"
 gherkin_language = "pt"
 wip_tags = ["wip"]
 
 [run]
-on_stop = true      # executar os cenários ao concluir, quando o código mudou
+on_stop = true      # run the scenarios on completion, when the code changed
 timeout = 120
 
 [[runners]]
 id = "python"
 language = "python"
-steps = "tests/steps"            # environment.py fica no diretório pai
-python = ".venv/bin/python"      # opcional
+steps = "tests/steps"            # environment.py lives in the parent directory
+python = ".venv/bin/python"      # optional
 ```
 
-- Sem `[[runners]]`, o primeiro diretório existente entre `tests/steps`, `features/steps` e `steps` vira um runner Python.
-- O runner Python usa, nesta ordem: `python` do runner, `$VIRTUAL_ENV`, `.venv` ou `venv` do projeto, desde que consiga importar `behave`. Se nenhum servir, usa o interpretador do plugin.
-- Com vários runners, cada cenário vai para o primeiro cujo `paths` casar com o documento.
-- Java e Go usam `command` com o bridge; veja [adapters](../adapters/README.md).
-- Chaves do desenho anterior (`project_id`, `repository_id`, `traceability`, `evidence`) são aceitas e ignoradas.
+- Without `[[runners]]`, the first existing directory among `tests/steps`, `features/steps` and `steps` becomes a Python runner.
+- The Python runner uses, in this order: the runner's `python`, `$VIRTUAL_ENV`, the project's `.venv` or `venv`, as long as it can import `behave`. If none works, it uses the plugin's interpreter.
+- With several runners, each scenario goes to the first one whose `paths` match the document.
+- Java and Go use `command` with the bridge; see [adapters](../adapters/README.md).
+- Keys from the earlier design (`project_id`, `repository_id`, `traceability`, `evidence`) are accepted and ignored.

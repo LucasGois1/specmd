@@ -4,16 +4,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from .messages import text as t
+
 
 def initial_config() -> str:
     return (
-        "# Configuração do SpecMD. Todas as chaves são opcionais; sem este arquivo valem os padrões.\n"
-        "# gherkin_language = \"pt\"\n"
+        "# SpecMD configuration. Every key is optional; without this file the defaults apply.\n"
+        "# language = \"pt\"          # SpecMD's messages in Portuguese (default: English)\n"
+        "# gherkin_language = \"pt\"  # Gherkin keywords in Portuguese when a block has no # language: line\n"
         "# wip_tags = [\"wip\"]\n\n"
         "[run]\non_stop = true\n\n"
         "[[runners]]\nid = \"python\"\nlanguage = \"python\"\nsteps = \"tests/steps\"\ntimeout = 60\n"
     )
-
 
 
 APP = '''"""Small cart implementation exercised by the Markdown documentation."""
@@ -35,59 +37,59 @@ STEPS = '''from behave import given, when, then
 from app import Cart
 
 
-@given("um carrinho vazio")
+@given("an empty cart")
 def empty_cart(context):
     context.cart = Cart()
 
 
-@when("eu adicionar itens de {first:d} e {second:d} centavos")
+@when("I add items of {first:d} and {second:d} cents")
 def add_items(context, first, second):
     context.cart.add(first)
     context.cart.add(second)
     context.total = context.cart.total()
 
 
-@when("eu consultar o total do carrinho")
+@when("I check the cart total")
 def read_total(context):
     context.total = context.cart.total()
 
 
-@then("o total deve ser {expected:d} centavos")
+@then("the total should be {expected:d} cents")
 def assert_total(context, expected):
-    assert context.total == expected, f"Total observado {context.total}; esperado {expected}"
+    assert context.total == expected, f"Observed total {context.total}; expected {expected}"
 '''
 
-CONTRACT = '''# Carrinho
+CONTRACT = '''# Cart
 
-Regras de negócio do carrinho. Os cenários abaixo de cada requisito são a
-especificação e o teste de aceitação ao mesmo tempo.
+Business rules of the cart. The scenarios below each requirement are the
+specification and the acceptance test at the same time.
 
-## CART-REQ-001 — Somar itens
+## CART-REQ-001 — Add up items
 
-O total do carrinho deve corresponder à soma dos preços dos itens, em centavos.
+The cart total must equal the sum of the item prices, in cents.
 
 ```gherkin
-# language: pt
-Funcionalidade: Total do carrinho
+# language: en
+Feature: Cart total
 
-  Cenário: Somar dois itens
-    Dado um carrinho vazio
-    Quando eu adicionar itens de 200 e 300 centavos
-    Então o total deve ser 500 centavos
+  Scenario: Add two items
+    Given an empty cart
+    When I add items of 200 and 300 cents
+    Then the total should be 500 cents
 ```
 
-## CART-REQ-002 — Carrinho vazio
+## CART-REQ-002 — Empty cart
 
-Um carrinho sem itens deve ter total de zero centavos.
+A cart without items must have a total of zero cents.
 
 ```gherkin
-# language: pt
-Funcionalidade: Carrinho vazio
+# language: en
+Feature: Empty cart
 
-  Cenário: Consultar um carrinho vazio
-    Dado um carrinho vazio
-    Quando eu consultar o total do carrinho
-    Então o total deve ser 0 centavos
+  Scenario: Check an empty cart
+    Given an empty cart
+    When I check the cart total
+    Then the total should be 0 cents
 ```
 '''
 
@@ -95,10 +97,12 @@ Funcionalidade: Carrinho vazio
 def create_demo(destination: Path) -> dict:
     requested = Path(destination).expanduser()
     if requested.is_symlink():
-        raise ValueError("O destino da demonstração não pode ser um link simbólico.")
+        raise ValueError(t("The demo destination cannot be a symbolic link.",
+                           "O destino da demonstração não pode ser um link simbólico."))
     root = requested.resolve()
     if root.exists() and (not root.is_dir() or any(root.iterdir())):
-        raise ValueError("O destino deve ser novo ou um diretório vazio; nenhum arquivo será sobrescrito.")
+        raise ValueError(t("The destination must be new or an empty directory; no file is overwritten.",
+                           "O destino deve ser novo ou um diretório vazio; nenhum arquivo será sobrescrito."))
     files = {
         "specmd.toml": initial_config(),
         "app.py": APP,
@@ -114,5 +118,5 @@ def create_demo(destination: Path) -> dict:
             stream.write(content)
     return {
         "status": "demo_created", "root": str(root), "files": sorted(files),
-        "message": "Projeto de demonstração criado. Abra o agente na pasta e peça uma mudança de regra.",
+        "message": "Demo project created. Open the agent in the folder and ask for a rule change.",
     }

@@ -1,154 +1,154 @@
-# Arquitetura experimental e desenho do produto
+# Experimental architecture and product design
 
-> **Histórico, anterior à [D-021](decisions.md).** Este documento descreve o desenho com aceite assinado, autoridade, trust e bloqueio de implementação, removido em 23/10/2026. Para o produto atual, veja [produto](product.md) e [estado da implementação](implementation-status.md).
+> **Historical, predates [D-021](decisions.md).** This document describes the design with signed acceptance, authority, trust and implementation blocking, removed on 23/10/2026. For the current product, see [product](product.md) and [implementation status](implementation-status.md).
 
-O projeto já implementa inventário, parsing de contratos, propostas de revisão, decisões Ed25519, execução de cenários e avaliação de evidências em um ciclo experimental Python. Há adaptadores de agentes e [pesquisas de runners](runner-feasibility.md). O [estado da implementação](implementation-status.md) distingue essas capacidades das provas de instalação e das pendências; o [primeiro preflight Codex](experimental-codex.md) documenta o incremento anterior.
+The project already implements inventory, contract parsing, review proposals, Ed25519 decisions, scenario execution and evidence evaluation in an experimental Python cycle. There are agent adapters and [runner research](runner-feasibility.md). The [implementation status](implementation-status.md) distinguishes these capabilities from installation proofs and open gaps; the [first Codex preflight](experimental-codex.md) documents the previous increment.
 
-O ciclo local não autentica a identidade humana nem estabelece isolamento de autoridade. Não há serviço produtivo de aprovação ou autenticação GitHub/OAuth. O comando de verificação implementa condições para execução protegida, mas um gate de integração confiável depende de pacote, workflow, política e permissões provisionados fora do controle do agente. Publicar esta documentação não constitui aceite contratual do conteúdo.
+The local cycle does not authenticate the human identity nor establish authority isolation. There is no production approval service or GitHub/OAuth authentication. The verification command implements conditions for protected execution, but a trustworthy integration gate depends on a package, workflow, policy and permissions provisioned outside the agent's control. Publishing this documentation does not constitute contractual acceptance of its content.
 
-Leia também [produto](product.md), [requisitos](requirements.md), [formato](format.md), aceite e confiança (removido por [D-021](decisions.md)), [indexação](indexing.md), [integrações](integrations.md), [roadmap](roadmap.md) e [plano de validação](validation-plan.md).
+See also [product](product.md), [requirements](requirements.md), [format](format.md), acceptance and trust (removed by [D-021](decisions.md)), [indexing](indexing.md), [integrations](integrations.md), [roadmap](roadmap.md) and [validation plan](validation-plan.md).
 
-## Restrição central: Markdown é a fonte canônica
+## Central constraint: Markdown is the canonical source
 
-O contrato é escrito, revisado e versionado em Markdown. Seus cenários Gherkin ficam no mesmo documento que explica os requisitos correspondentes.
+The contract is written, reviewed and versioned in Markdown. Its Gherkin scenarios live in the same document that explains the corresponding requirements.
 
-A execução implementada extrai blocos Gherkin do Markdown e fornece conteúdo e origem em memória aos adaptadores, sem exigir arquivos `.feature` mantidos ou temporários. O worker Python integra Behave; Java e Go usam comandos de bridge configurados, cujo protocolo e implementação precisam corresponder ao runtime escolhido. Os runners Cucumber não devem ser presumidos capazes de ler qualquer sintaxe Markdown diretamente.
+The implemented execution extracts Gherkin blocks from the Markdown and provides content and origin in memory to the adapters, without requiring maintained or temporary `.feature` files. The Python worker integrates Behave; Java and Go use configured bridge commands, whose protocol and implementation must match the chosen runtime. Cucumber runners must not be presumed capable of reading any Markdown syntax directly.
 
-A viabilidade inicial dessa integração foi demonstrada nos protótipos Java, Python e Go; estabilidade das APIs, cobertura da gramática e integração com projetos reais continuam exigindo validação. Se um runner escolhido exigir arquivos `.feature`, essa integração ainda não satisfaz o requisito do produto; o projeto deverá escolher outro ponto de integração, adaptar o executor ou rever a escolha do runner com decisão explícita. Gerar uma segunda especificação editável não é uma solução aceita para esse problema.
+The initial feasibility of this integration was demonstrated in the Java, Python and Go prototypes; API stability, grammar coverage and integration with real projects still require validation. If a chosen runner requires `.feature` files, that integration does not yet satisfy the product requirement; the project will have to choose another integration point, adapt the executor or revisit the runner choice with an explicit decision. Generating a second editable specification is not an accepted solution to this problem.
 
-As implementações dos passos continuam sendo código de teste. Elas exercitam o software e fazem as asserções descritas nos cenários; não se tornam uma segunda fonte de requisitos em linguagem natural.
+The step implementations remain test code. They exercise the software and make the assertions described in the scenarios; they do not become a second source of requirements in natural language.
 
-## Componentes e responsabilidades
+## Components and responsibilities
 
-| Componente | Implementação atual | Fronteira e limitações |
+| Component | Current implementation | Boundary and limitations |
 | --- | --- | --- |
-| Inventário e parser Markdown | Descoberta, metadados, requisitos, blocos, hashes e origem em `core.py`. | A política de escopo e o snapshot precisam corresponder ao ambiente pretendido. |
-| Classificação | Declarações `behavioral`, `reference` e `mixed` entram na revisão. | Classificação semântica por IA não está implementada; declarar não equivale a aceitar. |
-| Parser Gherkin | Parsing, IDs e instâncias de cenários no núcleo. | Reconhecer sintaxe e vínculos não prova cobertura da prosa. |
-| Adaptadores de execução | Worker Python/Behave e protocolo para bridges Java/Go em `runner.py`. | Código de steps não é sandboxed; procedência do bridge e força das asserções precisam de revisão. |
-| Revisão | Propostas com texto exato e interface local. | O campo de identidade da pessoa é autodeclarado; não há login humano por provedor. |
-| Decisões assinadas | Ed25519, contexto, revogação de chave e registro externo da decisão vigente em `authority.py`. | Inicialização produz somente `local_demo`; assinatura comprova chave autorizada, não autenticação humana. |
-| Ciclo e evidência | `workflow.py` relaciona contrato, código, vínculos, decisão e resultados. | Estado reaproveitado localmente não concede aprovação protegida. |
-| Adaptadores dos agentes | Integrações específicas Codex e Claude Code. | Protocolo e provas por host estão no estado da implementação; não há equivalência universal entre eventos. |
-| Verificação protegida | Caminho `verify` exige execução atual real, trust protegido e vínculos estritos. | A proteção operacional do pacote, do workflow e da política precisa existir fora do agente. |
-| Índice e cache | Dados locais derivados para observação e desempenho. | Podem ser reconstruídos; não constituem autoridade de aprovação. |
+| Inventory and Markdown parser | Discovery, metadata, requirements, blocks, hashes and origin in `core.py`. | The scope policy and the snapshot must match the intended environment. |
+| Classification | `behavioral`, `reference` and `mixed` declarations go into the review. | AI-based semantic classification is not implemented; declaring is not the same as accepting. |
+| Gherkin parser | Parsing, IDs and scenario instances in the core. | Recognizing syntax and links does not prove coverage of the prose. |
+| Execution adapters | Python/Behave worker and protocol for Java/Go bridges in `runner.py`. | Step code is not sandboxed; bridge provenance and assertion strength need review. |
+| Review | Proposals with exact text and a local interface. | The person's identity field is self-declared; there is no human login through a provider. |
+| Signed decisions | Ed25519, context, key revocation and external record of the current decision in `authority.py`. | Initialization produces only `local_demo`; a signature proves an authorized key, not human authentication. |
+| Cycle and evidence | `workflow.py` relates contract, code, links, decision and results. | State reused locally does not grant protected approval. |
+| Agent adapters | Codex-specific and Claude Code-specific integrations. | Protocol and per-host proofs are in the implementation status; there is no universal equivalence between events. |
+| Protected verification | The `verify` path requires a current real run, protected trust and strict links. | Operational protection of the package, the workflow and the policy must exist outside the agent. |
+| Index and cache | Derived local data for observation and performance. | Can be rebuilt; does not constitute an approval authority. |
 
-O núcleo é utilizável por CLI com resultados estruturados. Os adaptadores conectam esse núcleo aos agentes; não mantêm autoridades de aceite distintas por plataforma.
+The core is usable through a CLI with structured results. The adapters connect that core to the agents; they do not maintain distinct acceptance authorities per platform.
 
-## Pipeline de execução sem `.feature`
+## Execution pipeline without `.feature`
 
 ```mermaid
 flowchart TD
-    A[Snapshot do projeto] --> B[Inventário e política de escopo]
-    B --> C[Markdown e blocos Gherkin]
-    C --> D[AST e representação executável em memória]
-    D --> E[Adaptador do runner]
-    E --> F[Passos e asserções sobre o software]
-    F --> G[Resultados com origem no Markdown]
-    B --> H[Manifesto contratual]
-    H --> I[Decisao assinada da versao]
-    G --> J[Verificador de política]
+    A[Project snapshot] --> B[Inventory and scope policy]
+    B --> C[Markdown and Gherkin blocks]
+    C --> D[AST and in-memory executable representation]
+    D --> E[Runner adapter]
+    E --> F[Steps and assertions on the software]
+    F --> G[Results with origin in the Markdown]
+    B --> H[Contract manifest]
+    H --> I[Signed decision for the version]
+    G --> J[Policy verifier]
     I --> J
-    L[Trust externo e politica protegida] --> J
-    J --> K[Pendências ou elegibilidade para conclusão]
+    L[External trust and protected policy] --> J
+    J --> K[Gaps or eligibility for completion]
 ```
 
-Cada cenário executável deve preservar pelo menos:
+Each executable scenario must preserve at least:
 
-- Identificador do documento e do requisito ao qual está vinculado.
-- Identificador estável do cenário e tags aplicáveis.
-- Caminho do Markdown e posição do bloco e do cenário para diagnóstico.
-- Hash do contrato e revisão do código usados na execução.
-- Versão do parser, adaptador, runner e configuração pertinente.
+- The identifier of the document and of the requirement it is linked to.
+- A stable scenario identifier and the applicable tags.
+- The Markdown path and the position of the block and of the scenario, for diagnostics.
+- The contract hash and the code revision used in the run.
+- The version of the parser, adapter, runner and pertinent configuration.
 
-Linhas e colunas ajudam a navegar, mas não servem como identidade estável: inserir um parágrafo pode deslocá-las. Os identificadores e o conteúdo do contrato devem permanecer distinguíveis das posições de apresentação.
+Lines and columns help navigation, but do not serve as a stable identity: inserting a paragraph can shift them. The identifiers and the contract content must remain distinguishable from presentation positions.
 
-O núcleo atual também representa `Rule`, `Background` e instâncias de `Scenario Outline`, preservando vínculos e origem. A gramática aceita pelo parser não garante paridade de execução de todos os runtimes; cada bridge precisa demonstrar o subconjunto que executa. Resultados vazios, cenários ausentes, indefinidos ou ignorados não contam como execução bem-sucedida.
+The current core also represents `Rule`, `Background` and `Scenario Outline` instances, preserving links and origin. The grammar accepted by the parser does not guarantee execution parity across all runtimes; each bridge must demonstrate the subset it runs. Empty results and missing, undefined or skipped scenarios do not count as a successful run.
 
-## Quatro estados que não devem ser confundidos
+## Four states that must not be confused
 
-### Contrato
+### Contract
 
-Contém o texto e os cenários que definem o comportamento pretendido. Sua classificação também é uma afirmação sujeita ao aceite: declarar um documento como informativo não deve conceder automaticamente uma dispensa.
+Contains the text and scenarios that define the intended behavior. Its classification is also a claim subject to acceptance: declaring a document as informational must not automatically grant an exemption.
 
-Uma proposta de revisão identifica conteúdo e escopo por hash determinístico. Alterar documentação, classificação, configuração ou mapa de vínculos cria uma identidade diferente. Os resultados do ciclo implementado aparecem na seção de estados abaixo.
+A review proposal identifies content and scope by a deterministic hash. Changing documentation, classification, configuration or the link map creates a different identity. The results of the implemented cycle appear in the states section below.
 
-### Aceite
+### Acceptance
 
-O mecanismo implementado registra uma decisão assinada sobre uma versão e contexto. A chave precisa estar autorizada para projeto/repositório e não revogada; o registro externo fixa a decisão vigente. O aceite anterior continua histórico e não autoriza conteúdo novo. No modo local, o nome informado é autodeclarado e a chave pode estar acessível à mesma identidade do agente: isso não satisfaz a garantia pretendida de aceite humano isolado.
+The implemented mechanism records a signed decision about a version and context. The key must be authorized for the project/repository and not revoked; the external record pins the current decision. The previous acceptance remains historical and does not authorize new content. In local mode, the name provided is self-declared and the key may be accessible to the same identity as the agent: this does not satisfy the intended guarantee of isolated human acceptance.
 
-### Evidência de execução
+### Run evidence
 
-Registra o que foi executado e os resultados obtidos para um snapshot de código, contrato e ferramentas. Um contrato aceito pode ainda não ter evidências ou possuir cenários falhando. Um cenário pode passar para um contrato ainda não aceito. Nenhuma dessas situações permite confundir concordância com verificação.
+Records what was run and the results obtained for a snapshot of code, contract and tools. An accepted contract may not yet have evidence, or may have failing scenarios. A scenario may pass for a contract not yet accepted. None of these situations allows confusing agreement with verification.
 
-### Índice e cache
+### Index and cache
 
-São projeções para descoberta, navegação e desempenho. Não concedem aceite nem tornam resultados antigos atuais. Podem ser apagados e reconstruídos sem perder decisões humanas ou o histórico auditável.
+These are projections for discovery, navigation and performance. They do not grant acceptance nor make old results current. They can be deleted and rebuilt without losing human decisions or the auditable history.
 
-### Estados do ciclo implementado
+### States of the implemented cycle
 
-- Schema 1 permanece um preflight estrutural sem autorização de conclusão.
-- Em schema 2, `waiting_human_review` indica ausência de decisão válida e `awaiting_evidence` indica evidência ausente, expirada ou incompatível.
-- `blocked` e `error` identificam falhas que não podem virar sucesso silenciosamente.
-- `demo_passed` permite experimentar o fluxo local, mas não satisfaz a verificação protegida.
-- `passed` exige decisão válida sob trust configurado como protegido, execução real atual e política estrita de rastreabilidade. O modo da assinatura, a validade dos resultados e a proteção operacional continuam sendo dimensões distintas.
+- Schema 1 remains a structural preflight without completion authorization.
+- In schema 2, `waiting_human_review` indicates the absence of a valid decision and `awaiting_evidence` indicates missing, expired or incompatible evidence.
+- `blocked` and `error` identify failures that cannot silently turn into success.
+- `demo_passed` allows experimenting with the local flow, but does not satisfy the protected verification.
+- `passed` requires a valid decision under trust configured as protected, a current real run and a strict traceability policy. The signature mode, the validity of the results and the operational protection remain distinct dimensions.
 
-`verify` executa novamente por padrão. Um JSON local coerente ou uma demonstração anterior não substitui essa execução. Mesmo quando o predicado retorna `passed`, ele pressupõe verificador, política e produtores de resultados confiáveis; não audita automaticamente o ambiente que o executa.
+`verify` runs again by default. A coherent local JSON or a previous demonstration does not replace that run. Even when the predicate returns `passed`, it presupposes a trusted verifier, policy and result producers; it does not automatically audit the environment that runs it.
 
-## Snapshot, manifesto e referências
+## Snapshot, manifest and references
 
-O manifesto contratual identifica documentos, caminhos e SHA-256 dos conteúdos exatos, além da configuração e, em schema 2, do mapa de rastreabilidade. A serialização é determinística e versionada. O hash agregado identifica conteúdo e escopo, não comprova aprovação nem adequação semântica.
+The contract manifest identifies documents, paths and the SHA-256 of the exact contents, as well as the configuration and, in schema 2, the traceability map. The serialization is deterministic and versioned. The aggregate hash identifies content and scope; it does not prove approval or semantic adequacy.
 
-A base de referência para o gate protegido deve ser uma revisão Git imutável. Para desenvolvimento local com alterações não commitadas, o núcleo pode produzir um snapshot por conteúdo que inclua os arquivos novos no escopo, mas precisa deixar claro a qual estado local o resultado pertence.
+The reference base for the protected gate must be an immutable Git revision. For local development with uncommitted changes, the core can produce a content-based snapshot that includes the new in-scope files, but it must make clear which local state the result belongs to.
 
-O inventário deve tratar adições, remoções e renomeações. Referências normativas entre documentos precisam ser resolvidas dentro do conjunto identificado ou declaradas como dependências com identidade e versão conhecidas; uma referência mutável não pode modificar silenciosamente o contrato aceito.
+The inventory must handle additions, removals and renames. Normative references between documents must be resolved within the identified set or declared as dependencies with a known identity and version; a mutable reference cannot silently modify the accepted contract.
 
-Os recibos ficam em `.specmd/approvals/` e são verificados contra trust externo; a evidência e o status locais ficam em `.specmd/local/`. Esses artefatos não entram recursivamente no conteúdo que atestam. A chave privada e `trust.json` ficam fora do checkout. A localização externa é necessária, mas não prova que o agente não tenha permissões sobre eles.
+Receipts live in `.specmd/approvals/` and are verified against external trust; local evidence and status live in `.specmd/local/`. These artifacts are not recursively included in the content they attest. The private key and `trust.json` live outside the checkout. The external location is necessary, but does not prove that the agent has no permissions over them.
 
-Com `repository_id`, a assinatura usa `repo:<repository_id>` para permitir outro checkout ou CI. `workspace_root` continua identificando a raiz física atual para validar os limites de arquivos e a localização do trust, sem integrar o digest portátil da proposta. Sem identidade lógica configurada, o vínculo usa o caminho absoluto.
+With `repository_id`, the signature uses `repo:<repository_id>` to allow another checkout or CI. `workspace_root` still identifies the current physical root in order to validate file boundaries and the trust location, without becoming part of the proposal's portable digest. Without a configured logical identity, the binding uses the absolute path.
 
-O trust mantém `latest_decisions` por proposta. Decisão substituída, rejeição vigente ou chave revogada impedem reaproveitar o aceite anterior. O encadeamento opcional por hash de recibo ajuda a relacionar eventos, mas não implementa um serviço de auditoria imutável.
+The trust keeps `latest_decisions` per proposal. A superseded decision, a current rejection or a revoked key prevent reusing the previous acceptance. The optional chaining by receipt hash helps relate events, but does not implement an immutable audit service.
 
-A política que define quais arquivos fazem parte do contrato também é protegida. Alterar exclusões, glob patterns ou classificação não pode retirar uma obrigação do alcance do verificador sem a revisão exigida.
+The policy that defines which files are part of the contract is also protected. Changing exclusions, glob patterns or classification cannot remove an obligation from the verifier's reach without the required review.
 
-## Validade e invalidação
+## Validity and invalidation
 
-| Evento | Aceite do contrato | Evidência de execução | Cache |
+| Event | Contract acceptance | Run evidence | Cache |
 | --- | --- | --- | --- |
-| Documento contratual ou cenário muda | Nova versão requer aceite. | Resultados anteriores não verificam automaticamente a nova versão. | Invalidar análises afetadas. |
-| Documento informativo protegido muda | Classificação e conteúdo alterado voltam à revisão. | Reavaliar apenas obrigações afetadas. | Invalidar a análise pertinente. |
-| Código de implementação muda | Permanece válido se o contrato é o mesmo. | Renovar evidências afetadas para o novo snapshot. | Invalidar dependências afetadas. |
-| Passos ou asserções mudam | Não muda por si só o contrato; exige revisão técnica adequada. | Renovar e identificar a nova versão executada. | Invalidar resultados dependentes. |
-| Configuração ou mapa de vínculos muda | Participa da identidade revisada; requer decisão aplicável à nova versão. | Renovar resultados incompatíveis. | Invalidar resultados dependentes. |
-| Política, escopo ou raiz de confiança muda | Reavaliar a autorização aplicável; não adotar a mudança silenciosamente. | Reavaliar validade conforme a política vigente. | Invalidar resultados afetados. |
-| Índice local é removido | Não altera decisões humanas. | Não altera a existência das evidências verificáveis. | Reconstruir. |
+| Contract document or scenario changes | The new version requires acceptance. | Previous results do not automatically verify the new version. | Invalidate affected analyses. |
+| Protected informational document changes | The classification and the changed content go back to review. | Re-evaluate only the affected obligations. | Invalidate the pertinent analysis. |
+| Implementation code changes | Remains valid if the contract is the same. | Renew the affected evidence for the new snapshot. | Invalidate affected dependencies. |
+| Steps or assertions change | Does not by itself change the contract; requires proper technical review. | Renew and identify the new version that was run. | Invalidate dependent results. |
+| Configuration or link map changes | Part of the reviewed identity; requires a decision applicable to the new version. | Renew incompatible results. | Invalidate dependent results. |
+| Policy, scope or trust root changes | Re-evaluate the applicable authorization; do not adopt the change silently. | Re-evaluate validity according to the current policy. | Invalidate affected results. |
+| Local index is removed | Does not change human decisions. | Does not change the existence of verifiable evidence. | Rebuild. |
 
-A seleção de testes por impacto depende da qualidade das relações conhecidas. Um grafo incompleto não demonstra que uma mudança é irrelevante. A política inicial deve preferir verificações mais abrangentes quando não houver informação suficiente.
+Impact-based test selection depends on the quality of the known relations. An incomplete graph does not demonstrate that a change is irrelevant. The initial policy should prefer broader verifications when there is not enough information.
 
-## Gates e experiência do agente
+## Gates and agent experience
 
-Os pontos lógicos de controle são:
+The logical control points are:
 
-1. **Antes de implementar comportamento pendente:** verificar se o contrato aplicável recebeu aceite. O alcance do bloqueio deve ser explícito: tarefa, atividades dependentes ou projeto.
-2. **Durante o trabalho:** atualizar o inventário e devolver pendências incrementais, evitando repetir toda a suíte a cada edição de documentação.
-3. **Antes de declarar conclusão:** reconciliar o estado atual, conferir aceites e exigir evidências válidas para as obrigações aplicáveis.
-4. **Antes de integrar:** repetir a verificação no snapshot que será efetivamente integrado, por um mecanismo protegido.
+1. **Before implementing pending behavior:** check whether the applicable contract has received acceptance. The scope of the block must be explicit: task, dependent activities or project.
+2. **During the work:** update the inventory and send back incremental gaps, avoiding rerunning the whole suite on every documentation edit.
+3. **Before declaring completion:** reconcile the current state, check acceptances and require valid evidence for the applicable obligations.
+4. **Before integrating:** repeat the verification on the snapshot that will actually be integrated, through a protected mechanism.
 
-`waiting_human_review` é uma parada válida. O agente precisa conseguir apresentar a proposta e devolver o controle ao usuário sem declarar a tarefa concluída. Um hook que impeça qualquer encerramento enquanto depende do humano criaria um ciclo improdutivo.
+`waiting_human_review` is a valid stop. The agent must be able to present the proposal and return control to the user without declaring the task complete. A hook that prevents any ending while depending on the human would create an unproductive loop.
 
-Uma pendência deve indicar documento, requisito ou cenário, motivo do bloqueio, versão envolvida e próxima ação esperada. Exemplos: contrato alterado sem aceite, documento sem classificação, passo indefinido, cenário ignorado, evidência de outro snapshot ou ambiente indisponível.
+A gap must indicate the document, requirement or scenario, the reason for the block, the version involved and the expected next action. Examples: contract changed without acceptance, document without classification, undefined step, skipped scenario, evidence from another snapshot or unavailable environment.
 
-Os eventos e garantias reais de Claude Code e Codex são verificados separadamente. Esta arquitetura não pressupõe equivalência de hooks nem capacidade universal de impedir uma sessão de terminar. Evidências e limites de cada integração estão em [estado da implementação](implementation-status.md).
+The actual events and guarantees of Claude Code and Codex are verified separately. This architecture does not presuppose equivalent hooks nor a universal ability to prevent a session from ending. The evidence and limits of each integration are in [implementation status](implementation-status.md).
 
-Executar o verificador do próprio PR com as mesmas permissões do agente não o transforma em gate protegido. É preciso fixar uma versão confiável do pacote/workflow e aplicar a política fora desse controle. Um comando de bridge arbitrário pode declarar resultados falsos; classificá-lo como execução `real` no protocolo não estabelece sua procedência. A revisão de executores e o isolamento das credenciais de aceite continuam necessários.
+Running the PR's own verifier with the same permissions as the agent does not turn it into a protected gate. A trusted version of the package/workflow must be pinned and the policy enforced outside that control. An arbitrary bridge command can declare false results; classifying it as a `real` run in the protocol does not establish its provenance. Review of the executors and isolation of the acceptance credentials remain necessary.
 
-## Limites e decisões abertas
+## Limits and open decisions
 
-- Hashes e assinaturas não avaliam se os cenários representam toda a intenção do usuário.
-- Uma suíte verde não demonstra que suas asserções são fortes ou que um passo não foi implementado de forma vazia.
-- A análise com IA pode sugerir requisitos omitidos, contradições e classificações suspeitas; isso não equivale a uma prova determinística de completude.
-- O mapa explícito liga arquivos, requisitos e cenários; não prova equivalência entre comportamento implementado e intenção aceita.
-- O agente não pode receber as mesmas permissões de aprovação e administração usadas para aplicar os gates que o limitam.
-- A implementação local usa Python, envelopes Ed25519 e executores em memória; estabilização de schemas, autenticação humana por um canal externo e implantação produtiva protegida continuam pendentes.
+- Hashes and signatures do not assess whether the scenarios represent the user's whole intent.
+- A green suite does not demonstrate that its assertions are strong or that a step was not implemented as a no-op.
+- AI analysis can suggest omitted requirements, contradictions and suspicious classifications; this is not equivalent to a deterministic proof of completeness.
+- The explicit map links files, requirements and scenarios; it does not prove equivalence between implemented behavior and accepted intent.
+- The agent must not receive the same approval and administration permissions used to enforce the gates that constrain it.
+- The local implementation uses Python, Ed25519 envelopes and in-memory executors; schema stabilization, human authentication through an external channel and protected production deployment remain pending.
 
-O [roadmap](roadmap.md) e o [plano de validação](validation-plan.md) devem transformar esses riscos em experimentos antes de prometer compatibilidade ou proteção em produção.
+The [roadmap](roadmap.md) and the [validation plan](validation-plan.md) must turn these risks into experiments before promising compatibility or protection in production.

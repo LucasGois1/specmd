@@ -1,94 +1,94 @@
-# Baseline: Markdown with Gherkin no Cucumber.js
+# Baseline: Markdown with Gherkin in Cucumber.js
 
-> Estado: **baseline executado com Cucumber.js 13.3.0**. MDG foi descoberto e executado pelo CLI real; o caso negativo falhou por uma asserção executada. Isso não constitui implementação do produto nem suporte produtivo de seus plugins.
+> Status: **baseline run with Cucumber.js 13.3.0**. MDG was discovered and run by the real CLI; the negative case failed on an executed assertion. This does not constitute an implementation of the product nor production support for its plugins.
 
-Este experimento distingue a existência do formato **Markdown with Gherkin (MDG)** da capacidade real de descoberta e execução no CLI do Cucumber.js. Ele usa um Markdown canônico `addition.feature.md`, sem arquivo `.feature` separado e sem conversão para esse formato.
+This experiment distinguishes the existence of the **Markdown with Gherkin (MDG)** format from the real discovery and execution capability of the Cucumber.js CLI. It uses a canonical Markdown file `addition.feature.md`, without a separate `.feature` file and without conversion to that format.
 
-## Ambiente observado
+## Observed environment
 
 - Node: `v24.19.0`.
 - npm: `11.9.0`.
-- `@cucumber/cucumber`: `13.3.0`; `--version` retornou `13.3.0`.
-- `@cucumber/gherkin` resolvido: `42.0.1`.
-- `@cucumber/messages` resolvido: `34.2.1`.
-- Engines declarados pelo runner: Node `22 || 24 || >=26`.
-- Execução: `2026-10-23T02:16:07.680Z` a `2026-10-23T02:16:14.986Z`, correspondente à noite de 22/10/2026 em America/Sao_Paulo.
+- `@cucumber/cucumber`: `13.3.0`; `--version` returned `13.3.0`.
+- Resolved `@cucumber/gherkin`: `42.0.1`.
+- Resolved `@cucumber/messages`: `34.2.1`.
+- Engines declared by the runner: Node `22 || 24 || >=26`.
+- Run: `2026-10-23T02:16:07.680Z` to `2026-10-23T02:16:14.986Z`, corresponding to the night of 22/10/2026 in America/Sao_Paulo.
 
-O fixture usa os cabeçalhos ingleses `Feature` e `Scenario` e passos em lista para investigar o formato MDG indicado pela fonte. Não se presume suporte a dialeto português, nem equivalência com um bloco cercado por três crases e marcado como `gherkin`.
+The fixture uses the English headings `Feature` and `Scenario` and steps in a list to investigate the MDG format indicated by the source. Support for the Portuguese dialect is not presumed, nor equivalence with a block fenced by three backticks and marked as `gherkin`.
 
-## Fontes oficiais
+## Official sources
 
-- [Markdown with Gherkin, revisão fixada](https://github.com/cucumber/gherkin/blob/0c50fc12112d9400892a760ee7302b232a466cb8/MARKDOWN_WITH_GHERKIN.md).
+- [Markdown with Gherkin, pinned revision](https://github.com/cucumber/gherkin/blob/0c50fc12112d9400892a760ee7302b232a466cb8/MARKDOWN_WITH_GHERKIN.md).
 - [Cucumber.js](https://github.com/cucumber/cucumber-js).
-- [Pacote oficial Cucumber.js 13.3.0](https://www.npmjs.com/package/@cucumber/cucumber/v/13.3.0).
-- [Pacote oficial Gherkin 42.0.1](https://www.npmjs.com/package/@cucumber/gherkin/v/42.0.1).
+- [Official Cucumber.js 13.3.0 package](https://www.npmjs.com/package/@cucumber/cucumber/v/13.3.0).
+- [Official Gherkin 42.0.1 package](https://www.npmjs.com/package/@cucumber/gherkin/v/42.0.1).
 
-A indicação documental de suporte do parser JavaScript a partir da versão 19 não demonstra, sozinha, que o CLI de qualquer versão do Cucumber.js execute esse formato. Neste ensaio essa distinção foi verificada por execução do CLI real na versão fixada, sem adaptador Markdown próprio.
+The documentary indication of support in the JavaScript parser from version 19 does not, by itself, demonstrate that the CLI of every Cucumber.js version runs this format. In this trial that distinction was checked by running the real CLI at the pinned version, without a custom Markdown adapter.
 
-## Resultados observados
+## Observed results
 
-| Caso | Saída | Cenários | Passos | Conclusão limitada ao ensaio |
+| Case | Exit | Scenarios | Steps | Conclusion limited to the trial |
 | --- | --- | --- | --- | --- |
-| MDG `.feature.md`, caminho explícito | `0` | 1 | 3 passaram | Execução nativa confirmada. |
-| MDG `.feature.md`, expectativa incorreta | `1` | 1 | 2 passaram, 1 falhou | `AssertionError`: 2 + 3 produziu 5, e o cenário exigia 6. |
-| Descoberta padrão em `features/`, sem caminho explícito | `0` | 1 | 3 passaram | Descoberta nativa de `.feature.md` confirmada; caminho dos steps foi passado explicitamente. |
-| Mesmo MDG em `.md` comum, caminho explícito | `0` | 1 | 3 passaram | Extensão `.feature.md` não foi obrigatória quando o caminho foi informado. |
-| Gherkin em bloco cercado, `.md` comum explícito | `0` | 0 | 0 | O CLI não executou o bloco deste fixture; saída zero não significa cobertura. |
+| MDG `.feature.md`, explicit path | `0` | 1 | 3 passed | Native execution confirmed. |
+| MDG `.feature.md`, incorrect expectation | `1` | 1 | 2 passed, 1 failed | `AssertionError`: 2 + 3 produced 5, and the scenario required 6. |
+| Default discovery in `features/`, without an explicit path | `0` | 1 | 3 passed | Native discovery of `.feature.md` confirmed; the steps path was passed explicitly. |
+| Same MDG in a plain `.md`, explicit path | `0` | 1 | 3 passed | The `.feature.md` extension was not mandatory when the path was given. |
+| Gherkin in a fenced block, explicit plain `.md` | `0` | 0 | 0 | The CLI did not run this fixture's block; exit zero does not mean coverage. |
 
-O teste não investigou descoberta padrão de qualquer `.md`, dialetos além do inglês, integração em outras linguagens nem funcionalidades de governança. Inspeção local do pacote instalado encontrou o glob padrão `features/**/*.{feature,feature.md}` em `lib/paths/paths.js`, coerente com a descoberta observada.
+The test did not investigate default discovery of any `.md`, dialects other than English, integration in other languages nor governance features. Local inspection of the installed package found the default glob `features/**/*.{feature,feature.md}` in `lib/paths/paths.js`, consistent with the observed discovery.
 
-Evidências pequenas, sem dependências instaladas ou cópias de trabalho:
+Small evidence files, without installed dependencies or working copies:
 
-- [Resultados estruturados e comandos normalizados](results/13.3.0.json).
-- [Saída dos cinco casos](results/13.3.0.log).
-- [Versões resolvidas e digest do lockfile](results/dependency-versions.json).
+- [Structured results and normalized commands](results/13.3.0.json).
+- [Output of the five cases](results/13.3.0.log).
+- [Resolved versions and lockfile digest](results/dependency-versions.json).
 
-Somente os caminhos absolutos do ambiente foram substituídos por marcadores. Status, contagens, códigos de saída e a mensagem da asserção foram preservados. O lockfile integral permanece no resultado local; o script o exporta em cada reprodução.
+Only the environment's absolute paths were replaced by placeholders. Statuses, counts, exit codes and the assertion message were preserved. The full lockfile remains in the local result; the script exports it on each reproduction.
 
-## O que o script verifica
+## What the script checks
 
-Cada caso roda isoladamente, com uma implementação real de soma e asserção `node:assert/strict`:
+Each case runs in isolation, with a real addition implementation and a `node:assert/strict` assertion:
 
-1. MDG `.feature.md` com caminho explícito e resultado correto.
-2. MDG `.feature.md` com caminho explícito e resultado incorreto: o resultado 6 é exigido para 2 + 3, cuja implementação retorna 5.
-3. Descoberta padrão de `.feature.md` dentro de `features/`, sem caminho explícito.
-4. Mesmo MDG como arquivo `.md` comum, com caminho explícito.
-5. Gherkin tradicional cercado em bloco `gherkin`, em `.md` comum, com caminho explícito.
+1. MDG `.feature.md` with an explicit path and a correct result.
+2. MDG `.feature.md` with an explicit path and an incorrect result: the result 6 is required for 2 + 3, whose implementation returns 5.
+3. Default discovery of `.feature.md` inside `features/`, without an explicit path.
+4. Same MDG as a plain `.md` file, with an explicit path.
+5. Traditional Gherkin fenced in a `gherkin` block, in a plain `.md`, with an explicit path.
 
-O script registra código de saída, saída do runner, relatório JSON e contagem de cenários/status. Código de saída zero com zero cenários **não conta como suporte**. Uma falha de parsing no caso negativo **não conta como teste comportamental que falhou**.
+The script records the exit code, the runner's output, the JSON report and the count of scenarios/statuses. Exit code zero with zero scenarios **does not count as support**. A parsing failure in the negative case **does not count as a behavioral test that failed**.
 
-## Reprodução
+## Reproduction
 
-Para pesquisar uma versão atual diferente, consultar e registrar o resultado; isso é separado da reprodução da versão fixada:
+To research a different current version, query and record the result; this is separate from reproducing the pinned version:
 
 ```sh
 npm view @cucumber/cucumber version engines --json
 ```
 
-Para reproduzir o baseline observado, informar a versão **exata**; o script não escolhe `latest` silenciosamente:
+To reproduce the observed baseline, give the **exact** version; the script does not silently pick `latest`:
 
 ```sh
 node research/javascript-mdg/run.mjs --version 13.3.0 --install
 ```
 
-`--install` autoriza a tentativa de instalação no script; não substitui a permissão de rede do ambiente. Dependências ficam em diretório temporário separado do repositório. Cada processo tem timeout finito. O manifesto e lockfile da instalação são preservados junto aos resultados para reprodução.
+`--install` authorizes the installation attempt in the script; it does not replace the environment's network permission. Dependencies go in a temporary directory separate from the repository. Each process has a finite timeout. The installation's manifest and lockfile are preserved together with the results for reproduction.
 
-Para repetir com a instalação já presente, omitir `--install`. Para escolher destinos fora do repositório:
+To repeat with the installation already present, omit `--install`. To choose destinations outside the repository:
 
 ```sh
 node research/javascript-mdg/run.mjs --version 13.3.0 --cache-dir /tmp/specmd-mdg-cache --output-dir /tmp/specmd-mdg-results/13.3.0
 ```
 
-Não é necessário criar arquivos `.feature`, nem manter dois documentos com o mesmo cenário. Os arquivos `.feature.md` deste ensaio continuam sendo Markdown.
+There is no need to create `.feature` files, nor to keep two documents with the same scenario. The `.feature.md` files of this trial remain Markdown.
 
-## Verificações locais realizadas
+## Local checks performed
 
-Na preparação offline foram verificadas a sintaxe JavaScript, a ajuda do script e a função de soma, como registrado em [preparation.json](preparation.json). Posteriormente o agente principal instalou a versão fixada e executou os cinco casos. As evidências posteriores em `results/` registram o teste real de Cucumber e substituem a pendência inicial de execução.
+During offline preparation, the JavaScript syntax, the script's help and the addition function were checked, as recorded in [preparation.json](preparation.json). Later the main agent installed the pinned version and ran the five cases. The later evidence in `results/` records the real Cucumber test and replaces the initial pending run.
 
-## Relação com a proposta do produto
+## Relation to the product proposal
 
-A execução nativa de MDG é um antecedente direto da ideia de documentação Markdown executável e reduz o trabalho necessário nessa camada. Portanto, executar cenários de Markdown não deve ser apresentado como uma novidade por si só.
+Native MDG execution is a direct precedent of the idea of executable Markdown documentation and reduces the work needed in that layer. Therefore, running scenarios from Markdown must not be presented as a novelty by itself.
 
-Este resultado não demonstra mecanismos de aceite humano versionado, dispensa documental aprovada, rastreabilidade de mudanças, proteção contra autoaceite ou integração com hooks. Esses mecanismos precisam ser comparados e validados separadamente; este ensaio não estabelece novidade do conjunto de produto.
+This result does not demonstrate mechanisms for versioned human acceptance, approved documentation exemption, change traceability, protection against self-acceptance or integration with hooks. Those mechanisms need to be compared and validated separately; this trial does not establish the novelty of the product as a whole.
 
-Há uma decisão concreta de formato: reutilizar MDG aproveita suporte já existente nessa versão do Cucumber.js. O formato anterior de blocos cercados `gherkin` exige outra integração, pois o fixture desse formato produziu zero cenários na execução direta testada. Não se deve tratar as duas sintaxes como equivalentes nem alterar o contrato do produto sem registrar essa decisão.
+There is a concrete format decision: reusing MDG takes advantage of support that already exists in this Cucumber.js version. The previous format of fenced `gherkin` blocks requires another integration, since the fixture in that format produced zero scenarios in the direct run tested. The two syntaxes must not be treated as equivalent, nor should the product contract be changed without recording that decision.

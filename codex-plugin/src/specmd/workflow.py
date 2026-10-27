@@ -22,6 +22,7 @@ import subprocess
 from typing import Any
 
 from . import state as hook_state
+from .messages import text as t
 from .core import _PRUNED_DIRECTORIES, inspect_project
 
 # Writes here must never count as code changes, or every hook would see one.
@@ -79,7 +80,7 @@ def _walk_digest(root: Path) -> str:
                 info = os.lstat(base / name)
                 entries.append([relative, info.st_size, info.st_mtime_ns, info.st_mode])
         if len(entries) > _WALK_LIMIT:
-            raise ValueError("Projeto grande demais para a varredura sem Git.")
+            raise ValueError(t("Project too large to scan without Git.", "Projeto grande demais para a varredura sem Git."))
     return hashlib.sha256(json.dumps(entries, separators=(",", ":")).encode()).hexdigest()
 
 

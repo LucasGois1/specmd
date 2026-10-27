@@ -1,4 +1,4 @@
 {
   "name": "specmd",
-  "description": "Documentação Markdown canônica com cenários BDD embutidos e feedback determinístico ao agente."
+  "description": "Canonical Markdown documentation with embedded BDD scenarios and deterministic feedback for the agent."
 }

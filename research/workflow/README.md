@@ -1,25 +1,25 @@
-# Validação do ciclo local
+# Local cycle validation
 
-Na raiz, após `pip install -e .`:
+At the root, after `pip install -e .`:
 
 ```sh
 python scripts/test_local.py
 ```
 
-O relatório padrão fica em `.specmd/local/test-report.json`, reconstruível e sem autoridade de aceite. `--output` permite salvar uma evidência da execução em outro caminho.
+The default report goes to `.specmd/local/test-report.json`, rebuildable and without acceptance authority. `--output` lets you save evidence of the run to another path.
 
-Os testes usam agente e navegador simulados: nenhum LLM é chamado e nenhuma leitura humana é alegada. Exercitam HTTP de loopback, decisões Ed25519, execução Python/Behave em subprocesso, invalidação, falhas e retomada através dos adaptadores de protocolo. Chaves, recibos e aceites das fixtures são criados em diretórios temporários descartáveis, fora de qualquer contrato real do projeto.
+The tests use a simulated agent and browser: no LLM is called and no human reading is claimed. They exercise loopback HTTP, Ed25519 decisions, Python/Behave execution in a subprocess, invalidation, failures and resumption through the protocol adapters. The fixtures' keys, receipts and acceptances are created in disposable temporary directories, outside any real contract of the project.
 
-Java e Go possuem validações separadas em [adapters](../../adapters/README.md). Testes de protocolo não comprovam dispatch nativo do Claude (veja [research/claude](../claude/README.md)), confiança humana pela UX do Codex ou isolamento contra outro processo com as mesmas permissões.
+Java and Go have separate validations in [adapters](../../adapters/README.md). Protocol tests do not prove Claude's native dispatch (see [research/claude](../claude/README.md)), human trust through the Codex UX or isolation against another process with the same permissions.
 
-Depois de compilar os executáveis de exemplo, é possível reproduzir a integração dos motores reais com o núcleo:
+After compiling the example executables, you can reproduce the integration of the real engines with the core:
 
 ```sh
 python research/workflow/probe_bridges.py \
-  --go-executable /caminho/specmd-go-example \
+  --go-executable /path/to/specmd-go-example \
   --java-runner adapters/java/run.sh
 ```
 
-`evidence/native-bridges.json` registra sucesso, falha de asserção e passo indefinido nas duas linguagens. `evidence/local-tests.json` registra a suíte do ciclo, e `evidence/codex-installation.json` identifica o bundle instalado nesta etapa. Nenhum desses arquivos concede aceite aos requisitos do SpecMD.
+`evidence/native-bridges.json` records success, assertion failure and undefined step in both languages. `evidence/local-tests.json` records the cycle suite, and `evidence/codex-installation.json` identifies the bundle installed in this stage. None of these files grants acceptance to SpecMD's requirements.
 
-Para testar a experiência pessoalmente, use o [guia rápido](../../docs/quickstart.md). O comando `specmd demo` cria a proposta e a autoridade local de demonstração, e para antes de conceder qualquer aceite.
+To try the experience yourself, use the [quickstart](../../docs/quickstart.md). The `specmd demo` command creates the proposal and the local demonstration authority, and stops before granting any acceptance.

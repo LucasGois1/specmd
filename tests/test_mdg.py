@@ -1,4 +1,7 @@
-"""Markdown with Gherkin files are read line for line (SMD-REQ-031)."""
+"""Markdown with Gherkin files are read line for line (SMD-REQ-031).
+
+The fixtures are in Portuguese on purpose: they exercise `gherkin_language`.
+"""
 
 from pathlib import Path
 import subprocess
@@ -154,7 +157,7 @@ class MarkdownWithGherkinTests(unittest.TestCase):
         report = inspect_project(self.root)
         messages = [item["message"] for item in report["findings"] if item["kind"] == "gherkin_missing"]
         self.assertEqual(len(messages), 1)
-        self.assertIn("o idioma vem de `gherkin_language` no specmd.toml", messages[0])
+        self.assertIn("the language comes from `gherkin_language` in specmd.toml", messages[0])
 
     def test_bridges_receive_the_configured_language_in_the_text(self):
         (self.root / "docs/estornos.feature.md").unlink()
@@ -169,7 +172,7 @@ class MarkdownWithGherkinTests(unittest.TestCase):
         (self.root / "docs/estornos.feature.md").unlink()
         (self.root / "docs/regras.md").write_text("```gherkin\nFuncionalidade: R\n  Cenário: C\n    Dado um passo\n```\n")
         messages = [item["message"] for item in inspect_project(self.root)["findings"]]
-        self.assertTrue(any("declare `# language: <código>`" in message for message in messages), messages)
+        self.assertTrue(any("declare `# language: <code>`" in message for message in messages), messages)
 
 
 if __name__ == "__main__":

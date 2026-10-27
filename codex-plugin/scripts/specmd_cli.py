@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import specmd_bootstrap  # noqa: E402
 
 if not specmd_bootstrap.ensure(__file__):
-    print("SpecMD precisa de Python 3.11 ou superior; defina SPECMD_PYTHON com o caminho do interpretador.", file=sys.stderr)
+    print("SpecMD needs Python 3.11 or later; set SPECMD_PYTHON to the interpreter's path.", file=sys.stderr)
     raise SystemExit(2)
 
 from specmd.cli import main  # noqa: E402

@@ -16,18 +16,17 @@ from specmd.cli import main
 from specmd.demo import create_demo
 
 REPOSITORY = Path(__file__).resolve().parents[1]
-COVERED = "## LEG-REQ-002 — Coberto\n\n```gherkin\nFeature: B\n  Scenario: Coberto\n    Given um passo\n```\n"
+COVERED = "## LEG-REQ-002 — Covered\n\n```gherkin\nFeature: B\n  Scenario: Covered\n    Given a step\n```\n"
 DISCOUNT = """
-## CART-REQ-003 — Desconto
+## CART-REQ-003 — Discount
 
 ```gherkin
-# language: pt
-Funcionalidade: Desconto
+Feature: Discount
 
-  Cenário: Desconto acima de 1000 centavos
-    Dado um carrinho vazio
-    Quando eu adicionar itens de 600 e 500 centavos
-    Então o total deve ser 990 centavos
+  Scenario: Discount above 1000 cents
+    Given an empty cart
+    When I add items of 600 and 500 cents
+    Then the total should be 990 cents
 ```
 """
 
@@ -38,13 +37,13 @@ class AdoptionListTests(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name).resolve()
         for path, content in {
-            "README.md": "# Projeto\n",
+            "README.md": "# Project\n",
             "docs/setup.md": "# Setup\n",
-            "docs/time.md": "# Notas do time\n",
-            "docs/estornos.md": "# Estornos\n\nPagamentos podem ser estornados em até 7 dias.\n",
-            "docs/cobranca.md": "## LEG-REQ-001 — Sem cenário\n\nTexto.\n\n" + COVERED,
-            "docs/pronto.md": "## LEG-REQ-003 — Pronto\n\n```gherkin\nFeature: C\n  Scenario: Pronto\n    Given um passo\n```\n",
-            ".specmdignore": "docs/time.md\n",
+            "docs/team.md": "# Team notes\n",
+            "docs/refunds.md": "# Refunds\n\nPayments can be refunded within 7 days.\n",
+            "docs/billing.md": "## LEG-REQ-001 — No scenario\n\nText.\n\n" + COVERED,
+            "docs/ready.md": "## LEG-REQ-003 — Ready\n\n```gherkin\nFeature: C\n  Scenario: Ready\n    Given a step\n```\n",
+            ".specmdignore": "docs/team.md\n",
         }.items():
             target = self.root / path
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -61,18 +60,19 @@ class AdoptionListTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(result["status"], "adoption")
         self.assertEqual([item["path"] for item in result["pending"]],
-                         ["docs/cobranca.md", "docs/estornos.md", "docs/setup.md"])
+                         ["docs/billing.md", "docs/refunds.md", "docs/setup.md"])
         self.assertEqual(result["pending"][0]["requirements_without_scenarios"], ["LEG-REQ-001"])
         self.assertEqual((result["documents"], result["documented"]), (4, 2))
 
     def test_documents_the_developer_ignores_leave_the_list(self):  # SMD-SCN-131
-        (self.root / ".specmdignore").write_text("docs/time.md\ndocs/setup.md\n", encoding="utf-8")
+        (self.root / ".specmdignore").write_text("docs/team.md\ndocs/setup.md\n", encoding="utf-8")
         self.assertNotIn("docs/setup.md", [item["path"] for item in self.adopt()[1]["pending"]])
 
     def test_the_command_guides_one_document_at_a_time(self):  # SMD-SCN-132
         text = (REPOSITORY / "commands/adopt.md").read_text(encoding="utf-8")
-        for expected in ("specmd_cli.py\" adopt", "Trate um documento por vez", "só siga depois da confirmação",
-                         "Grave no `.specmdignore`", "Não corrija sozinho", "Marcar cenários com `@wip` é decisão do dev"):
+        for expected in ("specmd_cli.py\" adopt", "Handle one document at a time", "continue only after their confirmation",
+                         "Write exactly the ones they name into `.specmdignore`", "Do not fix it on your own",
+                         "Tagging scenarios `@wip` is the developer's decision"):
             self.assertIn(expected, text)
 
 
@@ -80,10 +80,10 @@ class ModuleCoreTests(unittest.TestCase):
     def test_new_functions_do_not_change_the_module_level_but_constants_do(self):
         from specmd.diagnosis import _module_core
 
-        base = _module_core(b"LIMITE = 10\n\ndef pode(dias):\n    return dias <= LIMITE\n")
-        with_function = _module_core(b"LIMITE = 10\n\ndef pode(dias):\n    return dias <= LIMITE\n\n"
-                                     b"def outra():\n    return 1\n")
-        with_constant = _module_core(b"LIMITE = 7\n\ndef pode(dias):\n    return dias <= LIMITE\n")
+        base = _module_core(b"LIMIT = 10\n\ndef allowed(days):\n    return days <= LIMIT\n")
+        with_function = _module_core(b"LIMIT = 10\n\ndef allowed(days):\n    return days <= LIMIT\n\n"
+                                     b"def other():\n    return 1\n")
+        with_constant = _module_core(b"LIMIT = 7\n\ndef allowed(days):\n    return days <= LIMIT\n")
         self.assertEqual(base, with_function)
         self.assertNotEqual(base, with_constant)
 
@@ -115,11 +115,11 @@ class DivergenceTests(unittest.TestCase):
             stream.write(DISCOUNT)
         self.hook("SessionStart")
         self.hook("UserPromptSubmit")
-        (self.root / "app.py").write_text((self.root / "app.py").read_text() + "\n# revisado\n")
+        (self.root / "app.py").write_text((self.root / "app.py").read_text() + "\n# reviewed\n")
         reason = self.hook("Stop")["reason"]
-        self.assertIn('1 cenário nunca passou ("Desconto acima de 1000 centavos")', reason)
-        self.assertIn("é divergência entre documentação e código: pergunte ao dev qual vale antes de mudar "
-                      "qualquer um dos dois", reason)
+        self.assertIn('1 scenario never passed ("Discount above 1000 cents")', reason)
+        self.assertIn("this is a divergence between documentation and code: ask the developer which one holds "
+                      "before changing either", reason)
 
     def test_regression_in_a_scenario_that_passed_has_no_divergence_hint(self):
         self.assertTrue(workflow.run_project(self.root)["run"]["passed"])
@@ -127,9 +127,9 @@ class DivergenceTests(unittest.TestCase):
         app.write_text(app.read_text().replace("sum(self.prices)", "sum(self.prices) + 1"))
         run = workflow.run_project(self.root)["run"]
         self.assertEqual(run["divergent"], [])
-        self.assertNotIn("divergência", hooks._format_failures(run))
+        self.assertNotIn("divergence", hooks._format_failures(run))
 
-    @unittest.skipUnless(sys.version_info >= (3, 12), "cobertura por cenário exige Python 3.12+")
+    @unittest.skipUnless(sys.version_info >= (3, 12), "per-scenario coverage requires Python 3.12+")
     def test_existing_scenario_broken_by_the_agent_is_not_divergence(self):  # SMD-SCN-138
         self.hook("SessionStart")
         self.hook("UserPromptSubmit")
@@ -137,22 +137,22 @@ class DivergenceTests(unittest.TestCase):
         app.write_text(app.read_text().replace("return sum(self.prices)",
                                                "return sum(self.prices) + (1 if self.prices else 0)"))
         reason = self.hook("Stop")["reason"]
-        self.assertNotIn("divergência", reason)
-        self.assertIn('1 cenário que já existia quebrou com a mudança no código ("Somar dois itens"). '
-                      "Se o dev confirmou a nova regra, atualize o cenário; se não, ajuste o código.", reason)
-        self.assertNotIn("confirme com o dev antes de mudá-lo", reason)
+        self.assertNotIn("divergence", reason)
+        self.assertIn('1 scenario that already existed broke with the code change ("Add two items"). '
+                      "If the developer confirmed the new rule, update the scenario; otherwise, fix the code.", reason)
+        self.assertNotIn("confirm with the developer before changing it", reason)
 
-    @unittest.skipUnless(sys.version_info >= (3, 12), "cobertura por cenário exige Python 3.12+")
+    @unittest.skipUnless(sys.version_info >= (3, 12), "per-scenario coverage requires Python 3.12+")
     def test_legacy_scenario_whose_code_the_agent_did_not_touch_is_divergence(self):  # SMD-SCN-133
         app = self.root / "app.py"
         app.write_text(app.read_text().replace("return sum(self.prices)", "return sum(self.prices) * 2"))
         self.commit()  # Legacy code that already disagrees with the documentation.
         self.hook("SessionStart")
         self.hook("UserPromptSubmit")
-        app.write_text(app.read_text() + "\n\ndef nova_funcao():\n    return 1\n")
+        app.write_text(app.read_text() + "\n\ndef new_function():\n    return 1\n")
         reason = self.hook("Stop")["reason"]
-        self.assertIn('1 cenário nunca passou ("Somar dois itens")', reason)
-        self.assertNotIn("quebrou com a mudança", reason)
+        self.assertIn('1 scenario never passed ("Add two items")', reason)
+        self.assertNotIn("broke with the code change", reason)
 
 
 if __name__ == "__main__":

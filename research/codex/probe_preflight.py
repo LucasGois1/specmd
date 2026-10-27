@@ -106,4 +106,4 @@ if __name__ == "__main__":
     result = run_probe(args.bundle / "scripts/specmd_hook.py" if args.bundle else None)
     output = Path(__file__).with_name("evidence") / ("bundle-integration.json" if args.bundle else "preflight-integration.json")
     output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(f"{len(result['cases'])} verificações de integração corresponderam às expectativas.")
+    print(f"{len(result['cases'])} integration checks matched the expectations.")

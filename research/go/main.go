@@ -62,7 +62,7 @@ type rejectFS struct{ opens int }
 
 func (f *rejectFS) Open(name string) (fs.File, error) {
 	f.opens++
-	return nil, fmt.Errorf("acesso inesperado ao filesystem do runner: %s", name)
+	return nil, fmt.Errorf("unexpected access to the runner filesystem: %s", name)
 }
 
 // extract uses Goldmark's AST, not a regular expression over Markdown fences.
@@ -94,7 +94,7 @@ func extract(source []byte, uri string) ([]godog.Feature, map[string]origin, err
 			for _, tag := range idPattern.FindAllString(string(value), -1) {
 				id := strings.TrimPrefix(tag, "@")
 				if _, duplicate := origins[id]; duplicate {
-					return ast.WalkStop, fmt.Errorf("ID duplicado: %s", id)
+					return ast.WalkStop, fmt.Errorf("duplicate ID: %s", id)
 				}
 				origins[id] = origin{Document: uri, Block: block, Line: line}
 			}
@@ -141,7 +141,7 @@ func initialize(observed *[]observation, origins map[string]origin) func(*godog.
 		sc.Step(`^eu somar os números$`, func() error { result = Add(a, b); return nil })
 		sc.Step(`^o resultado deve ser (\d+)$`, func(expected int) error {
 			if result != expected {
-				return fmt.Errorf("Add(%d, %d) = %d; esperado %d", a, b, result, expected)
+				return fmt.Errorf("Add(%d, %d) = %d; expected %d", a, b, result, expected)
 			}
 			return nil
 		})
@@ -149,7 +149,7 @@ func initialize(observed *[]observation, origins map[string]origin) func(*godog.
 		sc.Step(`^o evento de cobrança for reprocessado$`, func() error { order.ReprocessChargeEvent(); return nil })
 		sc.Step(`^nenhuma cobrança deve ser criada$`, func() error {
 			if order.Charges != 0 {
-				return fmt.Errorf("cobranças = %d; esperado 0", order.Charges)
+				return fmt.Errorf("charges = %d; expected 0", order.Charges)
 			}
 			return nil
 		})
@@ -159,9 +159,9 @@ func initialize(observed *[]observation, origins map[string]origin) func(*godog.
 
 func run() int {
 	mode := flag.String("case", "pass", "pass, failure, undefined, pending, filtered, partial, zero, no-gherkin")
-	input := flag.String("source", "contract.md", "arquivo Markdown ou - para stdin (adaptador próprio)")
-	uri := flag.String("uri", "", "origem Markdown apresentada ao runner")
-	transport := flag.String("transport", "bytes", "bytes, vfs ou vfs-dir")
+	input := flag.String("source", "contract.md", "Markdown file or - for stdin (our own adapter)")
+	uri := flag.String("uri", "", "Markdown origin presented to the runner")
+	transport := flag.String("transport", "bytes", "bytes, vfs or vfs-dir")
 	flag.Parse()
 
 	tags := "@pass"
@@ -185,7 +185,7 @@ func run() int {
 		*input = "reference.md"
 		tags = ""
 	default:
-		fmt.Fprintln(os.Stderr, "caso inválido:", *mode)
+		fmt.Fprintln(os.Stderr, "invalid case:", *mode)
 		return 2
 	}
 	if *uri == "" {
@@ -215,7 +215,7 @@ func run() int {
 	digest := sha256.Sum256(source)
 	r := report{Case: *mode, GoVersion: runtime.Version(), GodogVersion: "v0.16.0", Markdown: *uri, MarkdownHash: hex.EncodeToString(digest[:]), Blocks: len(features), Origins: origins, Expected: expected, Observed: []observation{}, Reasons: []string{}, FeatureFiles: []string{}, InputMode: inputMode, Transport: *transport}
 	if len(features) == 0 {
-		r.Reasons = append(r.Reasons, "nenhum bloco Gherkin; runner não invocado")
+		r.Reasons = append(r.Reasons, "no Gherkin block; runner not invoked")
 	} else {
 		var log bytes.Buffer
 		blockedFS := &rejectFS{}
@@ -235,7 +235,7 @@ func run() int {
 				options.Paths = []string{"."}
 			}
 		default:
-			fmt.Fprintln(os.Stderr, "transporte inválido:", *transport)
+			fmt.Fprintln(os.Stderr, "invalid transport:", *transport)
 			return 2
 		}
 		suite := godog.TestSuite{Name: "specmd-go-memory", ScenarioInitializer: initialize(&r.Observed, origins), Options: options}
@@ -244,7 +244,7 @@ func run() int {
 		r.RunnerExit = &code
 		fmt.Fprint(os.Stderr, log.String())
 		if code != 0 {
-			r.Reasons = append(r.Reasons, fmt.Sprintf("runner retornou %d", code))
+			r.Reasons = append(r.Reasons, fmt.Sprintf("runner returned %d", code))
 		}
 	}
 	seen := make(map[string]int)
@@ -255,19 +255,19 @@ func run() int {
 	for _, item := range r.Observed {
 		seen[item.ID]++
 		if !wanted[item.ID] {
-			r.Reasons = append(r.Reasons, item.ID+" não pertence ao conjunto esperado")
+			r.Reasons = append(r.Reasons, item.ID+" does not belong to the expected set")
 		}
 		if item.Status != "passed" {
-			r.Reasons = append(r.Reasons, item.ID+" não passou")
+			r.Reasons = append(r.Reasons, item.ID+" did not pass")
 		}
 	}
 	for _, id := range expected {
 		if seen[id] != 1 {
-			r.Reasons = append(r.Reasons, fmt.Sprintf("%s executado %d vez(es); exigido 1", id, seen[id]))
+			r.Reasons = append(r.Reasons, fmt.Sprintf("%s executed %d time(s); required 1", id, seen[id]))
 		}
 	}
 	if len(r.Observed) == 0 {
-		r.Reasons = append(r.Reasons, "zero cenários executados não autoriza conclusão")
+		r.Reasons = append(r.Reasons, "zero scenarios executed does not authorize completion")
 	}
 	sort.Slice(r.Observed, func(i, j int) bool { return r.Observed[i].ID < r.Observed[j].ID })
 	r.GateAllowed = len(r.Reasons) == 0
