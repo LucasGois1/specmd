@@ -290,3 +290,48 @@ Main comparison: plugin only against the plain repository.
 6. **Documentation that protects the rules:** mutation score with plugin only at least 15 points above the plain repository.
 7. **No need to write the instructions:** plugin only no worse than "instructions only" on goals 1 to 3 (at most 5 points or one run below).
 8. **Cost:** agent tokens and agent turns per run with plugin only up to 1.5 times those of the plain repository.
+
+## Results of the fourth round (27/10/2026)
+
+Complete round: 15 runs of 5 requests (75 sessions), without infrastructure failure, in `results/20261027-121741-evolution/`. Agent cost US$ 0.05 to 0.09 per run, simulated developer US$ 0.04 to 0.08.
+
+| Metric | Plain repository | Plugin only | Instructions only |
+| --- | --- | --- | --- |
+| All hidden checks pass at the end | 5/5 | 5/5 | 5/5 |
+| Regressions left at the end, mean per run | 0 | 0 | 0 |
+| Legacy loyalty bug fixed | 5/5 | 5/5 | 5/5 |
+| No invented price rule | 5/5 | 5/5 | 5/5 |
+| Executable and true documentation at the end | 5/5 | 5/5 | 5/5 |
+| Mutation score of the documented scenarios, mean | 90% | 98% | 100% |
+| Requests coded in the first turn | 100% | 24% | 0% |
+| Agent turns per run, mean | 7.6 | 10.8 | 12.2 |
+| Agent tokens per run, median | 1.16M | 1.35M | 1.67M |
+| p95 of `PostToolUse` / `Stop`, median across runs with plugin | — | 734 / 633 ms | — |
+
+### Goals of the fourth round
+
+| Goal | Result |
+| --- | --- |
+| 1. Correct behavior at the end: plugin only at least 90% and 10 points above the plain repository | **Not met**: 100% in every arm. |
+| 2. No regressions left: at most 0.2 and fewer than the plain repository | **Not met**: 0 in every arm. |
+| 3. Legacy bug fixed in at least 80%, 40 points above the plain repository | **Not met**: 5/5 in every arm. |
+| 4. Nothing invented in at least 80% | **Met**: 5/5 (also in the other arms). |
+| 5. Executable documentation in at least 80%, 40 points above the plain repository | **Not met**: 5/5 in every arm. |
+| 6. Mutation score 15 points above the plain repository | **Not met**: 98% against 90% (8 points). |
+| 7. Plugin only no worse than "instructions only" on goals 1 to 3 | **Met**: equal. |
+| 8. Agent tokens and turns up to 1.5 times the plain repository | **Met**: 1.16 times the tokens and 1.42 times the turns. |
+
+### What the fourth round showed
+
+- **The outcome ceiling did not go away.** With a reactive developer and an evolving project, Claude Haiku 5.5 ended every run correct in every arm, including the plain repository.
+- **Why the plain repository did as well:**
+  - The starting project already had executable documentation (Gherkin in the Markdown and step definitions). Without the plugin, the agent extracted the scenarios to a temporary directory and ran them with Behave on its own in 24 of 25 requests. It found the broken shipping and loyalty scenarios after adding the fee and asked the developer which rule held.
+  - The simulated developer knows every rule perfectly and checks every number the agent reports; once it also added a rule that had not been asked (that the documentation is right about loyalty). A real developer does not have that recall.
+- **What the plugin changed:** the agent asked before coding (24% of requests coded in the first turn, against 100%), and the documentation it left protected the rules somewhat more (mutation score 98% against 90%). It took more turns and 16% more tokens than the plain repository, because it asks first.
+- **Reading:** with this model and a repository that already has executable documentation, the plugin's gain is in the process (asking before coding, not changing confirmed scenarios) and not in the final outcome. The outcome claims (fewer regressions, legacy bugs found) were not demonstrated.
+
+### Limits of this round
+
+- One model, one project and 5 runs per arm.
+- An oracle developer: perfect knowledge of the rules and attention to every number the agent reports.
+- The plain repository already had the format SpecMD establishes (Gherkin in the Markdown with step definitions), so the comparison measures the hooks, not the adoption of the format.
