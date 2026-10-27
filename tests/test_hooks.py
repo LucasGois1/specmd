@@ -298,9 +298,12 @@ class HookPackagingTests(unittest.TestCase):
         codex = json.loads((REPOSITORY / ".codex-plugin/plugin.json").read_text())
         self.assertNotIn("hooks", claude)
         self.assertEqual(codex["hooks"], "./hooks/hooks.json")
+        # codex-plugin/ is the generated bundle: a copy of this same file, never loaded from here.
         declarations = [path.relative_to(REPOSITORY).as_posix() for path in REPOSITORY.glob("**/hooks.json")
-                        if not {".git", ".venv", "dist", "research"} & set(path.relative_to(REPOSITORY).parts)]
+                        if not {".git", ".venv", "dist", "research", "codex-plugin"} & set(path.relative_to(REPOSITORY).parts)]
         self.assertEqual(declarations, ["hooks/hooks.json"])
+        self.assertEqual((REPOSITORY / "codex-plugin/hooks/hooks.json").read_bytes(),
+                         (REPOSITORY / "hooks/hooks.json").read_bytes())
 
 
 if __name__ == "__main__":

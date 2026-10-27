@@ -1,0 +1,14 @@
+{
+  "name": "specmd",
+  "description": "SpecMD: documentação Markdown canônica com cenários BDD, alinhada ao software durante o trabalho com agentes.",
+  "owner": {
+    "name": "LucasGois1"
+  },
+  "plugins": [
+    {
+      "name": "specmd",
+      "source": "./",
+      "description": "Feedback determinístico ao agente: documentação sem cenários, cenários aguardando o dev e cenários falhando."
+    }
+  ]
+}

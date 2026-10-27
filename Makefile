@@ -8,7 +8,7 @@ CLAUDE_ARGS ?=
 VENV := $(CURDIR)/.venv
 PY := $(VENV)/bin/python
 STAMP := $(VENV)/.specmd-installed
-BUNDLE := $(CURDIR)/dist/codex-plugin
+BUNDLE := $(CURDIR)/codex-plugin
 
 # Avaliadas a cada alvo, para enxergar um demo recém-criado.
 DEMO_BASE = $(shell cat "$(DEMO_HOME)/.latest" 2>/dev/null)

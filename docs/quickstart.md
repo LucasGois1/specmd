@@ -16,7 +16,7 @@ Na raiz do clone:
 
 | Comando | O que faz |
 | --- | --- |
-| `make setup` | Cria `.venv`, instala as dependências e gera o plugin em `dist/codex-plugin`. |
+| `make setup` | Cria `.venv`, instala as dependências e gera o plugin em `codex-plugin/`. |
 | `make demo` | Cria um demo novo em `~/specmd-demo/<data-hora>/cart`, já com `git init`. |
 | `make agent` | Abre o Claude Code no último demo com o plugin carregado só nessa sessão. |
 | `make status` | Resume o estado do último demo. |
@@ -96,23 +96,24 @@ Java e Go usam um `command` de bridge; veja [adapters](../adapters/README.md).
 
 ## Codex
 
-O mesmo `hooks/hooks.json` serve ao Codex. O plugin vem do marketplace local `specmd-local` (`.agents/plugins/marketplace.json`), que aponta para o bundle gerado em `dist/codex-plugin`.
+O mesmo `hooks/hooks.json` serve ao Codex. O marketplace `specmd` (`.agents/plugins/marketplace.json`) aponta para o bundle versionado em `codex-plugin/`, gerado a partir das fontes por `scripts/build_codex_plugin.py`.
 
-Instalação, uma vez, na raiz deste clone:
-
-```sh
-python scripts/build_codex_plugin.py
-codex plugin marketplace add "$(pwd)"
-codex plugin add specmd@specmd-local
-```
-
-Atualização, depois de `git pull`:
+Instalação, uma vez:
 
 ```sh
-python scripts/build_codex_plugin.py
-codex plugin add specmd@specmd-local
+codex plugin marketplace add LucasGois1/specmd
+codex plugin add specmd@specmd
 ```
 
-Depois de instalar ou atualizar, abra o `codex`, rode `/hooks` e confie nos quatro handlers do `specmd@specmd-local`; confira também que eles estão habilitados. O Codex guarda o hash do conteúdo do plugin junto da confiança, então cada atualização pede uma revisão nova.
+Atualização:
+
+```sh
+codex plugin marketplace upgrade specmd
+codex plugin add specmd@specmd
+```
+
+Para testar um clone local, troque `LucasGois1/specmd` pelo caminho do clone.
+
+Depois de instalar ou atualizar, abra o `codex`, rode `/hooks` e confie nos quatro handlers do `specmd@specmd`; confira também que eles estão habilitados. O Codex guarda o hash do conteúdo do plugin junto da confiança, então cada atualização pede uma revisão nova.
 
 No Codex, o plugin é habilitado por usuário; o SpecMD só age em projetos com `specmd.toml`. Veja as [sessões nativas no Codex](../research/codex/native-session.md).

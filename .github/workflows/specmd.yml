@@ -30,6 +30,8 @@ jobs:
         run: 'uv pip install --system --require-hashes --only-binary :all: -r pylock.toml'
       - name: Vendored dependencies match the lock
         run: python scripts/vendor_deps.py --check
+      - name: Plugin bundle matches the sources
+        run: python scripts/build_codex_plugin.py --check
       - name: Unit tests
         run: python -m unittest discover -s tests -v
 

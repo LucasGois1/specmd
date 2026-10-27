@@ -39,10 +39,22 @@ class ManifestTests(unittest.TestCase):
     def test_vendored_dependencies_match_the_lock(self):
         self.assertTrue(_load("vendor_deps").check())
 
+    def test_committed_bundle_matches_the_sources(self):
+        self.assertEqual(_load("build_codex_plugin").check(), [])
+
+    def test_codex_marketplace_points_to_the_committed_bundle(self):
+        marketplace = json.loads((REPOSITORY / ".agents/plugins/marketplace.json").read_text())
+        source = REPOSITORY / marketplace["plugins"][0]["source"]["path"]
+        self.assertEqual(f"{marketplace['plugins'][0]['name']}@{marketplace['name']}", "specmd@specmd")
+        self.assertTrue((source / ".codex-plugin/plugin.json").is_file())
+        self.assertTrue((source / "hooks/hooks.json").is_file())
+
     def test_bundle_carries_vendor_command_skill_and_marketplace(self):
-        _load("build_codex_plugin").build()
-        manifest = json.loads((REPOSITORY / "dist/codex-plugin/bundle-manifest.json").read_text())
-        files = set(manifest["files_sha256"])
+        with tempfile.TemporaryDirectory(prefix="specmd-bundle-") as directory:
+            target = Path(directory) / "plugin"
+            _load("build_codex_plugin").build(target)
+            manifest = json.loads((target / "bundle-manifest.json").read_text())
+            files = set(manifest["files_sha256"])
         for expected in ("vendor/behave/__init__.py", "vendor/markdown_it/__init__.py", "commands/init.md",
                          "skills/specmd/SKILL.md", ".claude-plugin/marketplace.json", "scripts/specmd_bootstrap.py"):
             self.assertIn(expected, files)
