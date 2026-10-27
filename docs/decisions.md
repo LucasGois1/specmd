@@ -33,7 +33,7 @@ This record consolidates the discussion that originated the project. The guideli
 | D-025 | Legacy adoption through a command that starts from the existing documentation. | Lists all documents, the developer filters with the agent and the scenarios are born one document at a time. Implemented in SMD-REQ-030; `@wip` remains the developer's decision. |
 | D-026 | Support MDG (`.feature.md`) following the official specification. | Conversion to Gherkin in memory, preserving the lines. Implemented in SMD-REQ-031. |
 | D-027 | Validate Codex with a real LLM and the new events. | Depends on authentication and on the user trusting the hooks. Run on 24/10/2026; see [native sessions in Codex](../research/codex/native-session.md). |
-| D-028 | Measure the value of SpecMD in a comparative pilot. | Strong comparison group and evaluation by hidden acceptance tests. First round run on 24/10/2026 with claude-haiku-5-5 and gpt-6-luna; see [pilot](../research/pilot/README.md). |
+| D-028 | Measure the value of SpecMD in a comparative pilot. | Strong comparison group and evaluation by hidden acceptance tests. First round run on 24/10/2026 with claude-haiku-5-5 and gpt-6-luna; third round, in English and with Haiku only, on 27/10/2026; see [pilot](../research/pilot/README.md). |
 | D-029 | On 27/10/2026, the user asked to translate the whole repository into English, so that more people can use the plugin. | Code, documentation and research are in English. The plugin's messages are in English by default, and `language = "pt"` in `specmd.toml` keeps them in Portuguese. Recorded evidence (fixtures, logs and pilot results) stays as it was recorded. Implemented in SMD-REQ-032. |
 
 ## D-021 — Assistant, not audit (23/10/2026)
