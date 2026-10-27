@@ -37,92 +37,98 @@ MODELS = {"claude": "claude-haiku-5-5", "codex": "gpt-6-luna"}
 CART_APP = "app.py"
 TIMEOUT = 1800
 
-INSTRUCTIONS = """# Instruções do projeto
+INSTRUCTIONS = """# Project instructions
 
-- A documentação em `docs/` é a fonte canônica das regras de negócio. Cada regra tem cenários Gherkin em blocos ```gherkin no próprio documento.
-- Toda mudança de comportamento precisa estar na documentação, com cenários.
-- Antes de implementar uma regra nova ou alterada, mostre os cenários ao dev e peça confirmação.
-- Se o código contradiz a documentação, pergunte ao dev qual dos dois vale.
-- Os passos dos cenários ficam em `tests/steps`.
+- The documentation in `docs/` is the canonical source of the business rules. Each rule has Gherkin scenarios in ```gherkin blocks in the document itself.
+- Every behavior change must be in the documentation, with scenarios.
+- Before implementing a new or changed rule, show the scenarios to the developer and ask for confirmation.
+- If the code contradicts the documentation, ask the developer which of the two holds.
+- The scenario steps live in `tests/steps`.
 """
 
 PAYMENTS = {
-    "pagamentos.py": '"""Regras de pagamentos."""\n\n\ndef pode_estornar(dias_desde_compra):\n    return dias_desde_compra <= 10\n',
-    "docs/estornos.md": """# Estornos
+    "payments.py": '"""Payment rules."""\n\n\ndef can_refund(days_since_purchase):\n    return days_since_purchase <= 10\n',
+    "docs/refunds.md": """# Refunds
 
-## PAG-REQ-001 — Prazo de estorno
+## PAY-REQ-001 — Refund deadline
 
-Um pagamento pode ser estornado em até 7 dias corridos após a compra. Depois disso, o pedido de estorno é recusado.
+A payment can be refunded within 7 calendar days of the purchase. After that, the refund request is refused.
 
 ```gherkin
-# language: pt
-Funcionalidade: Prazo de estorno
+# language: en
+Feature: Refund deadline
 
-  Cenário: Estorno no sétimo dia
-    Dado um pagamento feito há 7 dias
-    Quando o cliente pedir o estorno
-    Então o estorno é aprovado
+  Scenario: Refund on the seventh day
+    Given a payment made 7 days ago
+    When the customer requests the refund
+    Then the refund is approved
 
-  Cenário: Estorno no oitavo dia
-    Dado um pagamento feito há 8 dias
-    Quando o cliente pedir o estorno
-    Então o estorno é recusado
+  Scenario: Refund on the eighth day
+    Given a payment made 8 days ago
+    When the customer requests the refund
+    Then the refund is refused
 ```
 """,
-    "tests/steps/estornos_steps.py": '''from behave import given, then, when
+    "tests/steps/refunds_steps.py": '''from behave import given, then, when
 
-from pagamentos import pode_estornar
-
-
-@given("um pagamento feito há {dias:d} dias")
-def payment(context, dias):
-    context.dias = dias
+from payments import can_refund
 
 
-@when("o cliente pedir o estorno")
+@given("a payment made {days:d} days ago")
+def payment(context, days):
+    context.days = days
+
+
+@when("the customer requests the refund")
 def ask(context):
-    context.aprovado = pode_estornar(context.dias)
+    context.approved = can_refund(context.days)
 
 
-@then("o estorno é aprovado")
+@then("the refund is approved")
 def approved(context):
-    assert context.aprovado, f"estorno recusado com {context.dias} dias"
+    assert context.approved, f"refund refused after {context.days} days"
 
 
-@then("o estorno é recusado")
+@then("the refund is refused")
 def refused(context):
-    assert not context.aprovado, f"estorno aprovado com {context.dias} dias"
+    assert not context.approved, f"refund approved after {context.days} days"
 ''',
     "specmd.toml": "[run]\non_stop = true\n",
     ".gitignore": ".specmd/local/\n__pycache__/\n",
 }
 
 TASKS = {
-    "T1": {"project": "cart", "app": CART_APP, "terms": [["1000"], ["10%", "desconto"]], "new_scenarios": True, "turns": [
-        "Adicione ao carrinho um desconto de 10% para totais acima de 1000 centavos.",
-        "Respostas: 'acima de 1000' é estritamente maior que 1000; o desconto é arredondado para baixo, em centavos "
-        "inteiros. Confirmo, pode implementar."]},
-    "T2": {"project": "cart", "app": CART_APP, "terms": [["taxa"]], "new_scenarios": True, "turns": [
-        "Some uma taxa fixa de 1 centavo ao total do carrinho.",
-        "Respostas: o carrinho vazio continua com total zero; a taxa vale só quando há itens. Confirmo, pode implementar."]},
-    "T3": {"project": "cart", "app": CART_APP, "terms": [["negativ"]], "new_scenarios": True, "turns": [
-        "Valide o preço ao adicionar itens no carrinho.",
-        "Respostas: só preços negativos são inválidos e devem levantar ValueError; preço zero é permitido (brinde); "
-        "não há limite máximo. Confirmo, pode implementar."]},
-    "T5": {"project": "cart_discount", "app": CART_APP, "terms": [["500"], ["desconto"]], "new_scenarios": True, "turns": [
-        "O desconto de 10% agora vale para totais acima de 500 centavos.",
-        "Respostas: 'acima de 500' é estritamente maior que 500; o resto da regra continua igual. Confirmo, pode implementar."]},
-    "T6": {"project": "cart", "app": CART_APP, "terms": [["frete"], ["10 itens", "dez itens", "11"]], "new_scenarios": True,
+    "T1": {"project": "cart", "app": CART_APP, "terms": [["1000"], ["10%", "discount"]], "new_scenarios": True, "turns": [
+        "Add to the cart a 10% discount for totals above 1000 cents.",
+        "Answers: 'above 1000' means strictly greater than 1000; the discount is rounded down, in whole cents. "
+        "Confirmed, go ahead and implement."]},
+    "T2": {"project": "cart", "app": CART_APP, "terms": [["fee"]], "new_scenarios": True, "turns": [
+        "Add a fixed fee of 1 cent to the cart total.",
+        "Answers: the empty cart still has a total of zero; the fee applies only when there are items. "
+        "Confirmed, go ahead and implement."]},
+    "T3": {"project": "cart", "app": CART_APP, "terms": [["negative"]], "new_scenarios": True, "turns": [
+        "Validate the price when adding items to the cart.",
+        "Answers: only negative prices are invalid and must raise ValueError; a zero price is allowed (a free gift); "
+        "there is no maximum. Confirmed, go ahead and implement."]},
+    "T5": {"project": "cart_discount", "app": CART_APP, "terms": [["500"], ["discount"]], "new_scenarios": True, "turns": [
+        "The 10% discount now applies to totals above 500 cents.",
+        "Answers: 'above 500' means strictly greater than 500; the rest of the rule stays the same. "
+        "Confirmed, go ahead and implement."]},
+    "T6": {"project": "cart", "app": CART_APP, "terms": [["shipping"], ["10 items", "ten items", "11"]], "new_scenarios": True,
            "turns": [
-        "Adicione duas regras ao carrinho: o método Cart.frete() retorna 500 centavos para totais até 10000 centavos "
-        "e 0 acima disso; e o carrinho aceita no máximo 10 itens.",
-        "Respostas: 10000 centavos exatos pagam frete; o frete usa o total do carrinho; adicionar o 11º item levanta "
-        "ValueError. Confirmo, pode implementar."]},
-    "T4": {"project": "payments", "app": "pagamentos.py", "terms": [["7 dias"]], "new_scenarios": False, "turns": [
-        "Implemente em pagamentos.py a função solicitar_estorno(dias_desde_compra), que retorna 'aprovado' ou "
-        "'recusado' conforme a regra de estornos.",
-        "Respostas: vale o que está na documentação, 7 dias corridos; corrija o que estiver diferente. Confirmo, pode implementar."]},
+        "Add two rules to the cart: the method Cart.shipping() returns 500 cents for totals up to 10000 cents "
+        "and 0 above that; and the cart accepts at most 10 items.",
+        "Answers: exactly 10000 cents pays shipping; shipping uses the cart total; adding the 11th item raises "
+        "ValueError. Confirmed, go ahead and implement."]},
+    # "7 calendar days" does not contain "7 days", hence both spellings (the Portuguese "7 dias corridos" did).
+    "T4": {"project": "payments", "app": "payments.py", "terms": [["7 days", "7 calendar days"]], "new_scenarios": False,
+           "turns": [
+        "Implement in payments.py the function request_refund(days_since_purchase), which returns 'approved' or "
+        "'refused' according to the refund rule.",
+        "Answers: what the documentation says holds, 7 calendar days; fix whatever differs. "
+        "Confirmed, go ahead and implement."]},
 }
+STALE_REFUND_TERMS = ("10 days", "10 calendar days")
 
 ARMS = {
     # Round 1: the same written instructions in both arms.
@@ -133,26 +139,26 @@ ARMS = {
     "plugin": {"instructions": False, "plugin": True},
     "instrucoes": {"instructions": True, "plugin": False},
 }
-FOLLOW_UP = ("Sim, pode seguir: atualize o que for necessário para a regra confirmada valer, inclusive cenários "
-             "e requisitos existentes.")
+FOLLOW_UP = ("Yes, go ahead: update whatever is needed for the confirmed rule to hold, including existing scenarios "
+             "and requirements.")
 DISCOUNT_DOC = """
-## CART-REQ-003 — Desconto
+## CART-REQ-003 — Discount
 
-Totais acima de 1000 centavos recebem 10% de desconto, arredondado para baixo.
+Totals above 1000 cents get a 10% discount, rounded down.
 
 ```gherkin
-# language: pt
-Funcionalidade: Desconto
+# language: en
+Feature: Discount
 
-  Cenário: Desconto acima de 1000 centavos
-    Dado um carrinho vazio
-    Quando eu adicionar itens de 600 e 500 centavos
-    Então o total deve ser 990 centavos
+  Scenario: Discount above 1000 cents
+    Given an empty cart
+    When I add items of 600 and 500 cents
+    Then the total should be 990 cents
 
-  Cenário: Sem desconto no limite
-    Dado um carrinho vazio
-    Quando eu adicionar itens de 500 e 500 centavos
-    Então o total deve ser 1000 centavos
+  Scenario: No discount at the limit
+    Given an empty cart
+    When I add items of 500 and 500 cents
+    Then the total should be 1000 cents
 ```
 """
 DISCOUNT_CODE = ("        subtotal = sum(self.prices)\n        if subtotal > 1000:\n"
@@ -277,7 +283,7 @@ def hidden_checks(task, project):
     try:
         return json.loads(completed.stdout.splitlines()[-1])
     except (ValueError, IndexError):
-        return {"passed": False, "checks": [["checagem não executou", False]], "stderr": completed.stderr[-500:]}
+        return {"passed": False, "checks": [["checks did not run", False]], "stderr": completed.stderr[-500:]}
 
 
 def documentation(task, project, base_count, base_shas=None):
@@ -285,7 +291,7 @@ def documentation(task, project, base_count, base_shas=None):
 
     The registered criterion needs more scenarios than at the start (T1 to T3). The
     corrected one, used after the run, also accepts updated scenarios: in T2
-    the rule is documented by changing "Somar dois itens" from 500 to 501.
+    the rule is documented by changing "Add two items" from 500 to 501.
     """
     copy = clean_copy(project)
     inspection = specmd("inventory", root=copy)
@@ -293,7 +299,7 @@ def documentation(task, project, base_count, base_shas=None):
     text = "\n".join(path.read_text(encoding="utf-8", errors="replace") for path in sorted((copy / "docs").rglob("*.md")))
     terms = all(any(term.casefold() in text.casefold() for term in group) for group in TASKS[task]["terms"])
     if task == "T4":
-        terms = terms and "10 dias" not in text
+        terms = terms and not any(term in text for term in STALE_REFUND_TERMS)
     grew = count > base_count if TASKS[task]["new_scenarios"] else count >= base_count
     touched = grew if base_shas is None or not TASKS[task]["new_scenarios"] else \
         bool(set(scenarios(inspection).values()) - set(base_shas))
@@ -364,16 +370,16 @@ def percent(value):
 
 
 ARM_ORDER = ["comum", "plugin", "instrucoes", "specmd", "control"]
-ARM_LABELS = {"comum": "Repositório comum", "plugin": "Só o plugin", "instrucoes": "Só instruções",
-              "specmd": "Instruções + plugin", "control": "Só instruções"}
-METRICS = [("implemented_before_confirmation", "Regra antes da confirmação (menor é melhor)"),
-           ("intent", "Intenção atendida"), ("documented", "Regra documentada com cenários (critério registrado)"),
-           ("executable", "Documentação executável e verdadeira (critério registrado)"),
-           ("documented_corrected", "Regra documentada com cenários (critério corrigido)"),
-           ("executable_corrected", "Documentação executável e verdadeira (critério corrigido)"),
-           ("intent_turn2", "Intenção atendida após o turno 2"),
-           ("executable_turn2", "Documentação executável após o turno 2"),
-           ("base_scenario_changed_turn1", "Cenário existente alterado antes da confirmação")]
+ARM_LABELS = {"comum": "Common repository", "plugin": "Plugin only", "instrucoes": "Instructions only",
+              "specmd": "Instructions + plugin", "control": "Instructions only"}
+METRICS = [("implemented_before_confirmation", "Rule before confirmation (lower is better)"),
+           ("intent", "Intent met"), ("documented", "Rule documented with scenarios (registered criterion)"),
+           ("executable", "Documentation executable and true (registered criterion)"),
+           ("documented_corrected", "Rule documented with scenarios (corrected criterion)"),
+           ("executable_corrected", "Documentation executable and true (corrected criterion)"),
+           ("intent_turn2", "Intent met after turn 2"),
+           ("executable_turn2", "Documentation executable after turn 2"),
+           ("base_scenario_changed_turn1", "Existing scenario changed before confirmation")]
 
 
 def _median(rows, measure):
@@ -395,10 +401,10 @@ def _metric_lines(group, arms):
                                                   for turn in row["turns"])) for arm in arms]
     seconds = [_median(group[arm], lambda row: sum(turn["seconds"] for turn in row["turns"])) for arm in arms]
     costs = [_median(group[arm], lambda row: sum(turn.get("cost_usd") or 0 for turn in row["turns"])) for arm in arms]
-    lines.append("| Tokens por sessão, mediana | " + " | ".join(_number(value, ",.0f") for value in tokens) + " |")
-    lines.append("| Segundos por sessão, mediana | " + " | ".join(_number(value, ".0f") for value in seconds) + " |")
+    lines.append("| Tokens per session, median | " + " | ".join(_number(value, ",.0f") for value in tokens) + " |")
+    lines.append("| Seconds per session, median | " + " | ".join(_number(value, ".0f") for value in seconds) + " |")
     if any(costs):
-        lines.append("| Custo por sessão, mediana em US$ | " + " | ".join(_number(value, ".4f") for value in costs) + " |")
+        lines.append("| Cost per session, median in US$ | " + " | ".join(_number(value, ".4f") for value in costs) + " |")
     return lines
 
 
@@ -408,14 +414,14 @@ def _hook_lines(group, arms):
     stop = [value["stop_p95_ms"] for value in hooks if value.get("stop_p95_ms") is not None]
     if not hooks:
         return []
-    return ["", f"Hooks: p95 do PostToolUse / Stop na pior sessão: {max(post) if post else '—'} / "
-                f"{max(stop) if stop else '—'} ms; mediana dos p95: {statistics.median(post) if post else '—'} / "
+    return ["", f"Hooks: PostToolUse / Stop p95 in the worst session: {max(post) if post else '—'} / "
+                f"{max(stop) if stop else '—'} ms; median of the p95s: {statistics.median(post) if post else '—'} / "
                 f"{statistics.median(stop) if stop else '—'} ms."]
 
 
 def _task_lines(group, arms, tasks):
-    lines = ["", "Por tarefa (" + " / ".join(ARM_LABELS[arm] for arm in arms) + "):", "",
-             "| Tarefa | Antes da confirmação | Intenção | Executável (corrigido) |", "| --- | --- | --- | --- |"]
+    lines = ["", "Per task (" + " / ".join(ARM_LABELS[arm] for arm in arms) + "):", "",
+             "| Task | Before confirmation | Intent | Executable (corrected) |", "| --- | --- | --- | --- |"]
     for task in tasks:
         cells = [" / ".join(percent(rate([row for row in group[arm] if row["task"] == task], key)) for arm in arms)
                  for key in ("implemented_before_confirmation", "intent", "executable_corrected")]
@@ -424,17 +430,17 @@ def _task_lines(group, arms, tasks):
 
 
 def summarize(rows, destination):
-    lines = ["# Resultados do piloto", "", f"Gerado em {datetime.now(timezone.utc).isoformat()} a partir de "
-             f"{len(rows)} sessões. Desenho e metas em [README](../../README.md).", ""]
+    lines = ["# Pilot results", "", f"Generated at {datetime.now(timezone.utc).isoformat()} from "
+             f"{len(rows)} sessions. Design and goals in [README](../../README.md).", ""]
     replaced = [row for row in rows if row.get("replaces")]
     if replaced:
-        lines += ["Sessões repetidas por falha de infraestrutura: " + ", ".join(
+        lines += ["Sessions repeated after an infrastructure failure: " + ", ".join(
             f"{row['task']} {row['agent']} {row['arm']} rep {row['rep']} ({row['replaces']})" for row in replaced) + ".", ""]
     arms = [arm for arm in ARM_ORDER if any(row["arm"] == arm for row in rows)]
     tasks = sorted({row["task"] for row in rows})
     for agent in sorted({row["agent"] for row in rows}):
         group = {arm: [row for row in rows if row["agent"] == agent and row["arm"] == arm] for arm in arms}
-        lines += [f"## {MODELS[agent]}", "", "| Métrica | " + " | ".join(ARM_LABELS[arm] for arm in arms) + " |",
+        lines += [f"## {MODELS[agent]}", "", "| Metric | " + " | ".join(ARM_LABELS[arm] for arm in arms) + " |",
                   "| --- |" + " --- |" * len(arms)]
         lines += _metric_lines(group, arms) + _hook_lines(group, arms) + _task_lines(group, arms, tasks) + [""]
     destination.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -455,7 +461,7 @@ def reevaluate(path, replacements):
         if key in extra and row["metrics"].get("intent_turn1") is not None and any(turn["exit"] != 0 and not turn["tokens_in"]
                                                                                  for turn in row["turns"]):
             replacement = extra.pop(key)
-            row = {**replacement, "rep": row["rep"], "replaces": "turno sem resposta do host, código de saída 1"}
+            row = {**replacement, "rep": row["rep"], "replaces": "turn without a reply from the host, exit code 1"}
         task = row["task"]
         if task not in bases:
             base = Path(tempfile.mkdtemp(prefix="specmd-pilot-base-")) / "project"
@@ -468,27 +474,28 @@ def reevaluate(path, replacements):
     output = path.with_name("runs-reevaluated.jsonl")
     output.write_text("".join(json.dumps(row, ensure_ascii=False) + "\n" for row in result), encoding="utf-8")
     summarize(result, path.with_name("summary.md"))
-    print("Reavaliado:", output)
+    print("Reevaluated:", output)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--reevaluate", type=Path, help="reavalia os projetos de um runs.jsonl existente")
+    parser.add_argument("--reevaluate", type=Path, help="reevaluate the projects of an existing runs.jsonl")
     parser.add_argument("--replace", type=Path, action="append", default=[],
-                        help="runs.jsonl com sessões repetidas por falha de infraestrutura")
+                        help="runs.jsonl with sessions repeated after an infrastructure failure")
     parser.add_argument("--reps", type=int, default=3)
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--tasks", default=",".join(TASKS))
     parser.add_argument("--agents", default="claude,codex")
     parser.add_argument("--arms", default="specmd,control")
-    parser.add_argument("--follow-up", action="store_true", help="terceiro turno do dev, que responde às perguntas pendentes")
+    parser.add_argument("--follow-up", action="store_true",
+                        help="a third developer turn that answers the pending questions")
     parser.add_argument("--output", type=Path, default=HERE / "results" / datetime.now().strftime("%Y%m%d-%H%M%S"))
     args = parser.parse_args()
     if args.reevaluate:
         reevaluate(args.reevaluate, args.replace)
         return
     if not (BUNDLE / "hooks/hooks.json").is_file():
-        raise SystemExit("Gere o bundle antes: python scripts/build_codex_plugin.py")
+        raise SystemExit("Build the bundle first: python scripts/build_codex_plugin.py")
     args.output.mkdir(parents=True, exist_ok=True)
     workspace = Path(tempfile.mkdtemp(prefix="specmd-pilot-"))
     jobs = [(task, agent, arm, rep) for rep in range(1, args.reps + 1) for task in args.tasks.split(",")
@@ -511,7 +518,7 @@ def main():
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
         list(pool.map(work, jobs))
     summarize([row for row in rows if "metrics" in row], args.output / "summary.md")
-    print("Resultados:", args.output, "Projetos:", workspace)
+    print("Results:", args.output, "Projects:", workspace)
 
 
 if __name__ == "__main__":

@@ -19,7 +19,7 @@ The session uses `claude -p` with `--plugin-dir`, `--setting-sources project,loc
 
 | Case | Request to the agent | What is checked |
 | --- | --- | --- |
-| `documentation_gap` | Document a shipping rule without changing code. | The hooks dispatch without failure and the feedback about `docs/frete.md` reaches the agent (a gap or a request to confirm the scenarios). |
+| `documentation_gap` | Document a shipping rule without changing code. | The hooks dispatch without failure and the feedback about `docs/shipping.md` (`docs/frete.md` in the recorded evidence, which predates the English translation) reaches the agent (a gap or a request to confirm the scenarios). |
 | `code_breaks_scenario` | Add a 1-cent fee to the total. | The documented scenarios fail and `Stop` sends the scenario, the step and the error back to the agent. |
 | `implement_confirmed` | Implement already confirmed scenarios, with one step still without implementation. | `Stop` runs the scenarios; the final state is recorded. |
 

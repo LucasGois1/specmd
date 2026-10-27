@@ -64,6 +64,8 @@ python research/pilot/run_pilot.py --reps 3 --workers 4
 
 The harness creates each project in a temporary directory, runs the sessions, evaluates and writes `results/<date>/runs.jsonl` and `results/<date>/summary.md`.
 
+Since [D-029](../../docs/decisions.md) the harness, its prompts and its projects are in English (`payments.py`, `request_refund`, `can_refund`, `Cart.shipping()`, "Add two items"). The rounds below ran in Portuguese and keep the names they used; their recorded results are unchanged. `--reevaluate` must not be run on those result folders: it would score Portuguese projects with English terms.
+
 ## Results (24/10/2026)
 
 Complete round: 48 sessions, in `results/20261024-203151/`. Raw data in `runs.jsonl`, re-evaluation in `runs-reevaluated.jsonl` and table in `summary.md`.

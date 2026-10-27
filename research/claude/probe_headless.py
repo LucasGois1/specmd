@@ -15,6 +15,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -32,33 +33,35 @@ specmd:
   kind: behavioral
 ---
 
-# Cupons
+# Coupons
 
-## SMD-DEMO-REQ-003 — Cupom DEZ
+## SMD-DEMO-REQ-003 — TEN coupon
 
-O cupom DEZ aplica 10% de desconto sobre o total do carrinho, em centavos.
+The TEN coupon applies a 10% discount to the cart total, in cents.
 
 ```gherkin
-# language: pt
-Funcionalidade: Cupom de desconto
+# language: en
+Feature: Discount coupon
 
   @SMD-DEMO-REQ-003 @SMD-DEMO-SCN-003
-  Cenário: Cupom DEZ em carrinho de 1000 centavos
-    Dado um carrinho vazio
-    Quando eu adicionar itens de 500 e 500 centavos
-    E eu aplicar o cupom "DEZ"
-    Então o total deve ser 900 centavos
+  Scenario: TEN coupon on a 1000-cent cart
+    Given an empty cart
+    When I add items of 500 and 500 cents
+    And I apply the coupon "TEN"
+    Then the total should be 900 cents
 ```
 """
+COUPON_PATH = "docs/coupons.md"
+GAP_PATH = "docs/shipping.md"
 CASES = {
     # Documentation without scenarios must come back to the agent.
-    "documentation_gap": (None, "Crie o arquivo docs/frete.md descrevendo a regra de negócio: pedidos acima de "
-                                "10000 centavos têm frete grátis. Não altere código."),
+    "documentation_gap": (None, f"Create the file {GAP_PATH} describing the business rule: orders above "
+                                "10000 cents get free shipping. Do not change any code."),
     # A code change that breaks a documented scenario must come back with the failure.
-    "code_breaks_scenario": (None, "Altere app.py para que total() some uma taxa fixa de 1 centavo. Faça só isso."),
+    "code_breaks_scenario": (None, "Change app.py so that total() adds a fixed fee of 1 cent. Do only that."),
     # Confirmed scenarios with an undefined step must be implemented until green.
-    "implement_confirmed": (COUPON_DOC, "Os cenários de docs/cupons.md já foram confirmados comigo. Implemente o "
-                                        "necessário para eles passarem."),
+    "implement_confirmed": (COUPON_DOC, f"The scenarios in {COUPON_PATH} have already been confirmed with me. "
+                                        "Implement what is needed for them to pass."),
 }
 
 
@@ -130,9 +133,11 @@ def _expectations(name: str, summary: dict, state: dict) -> dict:
         "never_stopped_session": all(item.get("decision") in {None, "block"} for item in feedback),
     }
     if name == "documentation_gap":
-        common["gap_fed_back"] = any("docs/frete.md" in item["text"] for item in feedback)
+        common["gap_fed_back"] = any(GAP_PATH in item["text"] for item in feedback)
     elif name == "code_breaks_scenario":
-        common["failure_fed_back"] = any(item.get("decision") == "block" and "não passaram" in item["text"]
+        # Header of the failure feedback, "SpecMD: N of M ... failed", whether all scenarios ran or only the affected.
+        common["failure_fed_back"] = any(item.get("decision") == "block" and re.search(r"SpecMD: \d+ of .*failed",
+                                                                                       item["text"])
                                          for item in feedback)
     elif name == "implement_confirmed":
         common["scenarios_executed"] = isinstance(state.get("last_run"), dict)
@@ -146,7 +151,7 @@ def run_case(name: str, document: str | None, prompt: str, claude: str, plugin_d
                    capture_output=True, text=True, timeout=60, check=True)
     subprocess.run(["git", "init", "-q", str(project)], check=True)
     if document:
-        (project / "docs/cupons.md").write_text(document, encoding="utf-8")
+        (project / COUPON_PATH).write_text(document, encoding="utf-8")
     stream = base / f"{name}.jsonl"
     environment = {key: value for key, value in os.environ.items() if key != "CLAUDE_PROJECT_DIR"}
     environment["SPECMD_PYTHON"] = sys.executable
@@ -170,18 +175,18 @@ def run_case(name: str, document: str | None, prompt: str, claude: str, plugin_d
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--use-clone", action="store_true", help="Carregar o plugin do clone em vez do bundle gerado")
-    parser.add_argument("--record", action="store_true", help="Gravar em research/claude/evidence em vez de .specmd/local")
+    parser.add_argument("--use-clone", action="store_true", help="Load the plugin from the clone instead of the built bundle")
+    parser.add_argument("--record", action="store_true", help="Write to research/claude/evidence instead of .specmd/local")
     parser.add_argument("--timeout", type=int, default=600)
     args = parser.parse_args()
     plugin_dir = ROOT if args.use_clone else BUNDLE
     output = EVIDENCE if args.record else LOCAL_REPORT
     claude = shutil.which("claude")
     if claude is None:
-        print("CLI claude não encontrado no PATH.", file=sys.stderr)
+        print("claude CLI not found on PATH.", file=sys.stderr)
         return 2
     if not (plugin_dir / ".claude-plugin/plugin.json").is_file():
-        print("Gere o bundle com scripts/build_codex_plugin.py ou use --use-clone.", file=sys.stderr)
+        print("Build the bundle with scripts/build_codex_plugin.py or use --use-clone.", file=sys.stderr)
         return 2
     version = subprocess.run([claude, "--version"], capture_output=True, text=True, timeout=30).stdout.strip()
     base = Path(tempfile.mkdtemp(prefix="specmd-claude-")).resolve()
