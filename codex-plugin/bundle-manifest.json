@@ -1,7 +1,7 @@
 {
   "schema": "specmd-codex-bundle-v1",
   "purpose": "Build inventory only; not a human approval, signature, or hook trust receipt.",
-  "content_sha256": "4bd50e10edbaa532a1069b9571f7b5b05cdaadd31ca37e62eb123252da284377",
+  "content_sha256": "0907793187663ac823b61b50376f2f3129ceac2b25cc3eaab42b21d5b8643456",
   "files_sha256": {
     ".claude-plugin/marketplace.json": "a0065ed4190b92fa4b21355cc197ca129989a89c661ef7bc18a733a482f0c31c",
     ".claude-plugin/plugin.json": "aa50c3c324341f599d0ba123d49ba73d5304eab215d12dfbe02c59331698af21",
@@ -27,7 +27,7 @@
     "src/specmd/diagnosis.py": "7a9f7f4a8dfa3632b342a26f38ced9f34354a76c9e7b7793ce64758b0497cda1",
     "src/specmd/hooks.py": "fbee3d643929d4e2139048dd703a3ad7d6965eeb48e5b3ca838063d0e0cbb362",
     "src/specmd/mdg.py": "502fe1c23e76877a66ac6f8439319f6e2c47ccae7b8ce342c8d4b068d8daa000",
-    "src/specmd/project_setup.py": "5af8b60831e63db3065f60b6e420fa671cc005ba45ec1acafdf10385f499dbfd",
+    "src/specmd/project_setup.py": "89e0888cd4a8a22d240c24ff9f88195d1930da188977b55f7faf39d733883456",
     "src/specmd/protection.py": "2f2370aaef7e6f9d692fcfa8373844134ddf55a4099f28346bac9f896b66a15c",
     "src/specmd/runner.py": "de36018eee493f933b80cba8f6107cbe7f31f76e346892d65b1d24c55908668f",
     "src/specmd/selection.py": "6c1ab0ce9f4ded7699631247907bff84cec3590b288e3f7676ca33f6a262e413",

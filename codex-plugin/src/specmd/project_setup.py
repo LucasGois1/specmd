@@ -51,7 +51,12 @@ def _enable_in_codex(root: Path) -> bool:
     plugins = config.get("plugins", {})
     if isinstance(plugins, dict) and any(isinstance(key, str) and key.split("@")[0] == "specmd" for key in plugins):
         return False  # An existing entry, enabled or not, is the project's decision.
-    separator = "" if not text.strip() else ("\n" if text.endswith("\n") else "\n\n")
+    if not text.strip():
+        separator = ""
+    elif text.endswith("\n"):
+        separator = "\n"
+    else:
+        separator = "\n\n"
     path.parent.mkdir(exist_ok=True)
     path.write_text(text + separator + f'[plugins."{PLUGIN_ID}"]\nenabled = true\n', encoding="utf-8")
     return True
