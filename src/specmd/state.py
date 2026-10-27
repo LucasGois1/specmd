@@ -16,6 +16,8 @@ import tempfile
 import time
 from typing import Any, Callable, Iterator
 
+from .messages import text as t
+
 STATE_FILE = "state.json"
 LOCK_FILE = "state.lock"
 
@@ -25,7 +27,7 @@ def _local_directory(root: Path) -> Path:
     for part in (".specmd", "local"):
         directory = directory / part
         if directory.is_symlink():
-            raise ValueError("O estado local não pode atravessar links simbólicos.")
+            raise ValueError(t("The local state cannot cross symbolic links.", "O estado local não pode atravessar links simbólicos."))
         directory.mkdir(exist_ok=True)
     ignore = directory / ".gitignore"
     if not ignore.exists() and not ignore.is_symlink():
@@ -55,7 +57,7 @@ def write_local(root: Path, name: str, value: dict[str, Any]) -> None:
     directory = _local_directory(root)
     destination = directory / name
     if destination.is_symlink():
-        raise ValueError("O estado local não pode ser um link simbólico.")
+        raise ValueError(t("The local state cannot be a symbolic link.", "O estado local não pode ser um link simbólico."))
     text = json.dumps(value, ensure_ascii=False, separators=(",", ":")) + "\n"
     with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=directory, delete=False) as stream:
         temporary = Path(stream.name)
@@ -86,7 +88,7 @@ def locked(root: Path, timeout: float | None = None) -> Iterator[None]:
                 break
             except BlockingIOError:
                 if time.monotonic() >= deadline:
-                    raise TimeoutError("Estado do SpecMD ocupado por outro hook.")
+                    raise TimeoutError(t("SpecMD state is busy with another hook.", "Estado do SpecMD ocupado por outro hook."))
                 time.sleep(0.05)
         try:
             yield

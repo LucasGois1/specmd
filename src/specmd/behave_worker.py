@@ -150,39 +150,39 @@ def execute(root: Path, steps: str, payload: dict) -> dict:
     result = {"schema": 1, "mode": "real", "dry_run": False, "engine_failed": True,
               "scenarios": [], "passed": False}
     if not isinstance(payload, dict) or type(payload.get("schema")) is not int or payload["schema"] != 1:
-        raise ValueError("Entrada deve ser um objeto JSON schema=1.")
+        raise ValueError("The input must be a JSON object with schema=1.")
     expected = payload.get("expected_scenarios")
     features_input = payload.get("features")
     if not isinstance(expected, list) or not expected or not isinstance(features_input, list) or not features_input:
-        raise ValueError("Zero cenários/blocos não fornece evidência de execução.")
+        raise ValueError("Zero scenarios or blocks prove no run.")
     step_path = Path(steps)
     if step_path.is_absolute() or ".." in step_path.parts:
-        raise ValueError("Diretório steps deve ser relativo ao projeto.")
+        raise ValueError("The steps directory must be relative to the project.")
     candidate = root
     for part in step_path.parts:
         candidate = candidate / part
         if candidate.is_symlink():
-            raise ValueError("Diretório steps não pode atravessar links simbólicos.")
+            raise ValueError("The steps directory cannot cross symbolic links.")
     candidate.resolve().relative_to(root)
     if not candidate.is_dir():
-        raise ValueError("Diretório steps não existe.")
+        raise ValueError("The steps directory does not exist.")
     if any(path.is_symlink() for path in candidate.glob("*.py")):
-        raise ValueError("Definições de passo não podem ser links simbólicos.")
+        raise ValueError("Step definitions cannot be symbolic links.")
     features, parsed, origins = [], [], []
     for item in features_input:
         path, block, line, content = item["path"], item["block"], item["line"], item["content"]
         if (not isinstance(path, str) or type(block) is not int or block < 1
                 or type(line) is not int or line < 1 or not isinstance(content, str)):
-            raise ValueError("Bloco sem origem/conteúdo válido.")
+            raise ValueError("Block without a valid origin or content.")
         feature = parse_feature("\n" * (line - 1) + content, language=payload.get("language"),
                                 filename=f"{path}#block-{block}")
         if feature is None:
-            raise ValueError("Bloco sem funcionalidade Gherkin.")
+            raise ValueError("Block without a Gherkin feature.")
         features.append(feature)
         parsed.extend((scenario, path, block) for scenario in _concrete(feature))
     expected_by_origin = {(item["path"], item["block"], item["line"]): item for item in expected}
     if len(expected_by_origin) != len(expected):
-        raise ValueError("Origens duplicadas no inventário esperado.")
+        raise ValueError("Duplicate origins in the expected inventory.")
     for scenario, path, block in parsed:
         wanted = expected_by_origin.get((path, block, scenario.line))
         if wanted is None:
@@ -190,7 +190,7 @@ def execute(root: Path, steps: str, payload: dict) -> dict:
         else:
             origins.append((scenario, wanted["id"], path, block))
     if len(origins) != len(expected):
-        raise ValueError("Cenários do parser não correspondem ao inventário esperado.")
+        raise ValueError("The parser's scenarios do not match the expected inventory.")
     coverage = Coverage(root) if payload.get("coverage") is True else None
     if coverage is not None and coverage.start():
         _attribute_scenarios(coverage, {id(scenario): identity for scenario, identity, _, _ in origins})

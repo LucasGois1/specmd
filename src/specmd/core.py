@@ -26,9 +26,10 @@ import subprocess
 import time
 from typing import Any, Callable, Iterator
 
-from . import mdg
+from . import mdg, messages
 from . import state as local_state
 from .config import ConfigError, parse_config, read_regular_file as _read_regular_file
+from .messages import text as t
 
 
 _PRUNED_DIRECTORIES = frozenset({
@@ -49,7 +50,10 @@ _REQUIREMENT_ID = re.compile(r"(?:[A-Za-z0-9]+-)*REQ-" + _ID_TAIL)
 _SCENARIO_ID = re.compile(r"(?:[A-Za-z0-9]+-)*SCN-" + _ID_TAIL)
 _REQUIREMENT_HEADING = re.compile(r"^((?:[A-Za-z0-9]+-)*REQ-" + _ID_TAIL + r")(?=$|\s|[—–:])")
 _FRONTMATTER = re.compile(r"\A---[ \t]*\r?\n.*?^(?:---|\.\.\.)[ \t]*\r?$\n?", re.DOTALL | re.MULTILINE)
-_GAP_HINT = (" Se descreve comportamento do sistema, confirme os requisitos com o dev e escreva os cenários; "
+def _gap_hint() -> str:
+    return t(" If it describes system behavior, confirm the requirements with the developer and write the scenarios; "
+             "if it does not, add the file to .specmdignore.",
+             " Se descreve comportamento do sistema, confirme os requisitos com o dev e escreva os cenários; "
              "se não descreve, adicione o arquivo ao .specmdignore.")
 CONFIG_FILE = "specmd.toml"
 CACHE_FILE = "inspection-cache.json"
@@ -82,9 +86,9 @@ def _package_file(package: str, name: str) -> bytes:
 
 
 @functools.lru_cache(maxsize=None)
-def _cache_key(language: str | None) -> str:
-    """Cached analyses are valid only for this analyser, these parsers and this language."""
-    parts = [Path(__file__).read_bytes(), str(language).encode(),
+def _cache_key(language: str | None, ui: str = "en") -> str:
+    """Cached analyses are valid only for this analyser, these parsers, this Gherkin language and this message language."""
+    parts = [Path(__file__).read_bytes(), str(language).encode(), ui.encode(),
              _package_file("behave", "version.py"), _package_file("markdown_it", "__init__.py")]
     return hashlib.sha256(b"\0".join(parts)).hexdigest()
 
@@ -246,7 +250,7 @@ def _discover(root: Path, findings: list[dict[str, Any]]) -> list[str]:
 
 
 def _symlink_finding(relative: str) -> dict[str, Any]:
-    return _finding("symlink", "Documentos simbólicos não são lidos pelo scanner.", relative)
+    return _finding("symlink", t("Symbolic links to documents are not read.", "Documentos simbólicos não são lidos pelo scanner."), relative)
 
 
 def _cached_entry(root: Path, relative: str, cached: Any,
@@ -366,7 +370,7 @@ class _DocumentReader:
         before = len(self.scenarios)
         self.visit(feature, {str(tag) for tag in feature.tags}, block, context)
         if len(self.scenarios) == before:
-            self.finding("scenarios_missing", "Bloco sem cenários concretos.", feature.line)
+            self.finding("scenarios_missing", t("Block without concrete scenarios.", "Bloco sem cenários concretos."), feature.line)
 
     def visit(self, container: Any, inherited: set[str], block: int, context: Callable[[int], str | None]) -> None:
         from behave.model import Rule, ScenarioOutline
@@ -389,7 +393,8 @@ class _DocumentReader:
             self.finding("gherkin_invalid", str(exc), scenario.line)
             return
         if not positions or len(concrete) != len(positions):
-            self.finding("scenarios_missing", "Esquema do Cenário exige linhas de Exemplos concretas.", scenario.line)
+            self.finding("scenarios_missing", t("Scenario Outline needs concrete Examples rows.",
+                                                "Esquema do Cenário exige linhas de Exemplos concretas."), scenario.line)
             return
         explicit = sorted({str(tag) for tag in scenario.tags if _SCENARIO_ID.fullmatch(str(tag))})
         base = explicit[0] if len(explicit) == 1 else self.default_identity(scenario.name)
@@ -405,14 +410,16 @@ class _DocumentReader:
         tags = inherited | {str(tag) for tag in scenario.tags}
         explicit = sorted({str(tag) for tag in (template or scenario).tags if _SCENARIO_ID.fullmatch(str(tag))})
         if len(explicit) > 1:
-            self.finding("scenario_id_invalid", "Cenário deve ter no máximo uma tag de ID (…-SCN-…).", scenario.line)
+            self.finding("scenario_id_invalid", t("A scenario may have at most one ID tag (…-SCN-…).",
+                                                  "Cenário deve ter no máximo uma tag de ID (…-SCN-…)."), scenario.line)
         base = identity or (explicit[0] if explicit else self.default_identity(scenario.name))
         linked = context(scenario.line)
         requirement_ids = sorted(tag for tag in tags if _REQUIREMENT_ID.fullmatch(tag)) or ([linked] if linked else [])
         background = getattr(scenario, "background", None)
         step_count = len(scenario.steps) + len(getattr(background, "steps", []))
         if not step_count:
-            self.finding("scenario_steps_missing", "Cenário sem passos não fornece comportamento verificável.",
+            self.finding("scenario_steps_missing", t("A scenario without steps describes no verifiable behavior.",
+                                                     "Cenário sem passos não fornece comportamento verificável."),
                          scenario.line)
         item = {
             "id": f"{base}:row:{position[0]}:{position[1]}" if position else base,
@@ -439,7 +446,7 @@ def _inspect_document(data: bytes, path: str, findings: list[dict[str, Any]],
     try:
         text = data.decode("utf-8")
     except UnicodeDecodeError:
-        findings.append(_finding("invalid_utf8", "Documento não contém UTF-8 válido.", path))
+        findings.append(_finding("invalid_utf8", t("Document is not valid UTF-8.", "Documento não contém UTF-8 válido."), path))
         return document
     if mdg.is_mdg(path):
         return _inspect_mdg(document, strip_frontmatter(text), findings, language)
@@ -449,7 +456,8 @@ def _inspect_document(data: bytes, path: str, findings: list[dict[str, Any]],
     document["spec_sha256"] = _digest([[item["id"] for item in document["requirements"]],
                                        [token.content for token, _ in fences]])
     if not fences:
-        findings.append(_finding("gherkin_missing", "Documento sem cenários Gherkin." + _GAP_HINT, path))
+        findings.append(_finding("gherkin_missing", t("Document without Gherkin scenarios.", "Documento sem cenários Gherkin.")
+                                 + _gap_hint(), path))
     reader = _DocumentReader(path, findings, language)
     for block, (token, context) in enumerate(fences, start=1):
         reader.read_block(block, token.map[0] + 2, token.content, lambda _line, linked=context: linked)
@@ -462,12 +470,17 @@ def _language_hint(error: str, content: str) -> str:
     if "No feature found" not in error or not any(_gherkin_headings().match(line.strip())
                                                   for line in content.splitlines()):
         return ""
-    return (" Se o Gherkin está em outro idioma, declare `# language: <código>` no início do bloco "
-            "ou `gherkin_language` no specmd.toml.")
+    return t(" If the Gherkin is in another language, declare `# language: <code>` at the start of the block "
+             "or `gherkin_language` in specmd.toml.",
+             " Se o Gherkin está em outro idioma, declare `# language: <código>` no início do bloco "
+             "ou `gherkin_language` no specmd.toml.")
 
 
-_MDG_LANGUAGE = (" Em MDG não existe `# language:`: o idioma vem de `gherkin_language` no specmd.toml "
-                 "(por exemplo, gherkin_language = \"pt\").")
+def _mdg_language() -> str:
+    return t(" MDG has no `# language:` line: the language comes from `gherkin_language` in specmd.toml "
+             "(for example, gherkin_language = \"pt\").",
+             " Em MDG não existe `# language:`: o idioma vem de `gherkin_language` no specmd.toml "
+             "(por exemplo, gherkin_language = \"pt\").")
 
 
 def _inspect_mdg(document: dict[str, Any], text: str, findings: list[dict[str, Any]],
@@ -480,8 +493,8 @@ def _inspect_mdg(document: dict[str, Any], text: str, findings: list[dict[str, A
     if not converted.scenarios:
         foreign = any(_gherkin_headings().match(mdg.heading_title(match)) for match in
                       (mdg.HEADING.match(line) for line in text.splitlines()) if match)
-        findings.append(_finding("gherkin_missing", "Arquivo MDG sem títulos de cenário." +
-                                 (_MDG_LANGUAGE if foreign else _GAP_HINT), path))
+        findings.append(_finding("gherkin_missing", t("MDG file without scenario headings.", "Arquivo MDG sem títulos de cenário.")
+                                 + (_mdg_language() if foreign else _gap_hint()), path))
         return document
     reader = _DocumentReader(path, findings, language)
     reader.read_block(1, 1, converted.text, converted.context_at)
@@ -495,8 +508,10 @@ def _declare_requirements(document: dict[str, Any], requirements: dict[str, tupl
         identifier = requirement["id"]
         if identifier in requirements:
             earlier = requirements[identifier]
-            findings.append(_finding("requirement_id_duplicate", f"ID {identifier} também declarado em "
-                                     f"{earlier[0]}:{earlier[1]}.", document["path"], requirement["line"]))
+            where = f"{earlier[0]}:{earlier[1]}"
+            findings.append(_finding("requirement_id_duplicate", t(f"ID {identifier} also declared in {where}.",
+                                                                   f"ID {identifier} também declarado em {where}."),
+                                     document["path"], requirement["line"]))
         else:
             requirements[identifier] = (document["path"], requirement["line"])
 
@@ -508,8 +523,10 @@ def _declare_scenarios(document: dict[str, Any], templates: dict[str, tuple[str,
         declaration = (document["path"], scenario.get("definition_line", scenario["line"]))
         if template in templates and templates[template] != declaration:
             earlier = templates[template]
-            findings.append(_finding("scenario_id_duplicate", f"ID de cenário {template} também declarado em "
-                                     f"{earlier[0]}:{earlier[1]}.", document["path"], declaration[1]))
+            where = f"{earlier[0]}:{earlier[1]}"
+            findings.append(_finding("scenario_id_duplicate", t(f"Scenario ID {template} also declared in {where}.",
+                                                                f"ID de cenário {template} também declarado em {where}."),
+                                     document["path"], declaration[1]))
         else:
             templates[template] = declaration
 
@@ -525,9 +542,11 @@ def _validate_links(documents: list[dict[str, Any]], findings: list[dict[str, An
         for scenario in document["scenarios"]:
             unknown = [identifier for identifier in scenario["requirements"] if identifier not in requirements]
             covered.update(identifier for identifier in scenario["requirements"] if identifier in requirements)
-            findings.extend(_finding("requirement_unknown", f"Cenário referencia requisito não declarado: {identifier}.",
+            findings.extend(_finding("requirement_unknown", t(f"Scenario refers to an undeclared requirement: {identifier}.",
+                                                              f"Cenário referencia requisito não declarado: {identifier}."),
                                      document["path"], scenario["line"]) for identifier in unknown)
-    findings.extend(_finding("requirement_uncovered", f"Requisito {identifier} não possui cenário associado.", path, line)
+    findings.extend(_finding("requirement_uncovered", t(f"Requirement {identifier} has no scenario.",
+                                                        f"Requisito {identifier} não possui cenário associado."), path, line)
                     for identifier, (path, line) in requirements.items() if identifier not in covered)
 
 
@@ -543,7 +562,8 @@ def _add_document(entry: Any, relative: str, findings: list[dict[str, Any]], ent
     if entry == "symlink":
         findings.append(_symlink_finding(relative))
     elif entry is None:
-        findings.append(_finding("read_error", "Não foi possível ler um documento regular e estável.", relative))
+        findings.append(_finding("read_error", t("Could not read a regular, stable document.",
+                                                 "Não foi possível ler um documento regular e estável."), relative))
         return False
     else:
         entries[relative] = entry
@@ -570,7 +590,7 @@ def _analyse_documents(root: Path, rules: list[tuple[bool, re.Pattern[str]]], la
     Returns the analysed documents, the rule markers of ignored documents that
     have any, and False when a document could not be read.
     """
-    key = _cache_key(language)
+    key = _cache_key(language, messages.current())
     stored = local_state.read_local(root, CACHE_FILE)
     fresh = stored.get("key") == key
     cached = stored.get("entries") if fresh and isinstance(stored.get("entries"), dict) else {}
@@ -608,11 +628,13 @@ def inspect_project(root: Path) -> dict[str, Any]:
     config_path = root / CONFIG_FILE
     if config_path.is_symlink():
         return _result("error", [_finding(
-            "config_symlink", f"{CONFIG_FILE} não pode ser um link simbólico.", CONFIG_FILE,
+            "config_symlink", t(f"{CONFIG_FILE} cannot be a symbolic link.", f"{CONFIG_FILE} não pode ser um link simbólico."),
+            CONFIG_FILE,
         )])
     try:
         config_bytes = _read_regular_file(config_path) if config_path.exists() else b""
         config = parse_config(config_bytes)
+        messages.use(config.get("language", "en"))
         ignore_path = root / IGNORE_FILE
         ignore_bytes = _read_regular_file(ignore_path) if ignore_path.exists() else b""
     except (OSError, ConfigError) as exc:
@@ -651,7 +673,8 @@ def extract_features(root: Path, inspection: dict[str, Any], language: str | Non
     for document in inspection.get("documents", []):
         raw = _read_regular_file(root / document["path"])
         if hashlib.sha256(raw).hexdigest() != document["sha256"]:
-            raise ValueError("A documentação mudou desde a inspeção; inspecione novamente: " + document["path"])
+            raise ValueError(t("The documentation changed since the inspection; inspect again: ",
+                               "A documentação mudou desde a inspeção; inspecione novamente: ") + document["path"])
         text = strip_frontmatter(raw.decode("utf-8"))
         if mdg.is_mdg(document["path"]):
             converted = mdg.convert(text, language, _REQUIREMENT_HEADING)

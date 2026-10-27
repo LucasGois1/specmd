@@ -37,7 +37,7 @@ class PythonBlockTests(unittest.TestCase):
                        "import os\nLIMIT = 7\n\n@cache\ndef f(a):\n    return a\n"):
             with self.subTest(source=source):
                 self.assertNotEqual(self.blocks(source)["module"], base["module"])
-        formatted = self.blocks("# comentário\nLIMIT = 7\n\n\n@cache\ndef f(a):  # nota\n    return (a)\n")
+        formatted = self.blocks("# comment\nLIMIT = 7\n\n\n@cache\ndef f(a):  # note\n    return (a)\n")
         self.assertEqual((formatted["module"], formatted["blocks"]), (base["module"], base["blocks"]))
 
     def test_nested_code_belongs_to_the_enclosing_function_and_names_repeat(self):
@@ -51,7 +51,7 @@ class PythonBlockTests(unittest.TestCase):
         self.assertIsNone(self.blocks("def broken(:\n"))
 
 
-@unittest.skipUnless(CAN_MEASURE, "cobertura por cenário exige Python 3.12+")
+@unittest.skipUnless(CAN_MEASURE, "per-scenario coverage requires Python 3.12+")
 class AffectedScenarioTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(prefix="specmd-selection-")
@@ -77,7 +77,7 @@ class AffectedScenarioTests(unittest.TestCase):
         self.assertEqual(self.run_project(), (0, 2, []))
 
     def test_module_level_change_runs_every_scenario(self):  # SMD-SCN-119
-        for old, new in (("class Cart:", "LIMITE = 1\n\n\nclass Cart:"),
+        for old, new in (("class Cart:", "LIMIT = 1\n\n\nclass Cart:"),
                          ('"""Small cart', 'import os\n"""Small cart'),
                          ("def add(self, price_cents):", "def add(self, price_cents, quantity=1):")):
             with self.subTest(change=new):
@@ -87,9 +87,9 @@ class AffectedScenarioTests(unittest.TestCase):
 
     def test_failing_scenario_runs_again_after_an_unrelated_change(self):  # SMD-SCN-120
         self.replace(APP, "self.prices.append(price_cents)", "self.prices.append(price_cents + 1)")
-        self.assertEqual(self.run_project(), (2, 0, ["Somar dois itens"]))
-        (self.root / "outro.py").write_text("VALOR = 1\n")
-        self.assertEqual(self.run_project(), (1, 1, ["Somar dois itens"]))
+        self.assertEqual(self.run_project(), (2, 0, ["Add two items"]))
+        (self.root / "other.py").write_text("VALUE = 1\n")
+        self.assertEqual(self.run_project(), (1, 1, ["Add two items"]))
 
     def test_without_coverage_every_scenario_runs(self):  # SMD-SCN-121
         bridge = ("import json,sys\np=json.load(sys.stdin)\ns=[{**i,'status':'passed','steps_executed':i['steps'],"
@@ -98,7 +98,7 @@ class AffectedScenarioTests(unittest.TestCase):
                   "'passed':True,'scenarios':s}))\n")
         (self.root / "bridge.py").write_text(bridge)
         (self.root / "specmd.toml").write_text(
-            f'[[runners]]\nid = "ponte"\nlanguage = "go"\ncommand = [{json.dumps(sys.executable)}, "bridge.py"]\n')
+            f'[[runners]]\nid = "bridge"\nlanguage = "go"\ncommand = [{json.dumps(sys.executable)}, "bridge.py"]\n')
         self.assertEqual(self.run_project(), (2, 0, []))
         self.replace(APP, "self.prices.append(price_cents)", "self.prices.append(price_cents + 0)")
         self.assertEqual(self.run_project(), (2, 0, []))
@@ -106,22 +106,22 @@ class AffectedScenarioTests(unittest.TestCase):
     def test_cli_run_executes_every_scenario(self):  # SMD-SCN-122
         self.run_project()
         self.replace(APP, "self.prices.append(price_cents)", "self.prices.append(price_cents + 0)")
-        with open(self.root / "saida.json", "w") as stream, mock.patch("sys.stdout", stream):
+        with open(self.root / "output.json", "w") as stream, mock.patch("sys.stdout", stream):
             self.assertEqual(main(["run", "--root", str(self.root)]), 0)
-        self.assertEqual(json.loads((self.root / "saida.json").read_text())["run"]["scenarios"], 2)
+        self.assertEqual(json.loads((self.root / "output.json").read_text())["run"]["scenarios"], 2)
         self.assertEqual(self.run_project(), (0, 2, []))
 
     def test_changed_scenario_and_new_scenario_run(self):
         self.run_project()
-        self.replace("docs/cart.md", "Então o total deve ser 0 centavos", "Então o total deve ser 0 centavos\n    E o total deve ser 0 centavos")
+        self.replace("docs/cart.md", "Then the total should be 0 cents", "Then the total should be 0 cents\n    And the total should be 0 cents")
         self.assertEqual(self.run_project(), (1, 1, []))
 
     def test_data_files_read_by_a_scenario_select_it(self):
         self.replace("tests/steps/cart_steps.py", "def read_total(context):\n",
-                     "def read_total(context):\n    open('limite.txt').read()\n")
-        (self.root / "limite.txt").write_text("7\n")
+                     "def read_total(context):\n    open('limit.txt').read()\n")
+        (self.root / "limit.txt").write_text("7\n")
         self.run_project(affected=False)
-        (self.root / "limite.txt").write_text("8\n")
+        (self.root / "limit.txt").write_text("8\n")
         self.assertEqual(self.run_project(), (1, 1, []))
 
     def test_scenarios_that_start_processes_always_run(self):
@@ -133,10 +133,10 @@ class AffectedScenarioTests(unittest.TestCase):
 
     def test_steps_environment_and_configuration_run_every_scenario(self):
         steps = (self.root / "tests/steps/cart_steps.py").read_text()
-        for path, content in (("tests/steps/extra_steps.py", "VALOR = 1\n"),
+        for path, content in (("tests/steps/extra_steps.py", "VALUE = 1\n"),
                               ("tests/steps/cart_steps.py", steps.replace("context.cart = Cart()", "context.cart = Cart()\n    pass")),
                               ("tests/environment.py", "def before_all(context):\n    pass\n"),
-                              ("specmd.toml", (self.root / "specmd.toml").read_text() + "\n# nota\n")):
+                              ("specmd.toml", (self.root / "specmd.toml").read_text() + "\n# note\n")):
             with self.subTest(path=path):
                 self.run_project()
                 (self.root / path).write_text(content)
@@ -144,7 +144,7 @@ class AffectedScenarioTests(unittest.TestCase):
 
     def test_missing_or_corrupt_coverage_runs_every_scenario(self):
         self.run_project()
-        (self.root / ".specmd/local" / selection.COVERAGE_FILE).write_text("{corrompido")
+        (self.root / ".specmd/local" / selection.COVERAGE_FILE).write_text("{corrupt")
         self.replace(APP, "self.prices.append(price_cents)", "self.prices.append(price_cents + 0)")
         self.assertEqual(self.run_project(), (2, 0, []))
 

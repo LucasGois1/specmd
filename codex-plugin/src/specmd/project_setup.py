@@ -13,6 +13,8 @@ from pathlib import Path
 import tomllib
 from typing import Any
 
+from .messages import text as t
+
 MARKETPLACE = {"source": {"source": "github", "repo": "LucasGois1/specmd"}, "autoUpdate": True}
 PLUGIN_ID = "specmd@specmd"
 SETTINGS = ".claude/settings.json"
@@ -47,7 +49,7 @@ def _enable_in_codex(root: Path) -> bool:
     try:
         config = tomllib.loads(text)
     except ValueError as error:
-        raise ValueError(f"{CODEX_CONFIG} não é TOML válido: {error}") from error
+        raise ValueError(t(f"{CODEX_CONFIG} is not valid TOML: {error}", f"{CODEX_CONFIG} não é TOML válido: {error}")) from error
     plugins = config.get("plugins", {})
     if isinstance(plugins, dict) and any(isinstance(key, str) and key.split("@")[0] == "specmd" for key in plugins):
         return False  # An existing entry, enabled or not, is the project's decision.
@@ -68,7 +70,10 @@ def initialize(root: Path) -> dict[str, Any]:
     changed += [CODEX_CONFIG] if _enable_in_codex(root) else []
     return {
         "status": "initialized", "root": str(root), "changed": changed,
-        "message": (f"SpecMD habilitado para o time. Faça commit de {SETTINGS} e {CODEX_CONFIG}: quem abrir o "
-                    "Claude Code neste repositório e confiar na pasta recebe o plugin; no Codex, quem tiver o plugin "
-                    "instalado o terá ativo neste projeto confiável. specmd.toml e .specmdignore são opcionais."),
+        "message": t(f"SpecMD enabled for the team. Commit {SETTINGS} and {CODEX_CONFIG}: whoever opens Claude Code "
+                     "in this repository and trusts the folder gets the plugin; in Codex, whoever has the plugin "
+                     "installed has it active in this trusted project. specmd.toml and .specmdignore are optional.",
+                     f"SpecMD habilitado para o time. Faça commit de {SETTINGS} e {CODEX_CONFIG}: quem abrir o "
+                     "Claude Code neste repositório e confiar na pasta recebe o plugin; no Codex, quem tiver o plugin "
+                     "instalado o terá ativo neste projeto confiável. specmd.toml e .specmdignore são opcionais."),
     }

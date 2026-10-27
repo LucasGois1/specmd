@@ -24,8 +24,9 @@ import time
 import tomllib
 from typing import Any
 
-from . import protection
+from . import messages, protection
 from . import state as hook_state
+from .messages import plural as _plural, text as t
 
 MAX_BLOCKS = 4
 MAX_FINDINGS = 8
@@ -39,27 +40,46 @@ READ_ONLY_TOOLS = frozenset({
 # change and PostToolUse can skip the analysis.
 FILE_EDIT_TOOLS = frozenset({"Write", "Edit", "MultiEdit", "NotebookEdit"})
 ANALYSIS_FILES = frozenset({".specmdignore", "specmd.toml", ".gitignore"})
-CONVENTIONS = (
-    "Como trabalhar com o SpecMD:\n"
-    "1. A documentação Markdown é a fonte canônica das regras de negócio. Todo comportamento do sistema "
-    "fica num documento, com cenários Gherkin em blocos ```gherkin no próprio documento. Um requisito pode "
-    "ter ID no título (ex.: `## PAG-REQ-001 — Estorno`); os cenários logo abaixo dele ficam ligados a ele.\n"
-    "2. Ao escrever ou mudar cenários, mostre-os ao dev e peça confirmação antes de implementar. "
-    "Em dúvida sobre um requisito, pergunte.\n"
-    "3. Um Markdown que não descreve comportamento do sistema (README, guia de setup, notas) vai para o "
-    "`.specmdignore` na raiz, com padrões no estilo .gitignore. Se for claramente o caso, adicione você mesmo; "
-    "em dúvida, pergunte ao dev se ele precisa de cenários.\n"
-    "4. Ao concluir uma implementação, o SpecMD executa os cenários e devolve o que falta ou falha.\n"
-    "5. Cenários marcados com @wip não são cobrados, e marcar @wip é decisão do dev. Não marque por conta "
-    "própria para evitar a cobrança: cenários que aguardam a confirmação do dev já não são cobrados.\n"
-    "6. Se o código existente contradiz a documentação, não corrija nenhum dos dois sozinho: mostre a "
-    "diferença ao dev e pergunte qual vale."
-)
-GAP_GUIDANCE = (
-    "Para cada documento: se ele descreve comportamento do sistema, confirme os requisitos com o dev e "
-    "escreva os cenários Gherkin no próprio Markdown; se não descreve, adicione-o ao .specmdignore; "
-    "em dúvida, pergunte ao dev."
-)
+def conventions() -> str:
+    return t(
+        "How to work with SpecMD:\n"
+        "1. The Markdown documentation is the canonical source of the business rules. All system behavior lives "
+        "in a document, with Gherkin scenarios in ```gherkin blocks in the document itself. A requirement may have "
+        "an ID in its heading (e.g. `## PAY-REQ-001 — Refund`); the scenarios right below it are linked to it.\n"
+        "2. When you write or change scenarios, show them to the developer and ask for confirmation before "
+        "implementing. When in doubt about a requirement, ask.\n"
+        "3. Markdown that does not describe system behavior (README, setup guide, notes) goes in `.specmdignore` "
+        "at the root, with .gitignore-style patterns. If that is clearly the case, add it yourself; when in doubt, "
+        "ask the developer whether it needs scenarios.\n"
+        "4. When you finish an implementation, SpecMD runs the scenarios and reports what is missing or failing.\n"
+        "5. Scenarios tagged @wip are not enforced, and tagging @wip is the developer's decision. Do not tag "
+        "scenarios yourself to avoid enforcement: scenarios awaiting the developer's confirmation are already not "
+        "enforced.\n"
+        "6. If existing code contradicts the documentation, do not fix either one on your own: show the "
+        "difference to the developer and ask which one holds.",
+        "Como trabalhar com o SpecMD:\n"
+        "1. A documentação Markdown é a fonte canônica das regras de negócio. Todo comportamento do sistema "
+        "fica num documento, com cenários Gherkin em blocos ```gherkin no próprio documento. Um requisito pode "
+        "ter ID no título (ex.: `## PAG-REQ-001 — Estorno`); os cenários logo abaixo dele ficam ligados a ele.\n"
+        "2. Ao escrever ou mudar cenários, mostre-os ao dev e peça confirmação antes de implementar. "
+        "Em dúvida sobre um requisito, pergunte.\n"
+        "3. Um Markdown que não descreve comportamento do sistema (README, guia de setup, notas) vai para o "
+        "`.specmdignore` na raiz, com padrões no estilo .gitignore. Se for claramente o caso, adicione você mesmo; "
+        "em dúvida, pergunte ao dev se ele precisa de cenários.\n"
+        "4. Ao concluir uma implementação, o SpecMD executa os cenários e devolve o que falta ou falha.\n"
+        "5. Cenários marcados com @wip não são cobrados, e marcar @wip é decisão do dev. Não marque por conta "
+        "própria para evitar a cobrança: cenários que aguardam a confirmação do dev já não são cobrados.\n"
+        "6. Se o código existente contradiz a documentação, não corrija nenhum dos dois sozinho: mostre a "
+        "diferença ao dev e pergunte qual vale.")
+
+
+def gap_guidance() -> str:
+    return t("For each document: if it describes system behavior, confirm the requirements with the developer and "
+             "write the Gherkin scenarios in the Markdown itself; if it does not, add it to .specmdignore; when in "
+             "doubt, ask the developer.",
+             "Para cada documento: se ele descreve comportamento do sistema, confirme os requisitos com o dev e "
+             "escreva os cenários Gherkin no próprio Markdown; se não descreve, adicione-o ao .specmdignore; "
+             "em dúvida, pergunte ao dev.")
 
 
 def _specmd_entries(plugins: Any) -> list[Any]:
@@ -140,49 +160,59 @@ def _location(finding: dict[str, Any]) -> str:
 def _format_findings(findings: list[dict[str, Any]]) -> list[str]:
     lines = [f"- {_location(item)}{item.get('message', '')}" for item in findings[:MAX_FINDINGS]]
     if len(findings) > MAX_FINDINGS:
-        lines.append(f"- … e mais {len(findings) - MAX_FINDINGS} pendências.")
+        more = len(findings) - MAX_FINDINGS
+        lines.append(t(f"- … and {more} more gaps.", f"- … e mais {more} pendências."))
     return lines
-
-
-def _plural(count: int, singular: str, plural: str) -> str:
-    return f"{count} {singular if count == 1 else plural}"
 
 
 def _left_out(run: dict[str, Any]) -> str:
     unselected = run.get("unselected") or 0
     if not unselected:
         return ""
-    return "; " + _plural(unselected, "cenário não executa", "cenários não executam") + " o código alterado"
+    return "; " + _plural(unselected, ("scenario does not run the changed code", "cenário não executa o código alterado"),
+                          ("scenarios do not run the changed code", "cenários não executam o código alterado"))
+
+
+_AFFECTED = (("scenario affected by the change", "cenário afetado pela mudança"),
+             ("scenarios affected by the change", "cenários afetados pela mudança"))
 
 
 def _passing_message(run: dict[str, Any]) -> str:
     executed, unselected = run.get("scenarios", 0), run.get("unselected") or 0
     if not unselected:
-        return f"SpecMD: {executed} cenários passando."
+        return t(f"SpecMD: {executed} scenarios passing.", f"SpecMD: {executed} cenários passando.")
     if not executed:
-        return ("SpecMD: a mudança não afeta nenhum cenário; "
-                + _plural(unselected, "cenário continua", "cenários continuam") + " passando.")
-    return (f"SpecMD: {_plural(executed, 'cenário afetado', 'cenários afetados')} pela mudança, "
-            f"{'passando' if executed == 1 else 'todos passando'}{_left_out(run)}.")
+        return t("SpecMD: the change affects no scenario; ", "SpecMD: a mudança não afeta nenhum cenário; ") + _plural(
+            unselected, ("scenario still passing", "cenário continua passando"),
+            ("scenarios still passing", "cenários continuam passando")) + "."
+    affected = _plural(executed, *_AFFECTED)
+    if executed == 1:
+        return t(f"SpecMD: {affected}, passing", f"SpecMD: {affected}, passando") + f"{_left_out(run)}."
+    return t(f"SpecMD: {affected}, all passing", f"SpecMD: {affected}, todos passando") + f"{_left_out(run)}."
 
 
 def _failures_header(run: dict[str, Any]) -> str:
     failures = len(run.get("failures", []))
     if not run.get("unselected"):
-        return f"SpecMD: {failures} de {run.get('expected', '?')} cenários da documentação não passaram."
-    executed = _plural(run.get("scenarios", 0), "cenário afetado", "cenários afetados")
-    return f"SpecMD: {failures} de {executed} pela mudança não {'passou' if failures == 1 else 'passaram'}{_left_out(run)}."
+        expected = run.get("expected", "?")
+        return t(f"SpecMD: {failures} of {expected} documented scenarios failed.",
+                 f"SpecMD: {failures} de {expected} cenários da documentação não passaram.")
+    executed = _plural(run.get("scenarios", 0), *_AFFECTED)
+    verb = "passou" if failures == 1 else "passaram"
+    return t(f"SpecMD: {failures} of {executed} failed{_left_out(run)}.",
+             f"SpecMD: {failures} de {executed} não {verb}{_left_out(run)}.")
 
 
 def _failure_lines(failure: dict[str, Any]) -> list[str]:
     name = f' "{failure["name"]}"' if failure.get("name") else ""
     lines = [f"- {failure.get('path')}:{failure.get('line')} {failure.get('id')}{name} ({failure.get('status')})"]
     for step in failure.get("steps", [])[:3]:
-        lines.append(f"    {step.get('text', 'passo')} (linha {step.get('line')}): {step.get('status')}")
+        line = step.get("line")
+        lines.append(f"    {step.get('text', t('step', 'passo'))} ({t('line', 'linha')} {line}): {step.get('status')}")
         if step.get("error"):
             lines.extend("      " + line for line in step["error"].splitlines()[-6:])
         if step.get("snippet"):
-            lines.append("      Passo sem implementação. Ponto de partida:")
+            lines.append("      " + t("Step without implementation. Starting point:", "Passo sem implementação. Ponto de partida:"))
             lines.extend("      " + line for line in step["snippet"].strip().splitlines())
     return lines
 
@@ -197,13 +227,20 @@ def _diagnosis(run: dict[str, Any], failures: list[dict[str, Any]]) -> list[str]
     contradicted = [failure for failure in failures if failure.get("id") in set(run.get("contradicted") or [])]
     lines = []
     if divergent:
-        lines.append(f"{_plural(len(divergent), 'cenário nunca passou', 'cenários nunca passaram')} ({_names(divergent)}). "
-                     "Se o código já existia e faz outra coisa, é divergência entre documentação e código: "
-                     "pergunte ao dev qual vale antes de mudar qualquer um dos dois.")
+        count = _plural(len(divergent), ("scenario never passed", "cenário nunca passou"),
+                        ("scenarios never passed", "cenários nunca passaram"))
+        lines.append(f"{count} ({_names(divergent)}). " + t(
+            "If the code already existed and does something else, this is a divergence between documentation and "
+            "code: ask the developer which one holds before changing either.",
+            "Se o código já existia e faz outra coisa, é divergência entre documentação e código: "
+            "pergunte ao dev qual vale antes de mudar qualquer um dos dois."))
     if contradicted:
-        lines.append(f"{_plural(len(contradicted), 'cenário que já existia quebrou', 'cenários que já existiam quebraram')} "
-                     f"com a mudança no código ({_names(contradicted)}). Se o dev confirmou a nova regra, atualize o "
-                     "cenário; se não, ajuste o código.")
+        count = _plural(len(contradicted), ("scenario that already existed broke", "cenário que já existia quebrou"),
+                        ("scenarios that already existed broke", "cenários que já existiam quebraram"))
+        lines.append(f"{count} " + t(f"with the code change ({_names(contradicted)}). If the developer confirmed the new "
+                                     "rule, update the scenario; otherwise, fix the code.",
+                                     f"com a mudança no código ({_names(contradicted)}). Se o dev confirmou a nova regra, "
+                                     "atualize o cenário; se não, ajuste o código."))
     return lines
 
 
@@ -213,13 +250,16 @@ def _format_failures(run: dict[str, Any]) -> str:
     for failure in failures[:MAX_FINDINGS]:
         lines.extend(_failure_lines(failure))
     if len(failures) > MAX_FINDINGS:
-        lines.append(f"- … e mais {len(failures) - MAX_FINDINGS} cenários.")
-    lines.extend(f"- Execução: {finding.get('message')}" for finding in run.get("findings", []))
+        more = len(failures) - MAX_FINDINGS
+        lines.append(t(f"- … and {more} more scenarios.", f"- … e mais {more} cenários."))
+    lines.extend(f"- {t('Run', 'Execução')}: {finding.get('message')}" for finding in run.get("findings", []))
     lines.extend(_diagnosis(run, failures))
     diagnosed = set(run.get("divergent") or []) | set(run.get("contradicted") or [])
     if not failures or any(failure.get("id") not in diagnosed for failure in failures):
-        lines.append("Implemente o comportamento documentado até os cenários passarem. Se um cenário parecer "
-                     "errado, confirme com o dev antes de mudá-lo.")
+        lines.append(t("Implement the documented behavior until the scenarios pass. If a scenario looks wrong, "
+                       "confirm with the developer before changing it.",
+                       "Implemente o comportamento documentado até os cenários passarem. Se um cenário parecer "
+                       "errado, confirme com o dev antes de mudá-lo."))
     return "\n".join(lines)[:MAX_REASON]
 
 
@@ -246,10 +286,14 @@ def _commands(root: Path) -> str:
     base = [sys.executable, str(cli)] if cli.is_file() else [sys.executable, "-m", "specmd"]
     command = " ".join(shlex.quote(part) for part in base)
     project = shlex.quote(str(root))
-    return ("Para conferir a qualquer momento, sem instalar nada:\n"
-            f"- pendências e última execução: `{command} check --root {project}`\n"
-            f"- executar todos os cenários: `{command} run --root {project}`\n"
-            f"- só os afetados pela mudança desde a última execução: `{command} run --affected --root {project}`")
+    return t("To check at any time, without installing anything:\n"
+             f"- gaps and last run: `{command} check --root {project}`\n"
+             f"- run every scenario: `{command} run --root {project}`\n"
+             f"- only the scenarios affected by the change since the last run: `{command} run --affected --root {project}`",
+             "Para conferir a qualquer momento, sem instalar nada:\n"
+             f"- pendências e última execução: `{command} check --root {project}`\n"
+             f"- executar todos os cenários: `{command} run --root {project}`\n"
+             f"- só os afetados pela mudança desde a última execução: `{command} run --affected --root {project}`")
 
 
 def _session_start(root: Path) -> dict[str, Any]:
@@ -274,20 +318,32 @@ def _session_start(root: Path) -> dict[str, Any]:
         with contextlib.suppress(OSError, ValueError):
             protection.save_baseline(root, result, replace=False)
     documents = [document for document in result.get("documents", []) if document.get("scenarios")]
-    lines = ["SpecMD ativo neste repositório.",
-             f"- Documentos com cenários: {len(documents)} ({scenario_count(result)} cenários)."]
+    count = scenario_count(result)
+    lines = [t("SpecMD is active in this repository.", "SpecMD ativo neste repositório."),
+             t(f"- Documents with scenarios: {len(documents)} ({count} scenarios).",
+               f"- Documentos com cenários: {len(documents)} ({count} cenários).")]
     if result["status"] == "needs_scenarios":
-        lines.append(f"- Pendências na documentação: {len(result['findings'])}.")
+        gaps = len(result["findings"])
+        lines.append(t(f"- Documentation gaps: {gaps}.", f"- Pendências na documentação: {gaps}."))
         lines.extend(_format_findings(result["findings"])[:3])
     run = result.get("run")
     if run:
-        state_text = "passando" if run.get("passed") else f"{len(run.get('failures', []))} falhando"
-        freshness = "" if run.get("current") else " (o código ou os cenários mudaram depois)"
-        scope = f" afetados pela mudança ({run['unselected']} fora)" if run.get("unselected") else ""
-        lines.append(f"- Última execução: {run.get('scenarios')} cenários{scope}, {state_text}{freshness}.")
-    lines.append(CONVENTIONS)
+        lines.append(_last_run_line(run))
+    lines.append(conventions())
     lines.append(_commands(root))
     return {"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": "\n".join(lines)}}
+
+
+def _last_run_line(run: dict[str, Any]) -> str:
+    failing = len(run.get("failures", []))
+    state_text = t("passing", "passando") if run.get("passed") else t(f"{failing} failing", f"{failing} falhando")
+    freshness = "" if run.get("current") else t(" (the code or the scenarios changed since)",
+                                                " (o código ou os cenários mudaram depois)")
+    left = run.get("unselected")
+    scope = t(f" affected by the change ({left} left out)", f" afetados pela mudança ({left} fora)") if left else ""
+    scenarios = run.get("scenarios")
+    return t(f"- Last run: {scenarios} scenarios{scope}, {state_text}{freshness}.",
+             f"- Última execução: {scenarios} cenários{scope}, {state_text}{freshness}.")
 
 
 def _user_prompt(root: Path) -> dict[str, Any]:
@@ -349,18 +405,23 @@ def _documentation_feedback(root: Path, result: dict[str, Any], seen: dict[str, 
     findings = [item for item in result["findings"] if item.get("path") in changed]
     lines = []
     if findings:
-        lines.extend(["Pendências encontradas:", *_format_findings(findings), GAP_GUIDANCE])
+        lines.extend([t("Gaps found:", "Pendências encontradas:"), *_format_findings(findings), gap_guidance()])
     elif spec_changed:
-        lines.append("Requisitos ou cenários mudaram. Se o dev ainda não confirmou estes cenários, mostre-os e "
-                     "peça confirmação antes de implementar.")
+        lines.append(t("Requirements or scenarios changed. If the developer has not confirmed these scenarios yet, "
+                       "show them and ask for confirmation before implementing.",
+                       "Requisitos ou cenários mudaram. Se o dev ainda não confirmou estes cenários, mostre-os e "
+                       "peça confirmação antes de implementar."))
     if spec_changed or vanished:
         altered = protection.scenario_changes(protection.load_baseline(root), result, _wip_tags(root),
                                               set(spec_changed) | set(vanished))
         if altered:
-            lines.extend(["SpecMD: cenários da última mensagem do dev mudaram:", *protection.describe_all(altered),
-                          "Se o dev não pediu essas mudanças, restaure os cenários e corrija o código."])
+            lines.extend([t("SpecMD: scenarios from the developer's last message changed:",
+                            "SpecMD: cenários da última mensagem do dev mudaram:"), *protection.describe_all(altered),
+                          t("If the developer did not ask for these changes, restore the scenarios and fix the code.",
+                            "Se o dev não pediu essas mudanças, restaure os cenários e corrija o código.")])
     if lines and changed:
-        lines.insert(0, f"SpecMD: documentação alterada: {', '.join(changed[:6])}.")
+        names = ", ".join(changed[:6])
+        lines.insert(0, t(f"SpecMD: documentation changed: {names}.", f"SpecMD: documentação alterada: {names}."))
     return lines
 
 
@@ -416,7 +477,8 @@ def _stop(root: Path) -> dict[str, Any]:
     if "decision" in reply or not changes:
         return reply
     # The developer sees what changed in confirmed scenarios, even when everything passes.
-    summary = "\n".join(["SpecMD: cenários alterados nesta resposta, em relação à sua última mensagem:",
+    summary = "\n".join([t("SpecMD: scenarios changed in this response, compared with your last message:",
+                           "SpecMD: cenários alterados nesta resposta, em relação à sua última mensagem:"),
                          *protection.describe_all(changes)])
     return {**reply, "systemMessage": "\n".join(filter(None, [summary, reply.get("systemMessage")]))}
 
@@ -427,32 +489,41 @@ def _stop_reply(root: Path, result: dict[str, Any], state: dict[str, Any], chang
 
     if result["status"] == "needs_scenarios":
         findings = result["findings"]
-        reason = "\n".join(["SpecMD: a documentação tem pendências antes de concluir:",
-                            *_format_findings(findings), GAP_GUIDANCE])
+        reason = "\n".join([t("SpecMD: the documentation has gaps to address before finishing:",
+                              "SpecMD: a documentação tem pendências antes de concluir:"),
+                            *_format_findings(findings), gap_guidance()])
         return _block_once(root, _digest(["docs", findings]), reason,
-                           f"SpecMD: {len(findings)} pendências na documentação continuam abertas.")
+                           t(f"SpecMD: {len(findings)} documentation gaps remain open.",
+                             f"SpecMD: {len(findings)} pendências na documentação continuam abertas."))
     strong = protection.strong_signals(changes, state.get("last_run"))
     if strong and _code_changed_in_turn(root, state, now):
-        lines = ["SpecMD: o valor esperado de cenários que falhavam mudou junto com o código neste turno:"]
-        lines.extend(f"{protection.describe(change)} (falhava: {protection.failure_hint(failure)})"
+        lines = [t("SpecMD: the expected value of scenarios that were failing changed together with the code in this turn:",
+                   "SpecMD: o valor esperado de cenários que falhavam mudou junto com o código neste turno:")]
+        lines.extend(f"{protection.describe(change)} ({t('was failing', 'falhava')}: {protection.failure_hint(failure)})"
                      for change, failure in strong[:protection.MAX_LINES])
-        lines.append("Se o dev não pediu essa mudança, restaure o cenário e corrija o código. "
-                     "Se ele pediu, siga e diga isso a ele no resumo.")
+        lines.append(t("If the developer did not ask for this change, restore the scenario and fix the code. "
+                       "If they did, go on and tell them in your summary.",
+                       "Se o dev não pediu essa mudança, restaure o cenário e corrija o código. "
+                       "Se ele pediu, siga e diga isso a ele no resumo."))
         reply = _block_once(root, _digest(["expectation", [(change["id"], change["then"]) for change, _ in strong]]),
                             "\n".join(lines), "")
         if "decision" in reply:
             return reply
     pending = _pending_confirmation(state, result)
-    awaiting = ({"systemMessage": "SpecMD: cenários novos ou alterados aguardando sua confirmação em "
-                                  + ", ".join(pending[:6]) + "."} if pending else {})
+    names = ", ".join(pending[:6])
+    awaiting = ({"systemMessage": t(f"SpecMD: new or changed scenarios awaiting your confirmation in {names}.",
+                                    f"SpecMD: cenários novos ou alterados aguardando sua confirmação em {names}.")}
+                if pending else {})
     if not scenario_count(result) or not _runs_on_stop(root):
         return awaiting
     run, fresh = _current_run(root, result, state, now)
     if run is None:
         # Only documentation changed in this session: wait for the developer.
         return awaiting
-    reminder = ("\nOs cenários de " + ", ".join(pending[:6]) + " mudaram depois da última mensagem do dev; "
-                "se ele ainda não os confirmou, mostre-os antes de seguir.") if pending else ""
+    reminder = ("\n" + t(f"The scenarios of {names} changed after the developer's last message; if they have not "
+                         "confirmed them yet, show them before going on.",
+                         f"Os cenários de {names} mudaram depois da última mensagem do dev; se ele ainda não os "
+                         "confirmou, mostre-os antes de seguir.")) if pending else ""
     if run.get("passed"):
         if fresh and not pending:
             return {}
@@ -460,8 +531,8 @@ def _stop_reply(root: Path, result: dict[str, Any], state: dict[str, Any], chang
     signature = _digest(["run", [(item.get("id"), item.get("status"), [step.get("error") for step in item.get("steps", [])])
                                  for item in run.get("failures", [])], run.get("findings")])
     return _block_once(root, signature, _format_failures(run) + reminder,
-                       "SpecMD: " + _plural(len(run.get("failures", [])), "cenário ainda não passa",
-                                            "cenários ainda não passam") + ".")
+                       "SpecMD: " + _plural(len(run.get("failures", [])), ("scenario still failing", "cenário ainda não passa"),
+                                            ("scenarios still failing", "cenários ainda não passam")) + ".")
 
 
 def _may_change_documentation(payload: dict[str, Any]) -> bool:
@@ -485,7 +556,7 @@ def _may_change_documentation(payload: dict[str, Any]) -> bool:
 
 def handle_hook(payload: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(payload, dict):
-        raise ValueError("O payload do hook precisa ser um objeto JSON.")
+        raise ValueError("The hook payload must be a JSON object.")
     event = payload.get("hook_event_name")
     if event == "PostToolUse" and not _may_change_documentation(payload):
         return {}
@@ -496,13 +567,15 @@ def handle_hook(payload: dict[str, Any]) -> dict[str, Any]:
     root = find_root()
     if root is None:
         return {}
+    messages.use_project(root)
     return handlers[event](root)
 
 
 def soft_error(event: Any, error: Exception) -> dict[str, Any]:
     """Internal failures are reported, never turned into a stopped session."""
     if event in {"SessionStart", "Stop"}:
-        return {"systemMessage": f"SpecMD: verificação indisponível ({type(error).__name__}: {error})."}
+        return {"systemMessage": t(f"SpecMD: check unavailable ({type(error).__name__}: {error}).",
+                                   f"SpecMD: verificação indisponível ({type(error).__name__}: {error}).")}
     return {}
 
 

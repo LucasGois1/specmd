@@ -30,7 +30,7 @@ def _locked_wheels() -> list[dict]:
     for package in lock["packages"]:
         universal = [wheel for wheel in package.get("wheels", []) if wheel["url"].endswith("-none-any.whl")]
         if len(universal) != 1:
-            raise SystemExit(f"{package['name']} não tem exatamente uma wheel Python pura no lock.")
+            raise SystemExit(f"{package['name']} does not have exactly one pure Python wheel in the lock.")
         wheel = universal[0]
         wheels.append({"name": package["name"], "version": package["version"],
                        "url": wheel["url"], "sha256": wheel["hashes"]["sha256"]})
@@ -58,7 +58,7 @@ def build() -> dict:
         with urllib.request.urlopen(wheel["url"], timeout=60) as response:  # noqa: S310 - pinned HTTPS URL
             data = response.read()
         if hashlib.sha256(data).hexdigest() != wheel["sha256"]:
-            raise SystemExit(f"sha256 divergente para {wheel['name']}.")
+            raise SystemExit(f"sha256 mismatch for {wheel['name']}.")
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
             for member in archive.infolist():
                 name = member.filename
@@ -82,11 +82,11 @@ def check() -> bool:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check", action="store_true", help="Só verificar vendor/ contra o lock")
+    parser.add_argument("--check", action="store_true", help="Only check vendor/ against the lock")
     args = parser.parse_args()
     if args.check:
         ok = check()
-        print("vendor/ confere com pylock.toml" if ok else "vendor/ diverge de pylock.toml; rode scripts/vendor_deps.py")
+        print("vendor/ matches pylock.toml" if ok else "vendor/ differs from pylock.toml; run scripts/vendor_deps.py")
         return 0 if ok else 1
     manifest = build()
     print(json.dumps({"wheels": [f"{item['name']}=={item['version']}" for item in manifest["wheels"]]}, indent=2))

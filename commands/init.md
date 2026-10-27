@@ -1,15 +1,16 @@
 ---
-description: Habilita o SpecMD para o time neste repositório (marketplace e plugin no .claude/settings.json)
+description: Enables SpecMD for the team in this repository (marketplace and plugin in .claude/settings.json)
 ---
 
-Habilite o SpecMD para todo o time neste repositório. Na raiz do projeto, execute:
+Enable SpecMD for the whole team in this repository. At the project root, run:
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/specmd_cli.py" init --root "$(pwd)"
 ```
 
-Isso declara o marketplace do SpecMD e habilita o plugin no `.claude/settings.json` e no `.codex/config.toml` do projeto, sem mexer no resto dos arquivos. Depois:
+This declares the SpecMD marketplace and enables the plugin in the project's `.claude/settings.json` and `.codex/config.toml`, without touching the rest of those files. Then:
 
-1. Mostre ao dev o que mudou e lembre de fazer commit do `.claude/settings.json` e do `.codex/config.toml`: quem abrir o Claude Code no repositório e confiar na pasta recebe o plugin; no Codex, quem instalar o plugin (`codex plugin marketplace add LucasGois1/specmd` e `codex plugin add specmd@specmd`) o terá ativo no projeto confiável.
-2. Rode `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/specmd_cli.py" check --root "$(pwd)"` e revise com o dev os Markdown sem cenários: os que não descrevem comportamento do sistema vão para um `.specmdignore` na raiz; os que descrevem precisam de cenários Gherkin.
-3. Se os passos BDD não estão em `tests/steps`, `features/steps` ou `steps`, crie um `specmd.toml` com o runner; para Java ou Go, aponte o `command` do bridge.
+1. Show the developer what changed and remind them to commit `.claude/settings.json` and `.codex/config.toml`: anyone who opens Claude Code in the repository and trusts the folder gets the plugin; in Codex, anyone who installs the plugin (`codex plugin marketplace add LucasGois1/specmd` and `codex plugin add specmd@specmd`) has it active in the trusted project.
+2. Run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/specmd_cli.py" check --root "$(pwd)"` and review with the developer the Markdown files without scenarios: those that do not describe system behavior go into a `.specmdignore` at the root; those that do need Gherkin scenarios.
+3. If the BDD steps are not in `tests/steps`, `features/steps` or `steps`, create a `specmd.toml` with the runner; for Java or Go, point `command` to the bridge.
+4. To get SpecMD's messages in Portuguese, add `language = "pt"` to `specmd.toml`.

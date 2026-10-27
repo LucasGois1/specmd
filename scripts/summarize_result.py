@@ -8,7 +8,7 @@ def main() -> int:
     try:
         result = json.load(sys.stdin)
     except ValueError:
-        print("A saída do SpecMD não é JSON válido.", file=sys.stderr)
+        print("SpecMD's output is not valid JSON.", file=sys.stderr)
         return 2
     print(result.get("status"))
     for finding in result.get("findings", []):
@@ -18,13 +18,13 @@ def main() -> int:
         print(f"- {location + ': ' if location else ''}{finding.get('message')}")
     run = result.get("run")
     if isinstance(run, dict):
-        freshness = "" if run.get("current", True) else " (desatualizada)"
-        print(f"Última execução{freshness}: {run.get('scenarios')} de {run.get('expected')} cenários, "
-              f"{len(run.get('failures', []))} sem passar.")
+        freshness = "" if run.get("current", True) else " (outdated)"
+        print(f"Last run{freshness}: {run.get('scenarios')} of {run.get('expected')} scenarios, "
+              f"{len(run.get('failures', []))} failing.")
         for failure in run.get("failures", []):
             print(f"- {failure.get('path')}:{failure.get('line')} {failure.get('id')} ({failure.get('status')})")
         for finding in run.get("findings", []):
-            print(f"- Execução: {finding.get('message')}")
+            print(f"- Run: {finding.get('message')}")
     return 0
 
 

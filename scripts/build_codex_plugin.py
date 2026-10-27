@@ -45,7 +45,7 @@ def collect() -> tuple[dict[str, bytes], dict[str, object]]:
     files = list(FIXED_FILES)
     package = REPOSITORY / "src" / "specmd"
     if package.is_symlink() or not (package / "core.py").is_file():
-        raise ValueError("O núcleo canônico src/specmd/core.py precisa existir antes do build")
+        raise ValueError("The canonical core src/specmd/core.py must exist before the build")
     files.extend(str(path.relative_to(REPOSITORY)) for path in sorted(package.glob("*.py")))
     for tree in TREES:
         files.extend(str(path.relative_to(REPOSITORY)) for path in sorted((REPOSITORY / tree).rglob("*"))
@@ -54,9 +54,9 @@ def collect() -> tuple[dict[str, bytes], dict[str, object]]:
     for relative in sorted(files):
         source = REPOSITORY / relative
         if source.is_symlink() or any(parent.is_symlink() for parent in source.parents if parent != REPOSITORY.parent):
-            raise ValueError(f"Fonte canônica não pode ser link simbólico: {relative}")
+            raise ValueError(f"A canonical source cannot be a symbolic link: {relative}")
         if not source.is_file():
-            raise ValueError(f"Fonte obrigatória ausente: {relative}")
+            raise ValueError(f"Required source missing: {relative}")
         data = source.read_bytes()
         if relative.endswith(".py"):
             ast.parse(data, filename=relative)
@@ -81,12 +81,12 @@ def _committed(target: Path) -> dict[str, bytes]:
 
 def build(target: Path = TARGET) -> dict[str, object]:
     if target.is_symlink():
-        raise ValueError("A saída gerada não pode ser um link simbólico")
+        raise ValueError("The generated output cannot be a symbolic link")
     payloads, manifest = collect()
     if target.exists():
         previous = target / MANIFEST
         if not previous.is_file() or json.loads(previous.read_text()).get("schema") != SCHEMA:
-            raise ValueError("Recusa substituir saída sem marcador de bundle gerado pelo SpecMD")
+            raise ValueError("Refusing to replace an output without the marker of a SpecMD bundle")
     with tempfile.TemporaryDirectory(prefix="specmd-build-", dir=target.parent) as staging_dir:
         staging = Path(staging_dir) / "plugin"
         for relative, data in payloads.items():
@@ -111,15 +111,15 @@ def check(target: Path = TARGET) -> list[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--check", action="store_true", help="só conferir codex-plugin/ contra as fontes")
+    parser.add_argument("--check", action="store_true", help="only check codex-plugin/ against the sources")
     args = parser.parse_args()
     if args.check:
         differences = check()
         if differences:
-            print("codex-plugin/ diverge das fontes; rode scripts/build_codex_plugin.py e faça commit:")
+            print("codex-plugin/ differs from the sources; run scripts/build_codex_plugin.py and commit:")
             print("\n".join(f"- {path}" for path in differences[:20]))
             return 1
-        print("codex-plugin/ confere com as fontes")
+        print("codex-plugin/ matches the sources")
         return 0
     print(json.dumps(build(), ensure_ascii=False, indent=2))
     return 0

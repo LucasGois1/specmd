@@ -19,32 +19,32 @@ specmd:
   kind: behavioral
 ---
 
-## SMD-RUN-REQ-001 — Somar valores
+## SMD-RUN-REQ-001 — Add values
 
 ```gherkin
-# language: pt
+# language: en
 @SMD-RUN-REQ-001
-Funcionalidade: Soma executada
+Feature: Executed sum
   @SMD-RUN-SCN-001
-  Cenário: Chamar a aplicação
-    Dado os números 2 e 3
-    Quando a soma for calculada
-    Então o resultado deve ser 5
+  Scenario: Call the application
+    Given the numbers 2 and 3
+    When the sum is calculated
+    Then the result should be 5
 ```
 """
 
 STEPS = """from behave import given, when, then
 from application import add
 
-@given('os números {a:d} e {b:d}')
+@given('the numbers {a:d} and {b:d}')
 def operands(context, a, b):
     context.operands = a, b
 
-@when('a soma for calculada')
+@when('the sum is calculated')
 def calculate(context):
     context.result = add(*context.operands)
 
-@then('o resultado deve ser {expected:d}')
+@then('the result should be {expected:d}')
 def check(context, expected):
     assert context.result == expected
 """
@@ -92,7 +92,7 @@ class RunnerTests(unittest.TestCase):
         self.assertFalse(list(self.root.rglob("*.feature")))
 
     def test_real_assertion_failure_cannot_be_evidence(self):
-        self.write("contract.md", CONTRACT.replace("ser 5", "ser 99"))
+        self.write("contract.md", CONTRACT.replace("be 5", "be 99"))
         result = self.execute()
         self.assertFalse(result["passed"], result)
         self.assertEqual(result["scenarios"][0]["status"], "failed")
@@ -120,14 +120,14 @@ class RunnerTests(unittest.TestCase):
 
     def test_multiple_blocks_execute_once_each_with_separate_origins(self):
         second = CONTRACT.split("```gherkin", 1)[1].rsplit("```", 1)[0].replace("SMD-RUN-SCN-001", "SMD-RUN-SCN-002")
-        self.write("contract.md", CONTRACT + "\nOutro exemplo obrigatório.\n\n```gherkin" + second + "```\n")
+        self.write("contract.md", CONTRACT + "\nAnother required example.\n\n```gherkin" + second + "```\n")
         result = self.execute()
         self.assertTrue(result["passed"], result)
         self.assertEqual([item["block"] for item in result["scenarios"]], [1, 2])
         self.assertEqual((self.root / "calls.txt").read_text(), "called\ncalled\n")
 
     def test_real_undefined_step_cannot_be_evidence(self):
-        self.write("tests/steps/steps.py", STEPS.replace("@then('o resultado deve ser {expected:d}')", "@then('outro passo {expected:d}')"))
+        self.write("tests/steps/steps.py", STEPS.replace("@then('the result should be {expected:d}')", "@then('another step {expected:d}')"))
         result = self.execute()
         self.assertFalse(result["passed"], result)
         self.assertIn("undefined", {step["status"] for step in result["scenarios"][0]["steps"]})
@@ -143,17 +143,17 @@ class RunnerTests(unittest.TestCase):
         self.write("specmd.toml", 'schema = 2\nproject_id = "runner-outline"\n')
         prefix = CONTRACT.split("```gherkin")[0]
         self.write("contract.md", prefix + """```gherkin
-# language: pt
+# language: en
 @SMD-RUN-REQ-001
-Funcionalidade: Soma por linhas
-  Regra: Somar cada linha
+Feature: Sum by rows
+  Rule: Add each row
     @SMD-RUN-SCN-001
-    Esquema do Cenário: Somar os valores
-      Dado os números <a> e <b>
-      Quando a soma for calculada
-      Então o resultado deve ser <resultado>
-    Exemplos:
-      | a | b | resultado |
+    Scenario Outline: Add the values
+      Given the numbers <a> and <b>
+      When the sum is calculated
+      Then the result should be <result>
+    Examples:
+      | a | b | result |
       | 2 | 3 | 5 |
       | 4 | 5 | 9 |
 ```
@@ -225,7 +225,7 @@ Funcionalidade: Soma por linhas
         self.write("contract.md", CONTRACT.replace("  @SMD-RUN-SCN-001\n", ""))
         result = self.execute()
         self.assertTrue(result["passed"], result)
-        self.assertEqual(result["scenarios"][0]["id"], "contract.md::Chamar a aplicação")
+        self.assertEqual(result["scenarios"][0]["id"], "contract.md::Call the application")
 
     def test_work_in_progress_scenarios_are_not_run(self):
         self.write("contract.md", CONTRACT.replace("  @SMD-RUN-SCN-001\n", "  @SMD-RUN-SCN-001 @wip\n"))
@@ -238,7 +238,7 @@ Funcionalidade: Soma por linhas
         self.write("tests/environment.py", "def before_scenario(context, scenario):\n"
                                            "    open('hook.txt', 'a').write(scenario.name + '\\n')\n")
         self.assertTrue(self.execute()["passed"])
-        self.assertEqual((self.root / "hook.txt").read_text(), "Chamar a aplicação\n")
+        self.assertEqual((self.root / "hook.txt").read_text(), "Call the application\n")
 
     def test_project_interpreter_is_used_only_when_it_has_behave(self):
         from specmd.runner import _python_for

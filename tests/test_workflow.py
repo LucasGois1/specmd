@@ -35,11 +35,11 @@ class WorkflowTests(unittest.TestCase):
 
     def test_code_changes_ignore_markdown_and_local_state(self):
         before = workflow.code_snapshot(self.root)
-        self.touch("docs/notes.md", "# Notas\n")
+        self.touch("docs/notes.md", "# Notes\n")
         self.touch(".specmd/local/state.json", "{}")
         self.touch(".claude/settings.local.json", "{}")
         self.assertEqual(self.changes(before), set())
-        self.touch("app.py", (self.root / "app.py").read_text() + "\n# mudança\n")
+        self.touch("app.py", (self.root / "app.py").read_text() + "\n# change\n")
         self.assertEqual(self.changes(before), {"app.py"})
 
     def test_code_changes_respect_gitignore(self):
@@ -48,22 +48,22 @@ class WorkflowTests(unittest.TestCase):
         self.touch(".gitignore", (self.root / ".gitignore").read_text() + "build-output/\n")
         self.assertEqual(self.changes(before), {".gitignore"})
         changed = workflow.code_snapshot(self.root)
-        self.touch("build-output/artifact.bin", "outro\n")
+        self.touch("build-output/artifact.bin", "other\n")
         self.assertEqual(self.changes(changed), set())
 
     def test_committing_or_reverting_the_work_is_not_a_change(self):
         self.commit()
         initial = workflow.code_snapshot(self.root)
         original = (self.root / "app.py").read_text()
-        self.touch("app.py", original + "\n# mudança\n")
-        self.touch("src/novo.py", "VALOR = 1\n")
+        self.touch("app.py", original + "\n# change\n")
+        self.touch("src/new.py", "VALUE = 1\n")
         edited = workflow.code_snapshot(self.root)
-        self.assertEqual(self.changes(initial), {"app.py", "src/novo.py"})
+        self.assertEqual(self.changes(initial), {"app.py", "src/new.py"})
         self.commit()
         self.assertEqual(self.changes(edited), set())
-        self.assertEqual(self.changes(initial), {"app.py", "src/novo.py"})
+        self.assertEqual(self.changes(initial), {"app.py", "src/new.py"})
         self.touch("app.py", original)
-        (self.root / "src/novo.py").unlink()
+        (self.root / "src/new.py").unlink()
         self.assertEqual(self.changes(initial), set())
 
     def test_without_git_a_pruned_walk_tells_only_whether_code_changed(self):
@@ -101,7 +101,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(workflow.check_project(self.root)["status"], "passing")
 
     def test_documentation_gaps_skip_execution(self):
-        self.touch("docs/new.md", "# Sem classificação\n")
+        self.touch("docs/new.md", "# Unclassified\n")
         result = workflow.run_project(self.root)
         self.assertEqual(result["status"], "needs_scenarios")
         self.assertNotIn("last_run", hook_state.load(self.root))

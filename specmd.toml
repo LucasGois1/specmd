@@ -1,5 +1,5 @@
-# O SpecMD analisa a própria documentação. Os requisitos em docs/requirements.md
-# ainda não têm passos Behave (os testes do projeto são unittest), então a
-# execução dos cenários ao concluir fica desligada.
+# SpecMD analyses its own documentation. The requirements in docs/requirements.md
+# have no Behave steps yet (the project's tests use unittest), so running the
+# scenarios at the end of a turn is off.
 [run]
 on_stop = false

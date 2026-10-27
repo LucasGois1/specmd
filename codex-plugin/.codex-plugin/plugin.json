@@ -1,6 +1,6 @@
 {
   "name": "specmd",
   "version": "0.4.0",
-  "description": "Documentação Markdown canônica com cenários BDD embutidos e feedback determinístico ao agente.",
+  "description": "Canonical Markdown documentation with embedded BDD scenarios and deterministic feedback for the agent.",
   "hooks": "./hooks/hooks.json"
 }

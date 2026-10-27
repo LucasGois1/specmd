@@ -43,7 +43,7 @@ class DemoTests(unittest.TestCase):
         self.assertEqual((code, result["status"]), (0, "ready"))
         code, result = self.cli("run", "--root", str(self.root))
         self.assertEqual((code, result["status"]), (0, "passing"))
-        (self.root / "docs/extra.md").write_text("# Sem classificação\n")
+        (self.root / "docs/extra.md").write_text("# Unclassified\n")
         code, result = self.cli("check", "--root", str(self.root))
         self.assertEqual((code, result["status"]), (1, "needs_scenarios"))
 
@@ -57,7 +57,7 @@ class DemoTests(unittest.TestCase):
 
     def test_cli_without_configuration_uses_the_defaults(self):
         self.root.mkdir()
-        (self.root / "notes.md").write_text("# Nota\n")
+        (self.root / "notes.md").write_text("# Note\n")
         code, result = self.cli("check", "--root", str(self.root))
         self.assertEqual((code, result["status"]), (1, "needs_scenarios"))
 

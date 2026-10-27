@@ -127,7 +127,7 @@ class BootstrapTests(unittest.TestCase):
                                   input=json.dumps({"hook_event_name": "SessionStart"}), text=True,
                                   capture_output=True, env=environment, timeout=30)
             self.assertEqual(hook.returncode, 0, hook.stderr)
-            self.assertIn("2 cenários", json.loads(hook.stdout)["hookSpecificOutput"]["additionalContext"])
+            self.assertIn("2 scenarios", json.loads(hook.stdout)["hookSpecificOutput"]["additionalContext"])
             run = subprocess.run([sys.executable, "-I", "-S", str(REPOSITORY / "scripts/specmd_cli.py"), "run",
                                   "--root", str(root)], text=True, capture_output=True, env=environment, timeout=120)
             self.assertEqual(json.loads(run.stdout)["status"], "passing", run.stdout + run.stderr)
