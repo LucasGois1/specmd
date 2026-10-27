@@ -96,4 +96,23 @@ Java e Go usam um `command` de bridge; veja [adapters](../adapters/README.md).
 
 ## Codex
 
-O mesmo `hooks/hooks.json` serve ao Codex. Gere o bundle com `python scripts/build_codex_plugin.py`, instale pelo marketplace local e revise os handlers em `/hooks`, seguindo [o guia](experimental-codex.md). Os eventos novos ainda não foram exercitados nativamente no Codex.
+O mesmo `hooks/hooks.json` serve ao Codex. O plugin vem do marketplace local `specmd-local` (`.agents/plugins/marketplace.json`), que aponta para o bundle gerado em `dist/codex-plugin`.
+
+Instalação, uma vez, na raiz deste clone:
+
+```sh
+python scripts/build_codex_plugin.py
+codex plugin marketplace add "$(pwd)"
+codex plugin add specmd@specmd-local
+```
+
+Atualização, depois de `git pull`:
+
+```sh
+python scripts/build_codex_plugin.py
+codex plugin add specmd@specmd-local
+```
+
+Depois de instalar ou atualizar, abra o `codex`, rode `/hooks` e confie nos quatro handlers do `specmd@specmd-local`; confira também que eles estão habilitados. O Codex guarda o hash do conteúdo do plugin junto da confiança, então cada atualização pede uma revisão nova.
+
+No Codex, o plugin é habilitado por usuário; o SpecMD só age em projetos com `specmd.toml`. Veja as [sessões nativas no Codex](../research/codex/native-session.md).
