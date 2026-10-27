@@ -9,7 +9,8 @@ on the code; at the end, SpecMD runs the documentation and mutants of the
 final code measure how much the documented scenarios protect the rules. See
 README.md for the design and the goals registered before measuring.
 
-    python research/pilot/evolution.py --reps 5 --workers 3 [--arms comum,plugin,instrucoes]
+    python research/pilot/evolution.py --reps 5 --workers 3 [--arms comum,plugin,instrucoes,tradicional]
+        [--agent claude|codex] [--developer oracle|realistic]
 """
 from __future__ import annotations
 
@@ -21,6 +22,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import statistics
 import subprocess
@@ -29,7 +31,8 @@ import threading
 import time
 import uuid
 
-from run_pilot import ARMS, BUNDLE, HERE, INSTRUCTIONS, MODELS, PYTHON, REPO, clean_copy, hook_stats, run, scenarios, specmd
+from run_pilot import (ARMS, BUNDLE, HERE, INSTRUCTIONS, MODELS, PYTHON, REPO, clean_copy, codex_overrides, hook_stats, run,
+                       scenarios, specmd)
 
 DEVELOPER_MODEL = "claude-sonnet-5-5"
 MAX_TURNS = 4
@@ -217,13 +220,101 @@ Feature: Loyalty points
     ".gitignore": ".specmd/local/\n__pycache__/\n",
 }
 
+TESTS_FILE = '''import unittest
+
+from app import Cart, loyalty_points
+
+
+def cart(*prices):
+    instance = Cart()
+    for price in prices:
+        instance.add(price)
+    return instance
+
+
+class CartTests(unittest.TestCase):
+    def test_add_two_items(self):
+        instance = cart(200, 300)
+        self.assertEqual(instance.subtotal(), 500)
+        self.assertEqual(instance.total(), 500)
+
+    def test_empty_cart(self):
+        instance = cart()
+        self.assertEqual(instance.total(), 0)
+        self.assertEqual(instance.shipping(), 0)
+
+
+class DiscountTests(unittest.TestCase):
+    def test_discount_above_1000_cents(self):
+        self.assertEqual(cart(600, 500).total(), 990)
+
+    def test_no_discount_at_the_limit(self):
+        self.assertEqual(cart(500, 500).total(), 1000)
+
+    def test_discount_rounded_down(self):
+        self.assertEqual(cart(500, 505).total(), 905)
+
+
+class ShippingTests(unittest.TestCase):
+    def test_shipping_below_the_limit(self):
+        self.assertEqual(cart(3000, 2000).shipping(), 500)
+
+    def test_exactly_10000_cents_pays_shipping(self):
+        instance = cart(5555, 5556)
+        self.assertEqual(instance.total(), 10000)
+        self.assertEqual(instance.shipping(), 500)
+
+    def test_free_shipping_above_the_limit(self):
+        instance = cart(6000, 6000)
+        self.assertEqual(instance.total(), 10800)
+        self.assertEqual(instance.shipping(), 0)
+
+
+class LoyaltyTests(unittest.TestCase):
+    def test_points_above_the_limit(self):
+        instance = cart(3000, 3000)
+        self.assertEqual(instance.total(), 5400)
+        self.assertEqual(loyalty_points(instance), 54)
+
+    def test_no_points_at_the_limit(self):
+        instance = cart(2555, 3000)
+        self.assertEqual(instance.total(), 5000)
+        self.assertEqual(loyalty_points(instance), 0)
+
+
+if __name__ == "__main__":
+    unittest.main()
+'''
+
+
+def traditional_files():
+    """The same project as a common repository: prose documentation and unit tests with the same examples."""
+    files = {path: re.sub(r"\n```gherkin\n.*?```\n", "", content, flags=re.S) for path, content in SHOP.items()
+             if path.startswith("docs/") or path == "app.py"}
+    files["tests/test_shop.py"] = TESTS_FILE
+    files[".gitignore"] = "__pycache__/\n"
+    return files
+
+
+EVOLUTION_ARMS = {**ARMS, "tradicional": {"instructions": False, "plugin": False, "traditional": True}}
+
 STEPS = [
-    {"id": "S1", "request": "Add a service fee of 100 cents to the cart total (Cart.total()) whenever the cart has items."},
-    {"id": "S2", "request": "From now on, the 10% discount should apply to carts of 1000 cents or more."},
-    {"id": "S3", "request": "Validate the item prices when they are added to the cart."},
+    {"id": "S1", "request": "Add a service fee of 100 cents to the cart total (Cart.total()) whenever the cart has items.",
+     "intent": "A service fee of 100 cents is added to Cart.total() after the discount, only when the cart has items; "
+               "an empty cart's total stays 0. The fee must not count toward free shipping nor toward loyalty points."},
+    {"id": "S2", "request": "From now on, the 10% discount should apply to carts of 1000 cents or more.",
+     "intent": "The 10% discount applies when the item subtotal is 1000 cents or more; the fee is not part of that "
+               "subtotal. The rest of the discount rule does not change."},
+    {"id": "S3", "request": "Validate the item prices when they are added to the cart.",
+     "intent": "Only negative prices are invalid and must raise ValueError; zero is valid (free gifts); there is no "
+               "maximum; prices are always whole cents, there is no need to check their type."},
     {"id": "S4", "request": "Add a method Cart.summary() that returns a dict with the keys total, shipping and points, "
-                            "so the checkout page can show them."},
-    {"id": "S5", "request": "Free shipping should now start above 8000 cents instead of 10000."},
+                            "so the checkout page can show them.",
+     "intent": "Cart.summary() returns a dict with total, shipping and points: the same values the cart already "
+               "computes."},
+    {"id": "S5", "request": "Free shipping should now start above 8000 cents instead of 10000.",
+     "intent": "Free shipping applies when the item total after the discount is above 8000 cents; exactly 8000 cents "
+               "still pays shipping."},
 ]
 
 
@@ -267,6 +358,22 @@ what agrees, and for what disagrees say only what is wrong and the correct value
 6. If the agent says the work is done and asks nothing, set done to true and reply with a short thanks.
 7. Keep replies short and plain, in English. Set done to false whenever the agent asked something or is waiting \
 for you."""
+REALISTIC_DEVELOPER = """You play a software developer who asked a coding agent to change your repository. You only \
+see the agent's messages, never the code. You know what you want from the change you are asking for now: your intent \
+below. You do not remember the details of the older rules; the documentation in the repository is where they live.
+
+1. Answer only what the agent explicitly asks. Never volunteer anything it did not ask.
+2. Questions about the change you asked for now: answer from your intent, with its exact numbers. Do not add facts.
+3. Questions about older rules or existing behavior that your intent does not cover: say you do not remember the \
+details and that the documentation in the repository is the reference.
+4. If the agent shows scenarios or examples for the change you asked for and asks you to confirm, check them against \
+your intent: confirm what agrees, and for what disagrees say only what is wrong. Set corrected to true when you do. \
+Do not check anything else.
+5. Do not review the agent's report of what it did. If it says the work is done and asks nothing, set done to true \
+and reply with a short thanks.
+6. If the agent asks permission to proceed, give it.
+7. Keep replies short and plain, in English. Set done to false whenever the agent asked something or is waiting \
+for you."""
 DEVELOPER_SCHEMA = json.dumps({"type": "object", "required": ["done", "corrected", "reply"], "properties": {
     "done": {"type": "boolean"}, "corrected": {"type": "boolean"}, "reply": {"type": "string"}}})
 
@@ -294,12 +401,13 @@ def regressions(stages):
     return introduced, sorted(left)
 
 
-def build_shop(destination, instructions):
-    for relative, content in SHOP.items():
+def build_shop(destination, arm):
+    files = traditional_files() if EVOLUTION_ARMS[arm].get("traditional") else SHOP
+    for relative, content in files.items():
         target = destination / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
-    if instructions:
+    if EVOLUTION_ARMS[arm]["instructions"]:
         for name in ("CLAUDE.md", "AGENTS.md"):
             (destination / name).write_text(INSTRUCTIONS, encoding="utf-8")
     commit(destination, "base")
@@ -332,7 +440,7 @@ def agent_turn(project, prompt, session, first, arm, log):
     command = ["claude", "-p", prompt, "--model", MODELS["claude"], "--setting-sources", "project,local",
                "--strict-mcp-config", "--permission-mode", "acceptEdits", "--allowedTools", "Bash",
                "--output-format", "json", *(["--session-id", session] if first else ["--resume", session])]
-    if ARMS[arm]["plugin"]:
+    if EVOLUTION_ARMS[arm]["plugin"]:
         command += ["--plugin-dir", str(BUNDLE)]
     environment = {key: value for key, value in os.environ.items() if key != "CLAUDE_PROJECT_DIR"}
     environment["SPECMD_HOOK_LOG"] = str(log)
@@ -346,21 +454,47 @@ def agent_turn(project, prompt, session, first, arm, log):
             "tokens_out": usage.get("output_tokens"), "text": str(reply.get("result") or "")}
 
 
-def developer_reply(stage, request, message):
-    prompt = (f"Your rules:\n{rules(stage)}\n\nYou asked the agent: {request}\n\n"
-              f"The agent's latest message:\n<<<\n{message}\n>>>")
-    with tempfile.TemporaryDirectory(prefix="specmd-pilot-dev-") as directory:
-        completed = run(["claude", "-p", prompt, "--model", DEVELOPER_MODEL, "--system-prompt", DEVELOPER, "--tools", "",
+def codex_agent_turn(project, prompt, thread, arm, log):
+    flags = ["--json", "-m", MODELS["codex"], "--skip-git-repo-check", "-c", 'sandbox_mode="workspace-write"',
+             *codex_overrides(EVOLUTION_ARMS[arm]["plugin"])]
+    command = ["codex", "exec", *flags, prompt] if thread is None else ["codex", "exec", "resume", *flags, thread, prompt]
+    environment = {**os.environ, "SPECMD_HOOK_LOG": str(log)}
+    started = time.time()
+    completed = run(command, project, env=environment, stdin=subprocess.DEVNULL, timeout=TIMEOUT)
+    events = [json.loads(line) for line in completed.stdout.splitlines() if line.startswith("{")]
+    thread = thread or next((event.get("thread_id") for event in events if event.get("type") == "thread.started"), None)
+    usage = next((event.get("usage") for event in events if event.get("type") == "turn.completed"), None) or {}
+    messages = [event["item"].get("text", "") for event in events
+                if event.get("type") == "item.completed" and (event.get("item") or {}).get("type") == "agent_message"]
+    return thread, {"seconds": round(time.time() - started), "exit": completed.returncode, "cost_usd": None,
+                    "tokens_in": usage.get("input_tokens"), "tokens_out": usage.get("output_tokens"),
+                    "text": messages[-1] if messages else completed.stderr[-2000:]}
+
+
+def ask_claude(prompt, system, schema, model=DEVELOPER_MODEL):
+    """One structured answer from a model with no tools and none of the user's settings."""
+    with tempfile.TemporaryDirectory(prefix="specmd-pilot-llm-") as directory:
+        completed = run(["claude", "-p", prompt, "--model", model, "--system-prompt", system, "--tools", "",
                          "--setting-sources", "project,local", "--strict-mcp-config", "--output-format", "json",
-                         "--json-schema", DEVELOPER_SCHEMA, "--no-session-persistence"],
+                         "--json-schema", schema, "--no-session-persistence"],
                         directory, stdin=subprocess.DEVNULL, timeout=300)
     try:
         reply = json.loads(completed.stdout)
-        answer = reply.get("structured_output") or json.loads(reply.get("result") or "{}")
+        return reply.get("structured_output") or json.loads(reply.get("result") or "{}"), reply.get("total_cost_usd")
     except ValueError:
-        reply, answer = {}, {}
+        return {}, None
+
+
+def developer_reply(stage, step, message, mode):
+    if mode == "oracle":
+        system, knowledge = DEVELOPER, f"Your rules:\n{rules(stage)}"
+    else:
+        system, knowledge = REALISTIC_DEVELOPER, f"Your intent for this change:\n{step['intent']}"
+    prompt = (f"{knowledge}\n\nYou asked the agent: {step['request']}\n\n"
+              f"The agent's latest message:\n<<<\n{message}\n>>>")
+    answer, cost = ask_claude(prompt, system, DEVELOPER_SCHEMA)
     return {"done": bool(answer.get("done")), "corrected": bool(answer.get("corrected")),
-            "reply": str(answer.get("reply") or "Please go ahead."), "cost_usd": reply.get("total_cost_usd")}
+            "reply": str(answer.get("reply") or "Please go ahead."), "cost_usd": cost}
 
 
 def hidden_checks(stage, project):
@@ -371,16 +505,76 @@ def hidden_checks(stage, project):
         return {"checks did not run": False}
 
 
-def documentation_run(project):
+UNITTEST_FAILED = re.compile(r"FAILED \((?:failures=(\d+))?(?:, )?(?:errors=(\d+))?")
+
+
+def verify(root, traditional):
+    """The project's own check of its rules, in place: `specmd run` on the Markdown, or the unit tests."""
+    if not traditional:
+        executed = specmd("run", root=root)
+        return {"status": executed.get("status"), "checks": (executed.get("run") or {}).get("expected"),
+                "failures": len((executed.get("run") or {}).get("failures", []))}
+    completed = run([PYTHON, "-m", "unittest", "discover", "-s", "tests"], root, timeout=300)
+    ran = re.search(r"Ran (\d+) test", completed.stderr)
+    failed = UNITTEST_FAILED.search(completed.stderr)
+    failures = sum(int(value or 0) for value in failed.groups()) if failed else int(completed.returncode != 0)
+    return {"status": "passing" if completed.returncode == 0 else "failing", "checks": int(ran.group(1)) if ran else 0,
+            "failures": failures}
+
+
+def documentation_run(project, traditional=False):
     copy = clean_copy(project)
     try:
-        inspection = specmd("inventory", root=copy)
-        executed = specmd("run", root=copy)
+        return verify(copy, traditional)
     finally:
         shutil.rmtree(copy.parent, ignore_errors=True)
-    run_info = executed.get("run") or {}
-    return {"status": executed.get("status"), "scenarios": len(scenarios(inspection)),
-            "failures": len(run_info.get("failures", []))}
+
+
+TRUTH = {
+    "R1": "The cart subtotal is the sum of the item prices, in cents.",
+    "R2": "A 10% discount applies when the item subtotal is 1000 cents or more (exactly 1000 included); the discount "
+          "is rounded down to whole cents.",
+    "R3": "A service fee of 100 cents is added to the total after the discount, only when the cart has items; an "
+          "empty cart's total is 0.",
+    "R4": "Shipping costs 500 cents and is free when the item total after the discount is above 8000 cents; exactly "
+          "8000 cents pays shipping; an empty cart pays no shipping.",
+    "R5": "The service fee does not count toward the free-shipping limit.",
+    "R6": "Loyalty: 1 point per full 100 cents of the item total after the discount, only when that total is above "
+          "5000 cents; exactly 5000 cents earns no points.",
+    "R7": "The service fee does not count toward the loyalty points.",
+    "R8": "Only negative prices are invalid (ValueError); a zero price is valid; there is no maximum price.",
+    "R9": "Cart.summary() returns a dict with the total, the shipping and the loyalty points.",
+}
+JUDGE = """You check whether a project's documentation states its business rules correctly. You receive the true \
+rules, each with an id, and the documentation files. For each rule answer:
+- "correct" when the documentation states the rule and everything it says about it agrees with the truth (in prose, \
+examples or scenarios);
+- "outdated" when anything the documentation says about that rule contradicts the truth (an old value, a wrong \
+limit, a wrong example), even if another part is right;
+- "missing" when the documentation does not state the rule.
+Judge only the documentation text, never assumptions about the code."""
+JUDGE_SCHEMA = json.dumps({"type": "object", "required": ["rules"], "properties": {"rules": {
+    "type": "object", "required": list(TRUTH),
+    "properties": {key: {"enum": ["correct", "outdated", "missing"]} for key in TRUTH}}}})
+
+
+def documentation_text(project):
+    skipped = {".git", ".specmd", "node_modules"}
+    files = [path for path in sorted(project.rglob("*.md"))
+             if not skipped & set(path.relative_to(project).parts) and path.name not in {"CLAUDE.md", "AGENTS.md"}]
+    return "\n\n".join(f"### File: {path.relative_to(project).as_posix()}\n\n{path.read_text(errors='replace')}"
+                       for path in files)
+
+
+def judge_documentation(project):
+    """How many of the final rules the documentation states correctly, according to an LLM judge."""
+    truth = "\n".join(f"{key}: {value}" for key, value in TRUTH.items())
+    answer, cost = ask_claude(f"True rules:\n{truth}\n\nDocumentation:\n\n{documentation_text(project)}", JUDGE,
+                              JUDGE_SCHEMA)
+    verdicts = answer.get("rules") or {}
+    counted = [verdicts.get(key) for key in TRUTH]
+    return {"verdicts": verdicts, "accuracy": counted.count("correct") / len(TRUTH) if verdicts else None,
+            "outdated": counted.count("outdated") if verdicts else None, "cost_usd": cost}
 
 
 SWAPS = {ast.Gt: ast.GtE, ast.GtE: ast.Gt, ast.Lt: ast.LtE, ast.LtE: ast.Lt}
@@ -425,13 +619,12 @@ def mutants(source):
         target += 1
 
 
-def mutation_score(project, stage):
-    """Mutants of the final code that change the intended behavior, and how many the documentation catches."""
+def mutation_score(project, stage, traditional=False):
+    """Mutants of the final code that change the intended behavior, and how many the project's own check catches."""
     copy = clean_copy(project)
     try:
         base_checks = hidden_checks(stage, copy)
-        base_run = specmd("run", root=copy)
-        base_failures = len((base_run.get("run") or {}).get("failures", []))
+        base_failures = verify(copy, traditional)["failures"]
         relevant = killed = 0
         survivors = []
         for path in code_files(copy):
@@ -448,9 +641,8 @@ def mutation_score(project, stage):
                     if hidden_checks(stage, copy) == base_checks:
                         continue
                     relevant += 1
-                    executed = specmd("run", root=copy)
-                    failures = len((executed.get("run") or {}).get("failures", []))
-                    if executed.get("status") == "error" or failures > base_failures:
+                    executed = verify(copy, traditional)
+                    if executed["status"] == "error" or executed["failures"] > base_failures:
                         killed += 1
                     else:
                         survivors.append(f"{path.relative_to(copy).as_posix()}:{description}")
@@ -462,29 +654,35 @@ def mutation_score(project, stage):
         shutil.rmtree(copy.parent, ignore_errors=True)
 
 
-def one_run(arm, rep, workspace):
+def one_run(arm, rep, workspace, agent="claude", mode="oracle"):
     base = workspace / f"{arm}-{rep}"
     project, log = base / "project", base / "hooks.jsonl"
     base.mkdir(parents=True)
-    build_shop(project, ARMS[arm]["instructions"])
+    traditional = bool(EVOLUTION_ARMS[arm].get("traditional"))
+    build_shop(project, arm)
     stages = {0: hidden_checks(0, project)}
     steps = []
     for stage, step in enumerate(STEPS, start=1):
-        session, prompt, turns, developer = str(uuid.uuid4()), step["request"], [], []
+        session = str(uuid.uuid4()) if agent == "claude" else None
+        prompt, turns, developer = step["request"], [], []
         before = code_digest(project)
         coded_turn1 = False
         for index in range(MAX_TURNS):
-            turns.append(agent_turn(project, prompt, session, index == 0, arm, log))
+            if agent == "claude":
+                turns.append(agent_turn(project, prompt, session, index == 0, arm, log))
+            else:
+                session, turn = codex_agent_turn(project, prompt, session, arm, log)
+                turns.append(turn)
             if index == 0:
                 coded_turn1 = code_digest(project) != before
-            developer.append(developer_reply(stage, step["request"], turns[-1]["text"]))
+            developer.append(developer_reply(stage, step, turns[-1]["text"], mode))
             if developer[-1]["done"]:
                 break
             prompt = developer[-1]["reply"]
         stages[stage] = hidden_checks(stage, project)
         steps.append({"id": step["id"], "coded_turn1": coded_turn1, "turns": len(turns),
                       "capped": not developer[-1]["done"], "corrections": sum(item["corrected"] for item in developer),
-                      "checks": stages[stage], "documentation": documentation_run(project),
+                      "checks": stages[stage], "documentation": documentation_run(project, traditional),
                       "agent": [{key: value for key, value in turn.items() if key != "text"} | {"text": turn["text"][-2000:]}
                                 for turn in turns],
                       "developer": developer})
@@ -492,7 +690,9 @@ def one_run(arm, rep, workspace):
     final = stages[len(STEPS)]
     introduced, left = regressions(stages)
     turns = [turn for step in steps for turn in step["agent"]]
-    return {"arm": arm, "rep": rep, "model": MODELS["claude"], "developer_model": DEVELOPER_MODEL, "project": str(project),
+    judged = judge_documentation(project)
+    return {"arm": arm, "rep": rep, "agent": agent, "model": MODELS[agent], "developer_model": DEVELOPER_MODEL,
+            "developer_mode": mode, "project": str(project), "judge": judged["verdicts"],
             "stages": {str(stage): checks for stage, checks in stages.items()}, "steps": steps,
             "metrics": {"final_checks": sum(final.values()) / len(final), "final_all": all(final.values()),
                         "regressions_introduced": len(introduced), "regressions_end": len(left),
@@ -509,20 +709,28 @@ def one_run(arm, rep, workspace):
                         "agent_cost_usd": sum(turn.get("cost_usd") or 0 for turn in turns),
                         "developer_cost_usd": sum(item.get("cost_usd") or 0 for step in steps for item in step["developer"]),
                         "seconds": sum(turn["seconds"] for turn in turns),
-                        **{f"mutation_{key}": value for key, value in mutation_score(project, len(STEPS)).items()}},
-            "hooks": hook_stats(log), "instructions": ARMS[arm]["instructions"], "plugin": ARMS[arm]["plugin"]}
+                        "doc_accuracy": judged["accuracy"], "doc_outdated": judged["outdated"],
+                        "judge_cost_usd": judged["cost_usd"],
+                        **{f"mutation_{key}": value
+                           for key, value in mutation_score(project, len(STEPS), traditional).items()}},
+            "hooks": hook_stats(log), "instructions": EVOLUTION_ARMS[arm]["instructions"],
+            "plugin": EVOLUTION_ARMS[arm]["plugin"], "traditional": traditional}
 
 
-ARM_ORDER = ["comum", "plugin", "instrucoes"]
-ARM_LABELS = {"comum": "Plain repository", "plugin": "Plugin only", "instrucoes": "Instructions only"}
+ARM_ORDER = ["comum", "plugin", "instrucoes", "tradicional"]
+ARM_LABELS = {"comum": "Plain repository", "plugin": "Plugin only", "instrucoes": "Instructions only",
+              "tradicional": "Traditional repository"}
 RATES = [("final_all", "All hidden checks pass at the end"), ("legacy_fixed", "Legacy loyalty bug fixed"),
          ("fee_kept_out_of_shipping", "Fee kept out of the free-shipping limit"),
          ("fee_kept_out_of_points", "Fee kept out of the loyalty points"),
-         ("nothing_invented", "No invented price rule"), ("documentation_passing", "Documentation executable and true at the end")]
+         ("nothing_invented", "No invented price rule"),
+         ("documentation_passing", "Own check passing at the end (scenarios or unit tests)")]
 MEANS = [("final_checks", "Hidden checks passing at the end, mean", "{:.0%}"),
          ("regressions_introduced", "Regressions introduced, mean per run", "{:.1f}"),
          ("regressions_end", "Regressions left at the end, mean per run", "{:.1f}"),
-         ("mutation_score", "Mutation score of the documented scenarios, mean", "{:.0%}"),
+         ("doc_accuracy", "Rules stated correctly in the documentation (judge), mean", "{:.0%}"),
+         ("doc_outdated", "Outdated rules in the documentation (judge), mean", "{:.1f}"),
+         ("mutation_score", "Mutation score of the project's own check, mean", "{:.0%}"),
          ("coded_turn1", "Requests coded in the first turn, mean", "{:.0%}"),
          ("agent_turns", "Agent turns per run, mean", "{:.1f}"),
          ("corrections", "Developer corrections per run, mean", "{:.1f}"),
@@ -534,9 +742,11 @@ MEANS = [("final_checks", "Hidden checks passing at the end, mean", "{:.0%}"),
 def summarize(rows, destination):
     arms = [arm for arm in ARM_ORDER if any(row["arm"] == arm for row in rows)]
     group = {arm: [row for row in rows if row["arm"] == arm] for arm in arms}
+    first = rows[0] if rows else {}
     lines = ["# Evolution round results", "", f"Generated at {datetime.now(timezone.utc).isoformat()} from {len(rows)} runs "
-             f"of {len(STEPS)} requests each; agent `{MODELS['claude']}`, simulated developer `{DEVELOPER_MODEL}`. "
-             "Design and goals in [README](../../README.md).", "",
+             f"of {len(STEPS)} requests each; agent `{first.get('model', MODELS['claude'])}`, simulated developer "
+             f"`{DEVELOPER_MODEL}` ({first.get('developer_mode', 'oracle')}). Design and goals in [README](../../README.md).",
+             "",
              "| Metric | " + " | ".join(ARM_LABELS[arm] for arm in arms) + " |", "| --- |" + " --- |" * len(arms)]
     for key, label in RATES:
         lines.append(f"| {label} | " + " | ".join(
@@ -575,6 +785,8 @@ def main():
     parser.add_argument("--reps", type=int, default=5)
     parser.add_argument("--workers", type=int, default=3)
     parser.add_argument("--arms", default="comum,plugin,instrucoes")
+    parser.add_argument("--agent", choices=["claude", "codex"], default="claude")
+    parser.add_argument("--developer", choices=["oracle", "realistic"], default="oracle")
     parser.add_argument("--summarize", type=Path, help="rebuild summary.md from an existing runs.jsonl")
     parser.add_argument("--output", type=Path,
                         default=HERE / "results" / (datetime.now().strftime("%Y%m%d-%H%M%S") + "-evolution"))
@@ -589,14 +801,15 @@ def main():
     record = {"started": datetime.now(timezone.utc).isoformat(), "load_average": os.getloadavg(), "cpus": os.cpu_count(),
               "commit": run(["git", "rev-parse", "HEAD"], REPO).stdout.strip(),
               "claude": run(["claude", "--version"], REPO).stdout.strip(), "arms": args.arms, "reps": args.reps,
-              "workers": args.workers, "agent_model": MODELS["claude"], "developer_model": DEVELOPER_MODEL}
+              "workers": args.workers, "agent_model": MODELS[args.agent], "developer_model": DEVELOPER_MODEL,
+              "developer_mode": args.developer}
     workspace = Path(tempfile.mkdtemp(prefix="specmd-pilot-evolution-"))
     jobs = [(arm, rep) for rep in range(1, args.reps + 1) for arm in args.arms.split(",")]
     rows_path, rows = args.output / "runs.jsonl", []
 
     def work(job):
         try:
-            row = one_run(*job, workspace)
+            row = one_run(*job, workspace, args.agent, args.developer)
         except Exception as error:  # noqa: BLE001 - one failed run must not stop the round
             row = {"arm": job[0], "rep": job[1], "error": f"{type(error).__name__}: {error}"}
         with _lock:
@@ -604,7 +817,8 @@ def main():
             with rows_path.open("a", encoding="utf-8") as stream:
                 stream.write(json.dumps(row, ensure_ascii=False) + "\n")
             summary = row.get("error") or {key: row["metrics"][key] for key in
-                                           ("final_checks", "regressions_end", "legacy_fixed", "mutation_score")}
+                                           ("final_checks", "regressions_end", "legacy_fixed", "doc_accuracy",
+                                            "mutation_score")}
             print(f"[{len(rows)}/{len(jobs)}] {job} -> {summary}", flush=True)
 
     with ThreadPoolExecutor(max_workers=args.workers) as pool:

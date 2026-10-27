@@ -335,3 +335,24 @@ Complete round: 15 runs of 5 requests (75 sessions), without infrastructure fail
 - One model, one project and 5 runs per arm.
 - An oracle developer: perfect knowledge of the rules and attention to every number the agent reports.
 - The plain repository already had the format SpecMD establishes (Gherkin in the Markdown with step definitions), so the comparison measures the hooks, not the adoption of the format.
+
+## Fifth round: realistic developer and traditional repository (recorded before measuring)
+
+The fourth round left two explanations for the ceiling: an oracle developer, and a plain repository that already had executable documentation. The fifth round addresses both, with the same project, requests, hidden checks and agent (`claude-haiku-5-5`), and 5 runs per arm (20 runs).
+
+- **Realistic developer (path A):** the simulated developer (`claude-sonnet-5-5`) knows only its intent for the change it is asking for now. About older rules and existing behavior it says it does not remember the details and that the documentation is the reference. It checks scenarios the agent shows for the current change against that intent, and does not review the agent's report of what it did.
+- **Traditional repository (path C), a fourth arm:** the same code and the same rules, with the documentation in prose (the same Markdown without the Gherkin blocks) and the same examples as unit tests (`tests/test_shop.py`, standard `unittest`), without the plugin and without instructions. It is what a common repository looks like; the comparison measures adopting the SpecMD format with the plugin, not only the hooks.
+- **Documentation judge, a new metric:** at the end of each run, `claude-sonnet-5-5` reads the project's Markdown (except `CLAUDE.md`/`AGENTS.md`) and classifies each of the 9 final rules as stated correctly, outdated or missing. The prompt and the rules are in `evolution.py` (`JUDGE`, `TRUTH`). On the starting project it classifies 2 rules as correct, 2 as outdated and 5 as missing.
+- **Own check:** `specmd run` in the Markdown repositories and `python -m unittest discover -s tests` in the traditional one; the mutation score uses the project's own check.
+- **Path B (GPT-6 Luna in Codex)** runs with the same harness (`--agent codex`) once SpecMD is installed from the repository in Codex and its hooks are enabled; its goals will be recorded before that run.
+
+### Goals of the fifth round
+
+1. **Correct behavior against the plain repository (A):** plugin only with at least 90% of the hidden checks passing at the end on average, and at least 10 points above the plain repository.
+2. **Correct behavior against the traditional repository (C):** plugin only at least 10 points above the traditional repository on the same metric.
+3. **Documentation that tells the truth:** plugin only with at least 80% of the rules stated correctly (judge), at least 20 points above the traditional repository and 10 points above the plain repository.
+4. **No outdated documentation:** plugin only with at most 0.5 outdated rules per run, and fewer than the traditional repository.
+5. **No regressions left:** plugin only with at most 0.2 regressions left at the end per run, and fewer than the plain and the traditional repositories.
+6. **Protection:** mutation score of the own check with plugin only at least 10 points above the traditional repository.
+7. **No need to write the instructions:** plugin only no worse than "instructions only" on goals 1, 3 and 5 (at most 5 points or 0.2 below).
+8. **Cost:** agent tokens per run with plugin only up to 1.5 times those of the plain and of the traditional repositories.
