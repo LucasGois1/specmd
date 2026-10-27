@@ -384,3 +384,41 @@ For each developer mode, plugin only against the plain and the traditional repos
 6. **Protection:** mutation score of the own check with plugin only at least 10 points above the traditional repository.
 7. **Robust to a hurried developer:** from the realistic to the hurried mode, plugin only loses at most 10 points of hidden checks, and less than the plain and the traditional repositories.
 8. **Cost:** agent tokens per run with plugin only up to 1.5 times those of the plain and of the traditional repositories.
+
+## Results of the fifth round (27/10/2026)
+
+Complete round: 20 runs of 5 requests (100 sessions), without infrastructure failure, in `results/20261027-132922-realistic/`. It overlapped with the sixth round for about 20 minutes, which raised the machine load and the hook latency.
+
+| Metric | Plain repository | Plugin only | Instructions only | Traditional repository |
+| --- | --- | --- | --- | --- |
+| All hidden checks pass at the end | 2/5 | **5/5** | 4/5 | 2/5 |
+| Legacy loyalty bug fixed | 2/5 | **5/5** | 4/5 | 2/5 |
+| Own check passing at the end (scenarios or unit tests) | 2/5 | **5/5** | 4/5 | 2/5 |
+| Hidden checks passing at the end, mean | 97% | 100% | 99% | 97% |
+| Regressions left at the end, mean per run | 0 | 0 | 0 | 0 |
+| Rules stated correctly in the documentation (judge), mean | 82% | **100%** | 96% | 67% |
+| Outdated rules in the documentation (judge), mean | 0.2 | 0 | 0.4 | 0.2 |
+| Mutation score of the own check, mean | 84% | 96% | 94% | 88% |
+| Requests coded in the first turn | 100% | 28% | 0% | 100% |
+| Agent tokens per run, median | 1.26M | 1.45M | 1.57M | 1.11M |
+| p95 of `PostToolUse` / `Stop`, median across runs with plugin | — | 1,767 / 912 ms | — | — |
+
+### Goals of the fifth round
+
+| Goal | Result |
+| --- | --- |
+| 1. Hidden checks: plugin only at least 90% and 10 points above the plain repository | **Not met**: 100% against 97%. The difference is one check of 18 (the legacy bug) in 3 of 5 runs; by run, all checks passed in 5/5 against 2/5. |
+| 2. Hidden checks: 10 points above the traditional repository | **Not met**: 100% against 97% (5/5 against 2/5 runs with every check passing). |
+| 3. Rules stated correctly: at least 80%, 20 points above the traditional and 10 above the plain repository | **Met**: 100% against 67% and 82%. |
+| 4. Outdated rules: at most 0.5 and fewer than the traditional repository | **Met**: 0 against 0.2. |
+| 5. Regressions left: at most 0.2 and fewer than the plain and the traditional repositories | **Not met**: 0 in every arm. |
+| 6. Mutation score 10 points above the traditional repository | **Not met**: 96% against 88% (8 points). |
+| 7. No worse than "instructions only" on goals 1, 3 and 5 | **Met**: 100% against 99%, 100% against 96%, 0 against 0. |
+| 8. Agent tokens up to 1.5 times the plain and the traditional repositories | **Met**: 1.15 and 1.31 times. |
+
+### What the fifth round showed
+
+- **With a developer who does not remember the old rules, the legacy bug went unfixed without the plugin.** In 3 of 5 runs of the plain and of the traditional repositories, the code kept giving points at exactly 5000 cents, against the documentation, and the scenario or the unit test that says so was left failing at the end. With the plugin, SpecMD reported the scenario as one that never passed, the agent asked, the developer pointed to the documentation, and the bug was fixed in 5 of 5 runs.
+- **Documentation that tells the truth:** with the plugin, the judge found all 9 rules stated correctly in every run. Without it, `Cart.summary()` was never documented (5 of 5 runs in the plain and the traditional repositories), and in the traditional repository the fee's exclusions from shipping and loyalty were missing in 3 of 5 runs.
+- **The goals on the mean of the hidden checks were badly chosen:** one failing check of 18 moves the mean by 5 points, so a bug left in 3 of 5 runs shows as 3 points. The share of runs with every check passing (5/5 against 2/5) shows the same result more clearly; it was reported but was not the registered criterion.
+- **Cost:** the plugin used 15% more tokens than the plain repository and 31% more than the traditional one, because it asks before coding.
