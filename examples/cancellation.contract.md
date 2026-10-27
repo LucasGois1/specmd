@@ -5,44 +5,43 @@ specmd:
   kind: behavioral
 ---
 
-# Exemplo: cobrança de pedidos cancelados
+# Example: charging canceled orders
 
-Este é um exemplo fictício do formato proposto para o SpecMD. Não é uma regra de produto aceita pelo usuário, não possui recibo de aceite e não indica que existam implementações de passos ou testes executados neste repositório.
+This is a fictitious example of the format proposed for SpecMD. It is not a product rule accepted by the user, it has no acceptance receipt and it does not indicate that step implementations or run tests exist in this repository.
 
-O Markdown é a fonte canônica deste exemplo. Os cenários abaixo devem poder ser interpretados a partir deste arquivo, sem exigir um arquivo `.feature` paralelo ou uma etapa obrigatória de gravação desse arquivo.
+The Markdown is the canonical source of this example. The scenarios below must be interpretable from this file, without requiring a parallel `.feature` file or a mandatory step of writing that file.
 
-## SMD-EX-REQ-001 — Não gerar cobranças para pedidos cancelados
+## SMD-EX-REQ-001 — Do not generate charges for canceled orders
 
-Um pedido cancelado não deve gerar uma nova cobrança quando seu evento de cobrança for processado. A regra também se aplica a tentativas repetidas de processar o mesmo evento.
+A canceled order must not generate a new charge when its charge event is processed. The rule also applies to repeated attempts to process the same event.
 
-Este exemplo verifica pedidos cancelados que ainda não possuem cobranças. Não decide políticas de estorno, cancelamento de pedidos pagos ou autorização para cancelar: essas decisões precisariam de requisitos próprios, caso fossem necessárias ao produto real.
+This example checks canceled orders that do not have charges yet. It does not decide refund policies, cancellation of paid orders or authorization to cancel: those decisions would need requirements of their own, if they were necessary for the real product.
 
 ```gherkin
-# language: pt
 @SMD-EX-REQ-001
-Funcionalidade: Impedir novas cobranças de pedidos cancelados
+Feature: Prevent new charges for canceled orders
 
   @SMD-EX-SCN-001
-  Cenário: Processar evento de cobrança após cancelamento
-    Dado um pedido cancelado que não possui cobranças
-    Quando o evento de cobrança desse pedido for processado
-    Então nenhuma cobrança deve ser criada para esse pedido
+  Scenario: Process a charge event after cancellation
+    Given a canceled order that has no charges
+    When the charge event of that order is processed
+    Then no charge should be created for that order
 
   @SMD-EX-SCN-002
-  Cenário: Repetir o processamento do evento de cobrança
-    Dado um pedido cancelado que não possui cobranças
-    Quando o mesmo evento de cobrança desse pedido for processado duas vezes
-    Então nenhuma cobrança deve ser criada para esse pedido
+  Scenario: Repeat the processing of the charge event
+    Given a canceled order that has no charges
+    When the same charge event of that order is processed twice
+    Then no charge should be created for that order
 ```
 
-## Revisão e evidências esperadas
+## Expected review and evidence
 
-Antes de implementar esse comportamento em um produto real, o usuário precisaria revisar a regra, os limites explicitados e os dois cenários. O aceite seria registrado por um canal protegido e vinculado ao hash, caminho e escopo desta versão.
+Before implementing this behavior in a real product, the user would need to review the rule, the explicit limits and the two scenarios. The acceptance would be recorded through a protected channel and bound to the hash, path and scope of this version.
 
-Depois do aceite, o runner precisaria encontrar implementações dos passos e produzir evidências vinculadas ao contrato e ao código efetivamente executados. Passos indefinidos, cenários ignorados ou resultados antigos não atenderiam ao critério de conclusão.
+After acceptance, the runner would need to find step implementations and produce evidence bound to the contract and to the code actually run. Undefined steps, skipped scenarios or old results would not meet the completion criterion.
 
-Uma implementação que simplesmente não faz asserções ainda poderia produzir uma aparência de sucesso. A força da verificação exige avaliação adicional; a sintaxe válida dos cenários não estabelece essa garantia.
+An implementation that simply makes no assertions could still produce an appearance of success. The strength of the check requires additional assessment; the valid syntax of the scenarios does not establish that guarantee.
 
-Se um agente introduzir outro limite, como um prazo máximo para cancelamento, essa mudança precisará aparecer como proposta de comportamento. Escrever um teste para esse limite não o transforma em requisito aceito.
+If an agent introduces another limit, such as a maximum period for cancellation, that change will need to appear as a behavior proposal. Writing a test for that limit does not turn it into an accepted requirement.
 
-Consulte o [formato proposto](../docs/format.md), o mecanismo de aceite (removido por [D-021](../docs/decisions.md)) e o [plano de validação](../docs/validation-plan.md).
+See the [proposed format](../docs/format.md), the acceptance mechanism (removed by [D-021](../docs/decisions.md)) and the [validation plan](../docs/validation-plan.md).

@@ -1,397 +1,402 @@
-# Requisitos e cenários do SpecMD
+# SpecMD requirements and scenarios
 
-**Estado:** requisitos da direção definida em [D-021](decisions.md) (23/10/2026). O SpecMD ajuda o agente a manter a documentação canônica e o software alinhados; ele não audita nem aprova. Requisitos marcados como **proposta** ainda não estão implementados; o [estado da implementação](implementation-status.md) distingue o que existe.
+**Status:** requirements of the direction defined in [D-021](decisions.md) (23/10/2026). SpecMD helps the agent keep the canonical documentation and the software aligned; it does not audit or approve. Requirements marked as **proposal** are not implemented yet; the [implementation status](implementation-status.md) distinguishes what exists.
 
-Os IDs `SMD-REQ-*` e `SMD-SCN-*` são estáveis. Requisitos do desenho anterior (aceite assinado, autoridade, revisão no navegador, gate protegido) foram removidos por D-021 e permanecem no histórico do Git.
+The `SMD-REQ-*` and `SMD-SCN-*` IDs are stable. Requirements of the previous design (signed acceptance, authority, browser review, protected gate) were removed by D-021 and remain in the Git history.
 
-## SMD-REQ-001 — Markdown canônico e execução sem `.feature`
+## SMD-REQ-001 — Canonical Markdown and runs without `.feature`
 
-Requisitos e cenários residem no mesmo Markdown, que é a fonte canônica das regras de negócio. A execução lê os cenários do Markdown e os entrega ao motor em memória, sem exigir arquivos `.feature` no projeto nem gerá-los temporariamente.
+Requirements and scenarios live in the same Markdown, which is the canonical source of the business rules. The run reads the scenarios from the Markdown and hands them to the engine in memory, without requiring `.feature` files in the project or generating them temporarily.
 
 ```gherkin
-# language: pt
-Funcionalidade: Documentação como fonte canônica
+Feature: Documentation as the canonical source
 
   @SMD-REQ-001 @SMD-SCN-101
-  Cenário: Executar cenários escritos no Markdown
-    Dado um documento com um requisito e seu cenário Gherkin
-    Quando os cenários do projeto são executados
-    Então o resultado aponta o caminho e a linha do cenário no Markdown
-    E nenhum arquivo .feature é criado
+  Scenario: Run scenarios written in the Markdown
+    Given a document with a requirement and its Gherkin scenario
+    When the project's scenarios are run
+    Then the result points to the path and the line of the scenario in the Markdown
+    And no .feature file is created
 ```
 
-## SMD-REQ-002 — Descoberta dos documentos
+## SMD-REQ-002 — Document discovery
 
-Qualquer Markdown do projeto entra na análise, inclusive arquivos novos ainda não versionados. Arquivos de projeto comuns (README, CHANGELOG, LICENSE, instruções de agentes) ficam fora por padrão. Outros documentos que não descrevem comportamento do sistema (guias de setup, notas) ficam fora pelo `.specmdignore` opcional na raiz, com padrões no estilo `.gitignore`. O agente adiciona entradas quando é claro e pergunta ao dev quando há dúvida.
+Any Markdown in the project enters the analysis, including new files not yet versioned. Common project files (README, CHANGELOG, LICENSE, agent instructions) are left out by default. Other documents that do not describe system behavior (setup guides, notes) are left out by the optional `.specmdignore` at the root, with `.gitignore`-style patterns. The agent adds entries when it is clear and asks the developer when in doubt.
 
 ```gherkin
-# language: pt
-Funcionalidade: Descoberta de documentos
+Feature: Document discovery
 
   @SMD-REQ-002 @SMD-SCN-102
-  Cenário: Documento novo entra na análise
-    Dado um projeto com o SpecMD ativo
-    Quando o agente cria um Markdown que não está versionado
-    Então o documento aparece na análise da documentação
+  Scenario: New document enters the analysis
+    Given a project with SpecMD active
+    When the agent creates a Markdown file that is not versioned
+    Then the document appears in the documentation analysis
 
   @SMD-REQ-002 @SMD-SCN-103
-  Cenário: Documento de referência não exige cenários
-    Dado um guia de setup listado no .specmdignore
-    Quando a documentação é analisada
-    Então o guia não gera pendência de cenários
+  Scenario: Reference document does not require scenarios
+    Given a setup guide listed in .specmdignore
+    When the documentation is analyzed
+    Then the guide does not produce a scenario gap
 ```
 
-## SMD-REQ-021 — Feedback sobre documentação sem cenários
+## SMD-REQ-021 — Feedback on documentation without scenarios
 
-Depois de qualquer trabalho em Markdown, o agente recebe as pendências do documento alterado: requisito sem cenário, documento comportamental sem bloco Gherkin, Gherkin inválido ou IDs duplicados. O feedback orienta a confirmar os requisitos com o dev e escrever os cenários, a adicionar o documento ao `.specmdignore` quando não descreve comportamento, ou a perguntar ao dev em caso de dúvida.
+After any work on Markdown, the agent receives the gaps of the changed document: requirement without a scenario, behavioral document without a Gherkin block, invalid Gherkin or duplicate IDs. The feedback guides the agent to confirm the requirements with the developer and write the scenarios, to add the document to `.specmdignore` when it does not describe behavior, or to ask the developer when in doubt.
 
 ```gherkin
-# language: pt
-Funcionalidade: Documentação sem cenários
+Feature: Documentation without scenarios
 
   @SMD-REQ-021 @SMD-SCN-104
-  Cenário: Requisito sem cenário logo após a edição
-    Dado que o agente escreveu um requisito sem cenário
-    Quando a ferramenta de edição termina
-    Então o agente recebe o requisito e a linha que precisam de cenário
-    E a orientação para confirmar o comportamento com o dev
+  Scenario: Requirement without a scenario right after the edit
+    Given the agent wrote a requirement without a scenario
+    When the edit tool finishes
+    Then the agent receives the requirement and the line that need a scenario
+    And the guidance to confirm the behavior with the developer
 
   @SMD-REQ-021 @SMD-SCN-105
-  Cenário: Pendência lembrada uma vez ao concluir
-    Dado que a documentação continua com um requisito sem cenário
-    Quando o agente tenta concluir
-    Então o agente recebe a pendência uma vez
-    E pode concluir se tentar novamente sem mudanças
+  Scenario: Gap reminded once on finishing
+    Given the documentation still has a requirement without a scenario
+    When the agent tries to finish
+    Then the agent receives the gap once
+    And it can finish if it tries again without changes
 ```
 
-## SMD-REQ-022 — Cenários novos aguardam o dev
+## SMD-REQ-022 — New scenarios wait for the developer
 
-Cenários novos ou alterados desde a última mensagem do dev podem não ter sido vistos por ele. O agente é orientado a mostrá-los e pedir confirmação antes de implementar. Quando só a documentação mudou, os cenários não são executados ao concluir e o dev vê um aviso de que há cenários aguardando sua confirmação. Quando o código também mudou, os cenários são executados (ver SMD-REQ-023) e o feedback lembra o agente de confirmá-los, caso ainda não tenha feito. A confirmação é uma mensagem do dev, sem assinatura nem registro formal; marcar cenários como `@wip` também é decisão do dev.
+Scenarios that are new or changed since the developer's last message may not have been seen by them. The agent is guided to show them and ask for confirmation before implementing. When only the documentation changed, the scenarios are not run on finishing and the developer sees a notice that there are scenarios awaiting their confirmation. When the code also changed, the scenarios are run (see SMD-REQ-023) and the feedback reminds the agent to confirm them, in case it has not done so yet. The confirmation is a message from the developer, without a signature or formal record; marking scenarios as `@wip` is also the developer's decision.
 
 ```gherkin
-# language: pt
-Funcionalidade: Confirmação do dev
+Feature: Developer confirmation
 
   @SMD-REQ-022 @SMD-SCN-106
-  Cenário: Documentação nova aguarda a confirmação
-    Dado que o agente escreveu um cenário novo sem alterar o código
-    Quando o agente conclui
-    Então os cenários não são executados
-    E o dev é avisado de que há cenários aguardando sua confirmação
+  Scenario: New documentation awaits confirmation
+    Given the agent wrote a new scenario without changing the code
+    When the agent finishes
+    Then the scenarios are not run
+    And the developer is notified that there are scenarios awaiting their confirmation
 
   @SMD-REQ-022 @SMD-SCN-117
-  Cenário: Cenário escrito junto com o código é verificado
-    Dado que o dev confirmou no chat os cenários propostos pelo agente
-    Quando o agente escreve os cenários e o código no turno seguinte e conclui
-    Então os cenários são executados
-    E o feedback lembra de confirmar com o dev os cenários que mudaram no turno
+  Scenario: Scenario written together with the code is verified
+    Given the developer confirmed in the chat the scenarios proposed by the agent
+    When the agent writes the scenarios and the code in the next turn and finishes
+    Then the scenarios are run
+    And the feedback is a reminder to confirm with the developer the scenarios that changed in the turn
 
   @SMD-REQ-022 @SMD-SCN-107
-  Cenário: Mensagem do dev torna os cenários vistos
-    Dado que o dev respondeu depois de ver os cenários
-    Quando o agente altera o código e conclui
-    Então os cenários são executados
+  Scenario: A developer message marks the scenarios as seen
+    Given the developer replied after seeing the scenarios
+    When the agent changes the code and finishes
+    Then the scenarios are run
 ```
 
-## SMD-REQ-023 — Execução após mudança de código e feedback acionável
+## SMD-REQ-023 — Run after a code change and actionable feedback
 
-Quando arquivos que não são Markdown mudaram desde a última execução, a conclusão executa os cenários afetados pela mudança (ver SMD-REQ-027), inclusive os escritos no mesmo turno. Cada cenário que não passa volta ao agente com o caminho, a linha, o passo, a mensagem de erro e, para passos sem implementação, um trecho pronto para começar. Sem mudança de código na sessão, nenhuma execução é cobrada.
+When files that are not Markdown have changed since the last run, finishing runs the scenarios affected by the change (see SMD-REQ-027), including the ones written in the same turn. Each scenario that does not pass goes back to the agent with the path, the line, the step, the error message and, for steps without an implementation, a snippet ready to start from. Without a code change in the session, no run is required.
 
 ```gherkin
-# language: pt
-Funcionalidade: Execução após mudança de código
+Feature: Run after a code change
 
   @SMD-REQ-023 @SMD-SCN-108
-  Cenário: Código que contraria a documentação
-    Dado cenários confirmados que passavam
-    Quando o agente altera o código e um cenário passa a falhar
-    Então o agente recebe o cenário, o passo e a mensagem de erro
+  Scenario: Code that contradicts the documentation
+    Given confirmed scenarios that used to pass
+    When the agent changes the code and a scenario starts failing
+    Then the agent receives the scenario, the step and the error message
 
   @SMD-REQ-023 @SMD-SCN-109
-  Cenário: Passo sem implementação
-    Dado um cenário confirmado com um passo sem implementação
-    Quando o agente conclui depois de alterar o código
-    Então o agente recebe o passo e um trecho de implementação para começar
+  Scenario: Step without an implementation
+    Given a confirmed scenario with a step without an implementation
+    When the agent finishes after changing the code
+    Then the agent receives the step and an implementation snippet to start from
 
   @SMD-REQ-023 @SMD-SCN-110
-  Cenário: Conversa sem mudança de código
-    Dado uma sessão em que o código não mudou
-    Quando o agente conclui
-    Então nenhum cenário é executado
+  Scenario: Conversation without a code change
+    Given a session in which the code did not change
+    When the agent finishes
+    Then no scenario is run
 ```
 
-## SMD-REQ-027 — Só os cenários afetados pela mudança
+## SMD-REQ-027 — Only the scenarios affected by the change
 
-Em projetos grandes, rodar todos os cenários a cada conclusão leva minutos. Ao concluir, o plugin executa só os cenários que a mudança pode afetar: os que executaram uma função alterada, os que leram um arquivo alterado, os novos ou alterados, os que falhavam e os que nunca rodaram. O feedback diz quantos cenários ficaram de fora. Executa todos quando muda o nível do módulo de um arquivo Python usado pelos cenários (imports, constantes, decorators, assinaturas), os passos ou a configuração, e quando não há cobertura: Java, Go, Python anterior a 3.12 ou projeto sem Git. Cenários que iniciam processos ou abrem conexões de rede são sempre executados. Dependências fora do código Python, como variáveis de ambiente ou estado de banco, podem escapar da seleção; `specmd run` executa todos os cenários e serve de rede de segurança no CI, e `specmd run --affected` aplica a mesma seleção da conclusão. Origem: [D-022](decisions.md), confirmado pelo usuário em 24/10/2026.
+In large projects, running every scenario on each finish takes minutes. On finishing, the plugin runs only the scenarios the change can affect: those that executed a changed function, those that read a changed file, the new or changed ones, the ones that were failing and the ones that never ran. The feedback says how many scenarios were left out. It runs all of them when the module level of a Python file used by the scenarios changes (imports, constants, decorators, signatures), when the steps or the configuration change, and when there is no coverage: Java, Go, Python earlier than 3.12 or a project without Git. Scenarios that start processes or open network connections are always run. Dependencies outside the Python code, such as environment variables or database state, may escape the selection; `specmd run` runs all the scenarios and serves as a safety net in CI, and `specmd run --affected` applies the same selection as finishing. Origin: [D-022](decisions.md), confirmed by the user on 24/10/2026.
 
 ```gherkin
-# language: pt
-Funcionalidade: Execução só dos cenários afetados
+Feature: Running only the affected scenarios
 
   @SMD-REQ-027 @SMD-SCN-118
-  Cenário: Mudança numa função executa só quem a usa
-    Dado cenários verificados de duas regras implementadas em funções diferentes
-    Quando o agente altera o corpo de uma das funções e conclui
-    Então só os cenários que executaram essa função são executados
-    E o feedback informa quantos cenários ficaram de fora
+  Scenario: A change in a function runs only the scenarios that use it
+    Given verified scenarios of two rules implemented in different functions
+    When the agent changes the body of one of the functions and finishes
+    Then only the scenarios that executed that function are run
+    And the feedback reports how many scenarios were left out
 
   @SMD-REQ-027 @SMD-SCN-119
-  Cenário: Mudança no nível do módulo executa todos
-    Dado cenários verificados
-    Quando o agente altera uma constante, um import ou a assinatura de uma função e conclui
-    Então todos os cenários são executados
+  Scenario: A module-level change runs all of them
+    Given verified scenarios
+    When the agent changes a constant, an import or the signature of a function and finishes
+    Then all the scenarios are run
 
   @SMD-REQ-027 @SMD-SCN-120
-  Cenário: Cenário que falhava volta a ser executado
-    Dado um cenário que falhou na última execução
-    Quando o agente altera um arquivo que esse cenário não executa e conclui
-    Então o cenário que falhava é executado de novo
+  Scenario: A scenario that was failing is run again
+    Given a scenario that failed in the last run
+    When the agent changes a file that this scenario does not execute and finishes
+    Then the scenario that was failing is run again
 
   @SMD-REQ-027 @SMD-SCN-121
-  Cenário: Sem cobertura, executa todos
-    Dado um projeto Go com o bridge Godog configurado
-    Quando o agente altera o código e conclui
-    Então todos os cenários são executados
+  Scenario: Without coverage, all of them run
+    Given a Go project with the Godog bridge configured
+    When the agent changes the code and finishes
+    Then all the scenarios are run
 
   @SMD-REQ-027 @SMD-SCN-122
-  Cenário: CLI executa todos
-    Dado cenários verificados
-    Quando o dev executa specmd run
-    Então todos os cenários são executados
+  Scenario: The CLI runs all of them
+    Given verified scenarios
+    When the developer runs specmd run
+    Then all the scenarios are run
 ```
 
-## SMD-REQ-028 — Cenários confirmados protegidos
+## SMD-REQ-028 — Protected confirmed scenarios
 
-Os cenários da última mensagem do dev são a base de comparação. Quando o agente remove um deles, muda um `Então` (o valor esperado), muda um `Dado` ou `Quando`, marca um com `@wip` ou remove um requisito, ele recebe o diff exato logo após a edição, e o dev vê o mesmo resumo quando o agente conclui, mesmo que tudo passe. O aviso é informativo, inclusive quando o próprio dev pediu a mudança. A conclusão volta ao agente, uma vez, só no sinal forte de ajustar o teste ao código: o cenário falhava na última execução e o agente mudou o valor esperado dele e o código no mesmo turno. Origem: [D-023](decisions.md), confirmado pelo usuário em 24/10/2026.
+The scenarios as of the developer's last message are the baseline for comparison. When the agent removes one of them, changes a `Then` (the expected value), changes a `Given` or `When`, marks one with `@wip` or removes a requirement, it receives the exact diff right after the edit, and the developer sees the same summary when the agent finishes, even if everything passes. The notice is informative, including when the developer themselves asked for the change. Finishing is sent back to the agent, once, only on the strong signal of adjusting the test to the code: the scenario was failing in the last run and the agent changed its expected value and the code in the same turn. Origin: [D-023](decisions.md), confirmed by the user on 24/10/2026.
 
 ```gherkin
-# language: pt
-Funcionalidade: Cenários confirmados protegidos
+Feature: Protected confirmed scenarios
 
   @SMD-REQ-028 @SMD-SCN-123
-  Cenário: Valor esperado alterado aparece para o agente e para o dev
-    Dado um cenário que existia na última mensagem do dev
-    Quando o agente muda o valor esperado no Então
-    Então o agente recebe o cenário com o valor anterior e o novo logo após a edição
-    E o dev vê o mesmo resumo quando o agente conclui, mesmo com tudo passando
+  Scenario: Changed expected value shows up for the agent and for the developer
+    Given a scenario that existed at the developer's last message
+    When the agent changes the expected value in the Then
+    Then the agent receives the scenario with the previous and the new value right after the edit
+    And the developer sees the same summary when the agent finishes, even with everything passing
 
   @SMD-REQ-028 @SMD-SCN-124
-  Cenário: Cenário removido, marcado como @wip ou requisito removido
-    Dado cenários e requisitos que existiam na última mensagem do dev
-    Quando o agente remove um cenário, marca outro com @wip e remove um requisito
-    Então o agente e o dev veem o cenário removido, o cenário marcado e o requisito removido
+  Scenario: Removed scenario, scenario marked as @wip or removed requirement
+    Given scenarios and requirements that existed at the developer's last message
+    When the agent removes a scenario, marks another one with @wip and removes a requirement
+    Then the agent and the developer see the removed scenario, the marked scenario and the removed requirement
 
   @SMD-REQ-028 @SMD-SCN-125
-  Cenário: Expectativa ajustada para o código passar volta ao agente
-    Dado um cenário que falhou na última execução
-    Quando o agente muda o valor esperado dele e o código no mesmo turno e conclui
-    Então o agente recebe uma vez o pedido para restaurar o cenário se o dev não pediu a mudança
+  Scenario: Expectation adjusted to make the code pass goes back to the agent
+    Given a scenario that failed in the last run
+    When the agent changes its expected value and the code in the same turn and finishes
+    Then the agent receives, once, the request to restore the scenario if the developer did not ask for the change
 
   @SMD-REQ-028 @SMD-SCN-126
-  Cenário: Mudança num cenário que passava é só informada
-    Dado um cenário que passava
-    Quando o agente muda o valor esperado dele e o código e conclui
-    Então o dev vê o resumo da mudança
-    E o agente conclui sem nova devolução
+  Scenario: A change in a scenario that was passing is only reported
+    Given a scenario that was passing
+    When the agent changes its expected value and the code and finishes
+    Then the developer sees the summary of the change
+    And the agent finishes without being sent back again
 ```
 
-## SMD-REQ-029 — Documento ignorado que ganha regra
+## SMD-REQ-029 — Ignored document that gains a rule
 
-Documentos ignorados, pelo `.specmdignore` ou pelos padrões, continuam sendo lidos de leve. Quando um deles muda e passa a ter um título de requisito (`…-REQ-…`), um bloco Gherkin ou um título com palavra-chave Gherkin (MDG), o agente é avisado logo após a edição, com as duas saídas: mover a regra para um documento de comportamento ou tirar o documento do `.specmdignore` (ou usar `!caminho`), perguntando ao dev em dúvida. Um documento que já tinha esses elementos não gera aviso quando outra parte dele muda. É só aviso: a conclusão não é bloqueada por isso. Origem: [D-024](decisions.md), confirmado pelo usuário em 24/10/2026.
+Ignored documents, whether through `.specmdignore` or the default patterns, are still read lightly. When one of them changes and starts having a requirement heading (`…-REQ-…`), a Gherkin block or a heading with a Gherkin keyword (MDG), the agent is notified right after the edit, with the two ways out: move the rule to a behavior document or take the document out of `.specmdignore` (or use `!path`), asking the developer when in doubt. A document that already had these elements does not produce a notice when another part of it changes. It is only a notice: finishing is not blocked because of it. Origin: [D-024](decisions.md), confirmed by the user on 24/10/2026.
 
 ```gherkin
-# language: pt
-Funcionalidade: Documento ignorado que ganha regra
+Feature: Ignored document that gains a rule
 
   @SMD-REQ-029 @SMD-SCN-127
-  Cenário: Requisito escrito num documento ignorado
-    Dado um guia de setup listado no .specmdignore
-    Quando o agente adiciona ao guia um título de requisito ou um bloco Gherkin
-    Então o agente é avisado de que o documento está ignorado
-    E recebe as saídas: mover a regra ou tirar o documento do .specmdignore, perguntando ao dev em dúvida
+  Scenario: Requirement written in an ignored document
+    Given a setup guide listed in .specmdignore
+    When the agent adds a requirement heading or a Gherkin block to the guide
+    Then the agent is notified that the document is ignored
+    And receives the ways out: move the rule or take the document out of .specmdignore, asking the developer when in doubt
 
   @SMD-REQ-029 @SMD-SCN-128
-  Cenário: Exemplo antigo não gera aviso
-    Dado um README ignorado que sempre teve um exemplo de Gherkin
-    Quando o agente edita outra parte do README
-    Então nenhum aviso é dado
+  Scenario: Old example does not produce a notice
+    Given an ignored README that always had a Gherkin example
+    When the agent edits another part of the README
+    Then no notice is given
 
   @SMD-REQ-029 @SMD-SCN-129
-  Cenário: Aviso não bloqueia a conclusão
-    Dado um documento ignorado que ganhou um requisito
-    Quando o agente conclui
-    Então a conclusão não é bloqueada por isso
+  Scenario: Notice does not block finishing
+    Given an ignored document that gained a requirement
+    When the agent finishes
+    Then finishing is not blocked because of it
 ```
 
-## SMD-REQ-030 — Adoção em projeto legado
+## SMD-REQ-030 — Adoption in a legacy project
 
-Num projeto que já tem documentação, `/specmd:adopt` (ou `specmd adopt`) lista todos os documentos analisados que ainda não têm cenários ou têm requisitos sem cenário, em ordem de caminho, sem palpite sobre quais parecem ter regras. Ficam fora os ignorados por padrão e os que o time já colocou no `.specmdignore`. O agente apresenta a lista ao dev, que diz quais não descrevem comportamento; o agente grava esses no `.specmdignore`. Depois o agente trata um documento por vez: propõe requisitos e cenários, pede confirmação e segue o ciclo normal de passos, execução e feedback. Não há estado próprio da adoção: rodar a lista de novo mostra o que falta. Quando um cenário que nunca passou falha e o código de produto que ele executa não foi alterado na sessão, o feedback lembra que, se o código já existia e faz outra coisa, é uma divergência entre documentação e código, e o agente pergunta ao dev qual dos dois vale antes de mudar qualquer um. Sem cobertura (Java, Go, Python anterior a 3.12), a orientação vale para cenários novos ou alterados desde a última mensagem do dev. Quando um cenário que já existia na última mensagem do dev quebra porque o agente mudou o código que ele executa, não é divergência: o feedback orienta a atualizar o cenário se o dev confirmou a nova regra, ou a ajustar o código. Os passos (`tests/steps`, `environment.py`) não contam como código de produto. Correção aprovada pelo usuário em 24/10/2026, depois do [piloto](../research/pilot/README.md). Marcar `@wip` continua sendo decisão do dev. Origem: [D-025](decisions.md), confirmado pelo usuário em 24/10/2026.
+In a project that already has documentation, `/specmd:adopt` (or `specmd adopt`) lists all the analyzed documents that do not have scenarios yet or have requirements without a scenario, in path order, with no guess about which ones seem to have rules. The documents ignored by default and the ones the team already put in `.specmdignore` are left out. The agent presents the list to the developer, who says which ones do not describe behavior; the agent writes those to `.specmdignore`. Then the agent handles one document at a time: it proposes requirements and scenarios, asks for confirmation and follows the normal cycle of steps, run and feedback. There is no adoption-specific state: running the list again shows what is missing. When a scenario that never passed fails and the product code it executes was not changed in the session, the feedback reminds that, if the code already existed and does something else, it is a divergence between documentation and code, and the agent asks the developer which of the two holds before changing either one. Without coverage (Java, Go, Python earlier than 3.12), the guidance applies to scenarios that are new or changed since the developer's last message. When a scenario that already existed at the developer's last message breaks because the agent changed the code it executes, it is not a divergence: the feedback guides the agent to update the scenario if the developer confirmed the new rule, or to adjust the code. The steps (`tests/steps`, `environment.py`) do not count as product code. Fix approved by the user on 24/10/2026, after the [pilot](../research/pilot/README.md). Marking `@wip` is still the developer's decision. Origin: [D-025](decisions.md), confirmed by the user on 24/10/2026.
 
 ```gherkin
-# language: pt
-Funcionalidade: Adoção em projeto legado
+Feature: Adoption in a legacy project
 
   @SMD-REQ-030 @SMD-SCN-130
-  Cenário: Lista de documentos para adoção
-    Dado um projeto com documentos sem cenários, um README e um .specmdignore do time
-    Quando o dev pede a adoção
-    Então o agente recebe todos os documentos sem cenários em ordem de caminho
-    E a lista não traz os ignorados por padrão nem os que estão no .specmdignore
+  Scenario: List of documents for adoption
+    Given a project with documents without scenarios, a README and a team .specmdignore
+    When the developer asks for the adoption
+    Then the agent receives all the documents without scenarios in path order
+    And the list includes neither the documents ignored by default nor the ones in .specmdignore
 
   @SMD-REQ-030 @SMD-SCN-131
-  Cenário: Dev escolhe o que ignorar
-    Dado a lista de documentos para adoção
-    Quando o dev diz que um guia de setup não descreve comportamento
-    Então o agente adiciona o guia ao .specmdignore
-    E o guia sai da lista
+  Scenario: The developer chooses what to ignore
+    Given the list of documents for adoption
+    When the developer says that a setup guide does not describe behavior
+    Then the agent adds the guide to .specmdignore
+    And the guide leaves the list
 
   @SMD-REQ-030 @SMD-SCN-132
-  Cenário: Um documento por vez
-    Dado documentos de comportamento sem cenários
-    Quando o agente conduz a adoção
-    Então ele propõe requisitos e cenários de um documento e pede confirmação antes do próximo
+  Scenario: One document at a time
+    Given behavior documents without scenarios
+    When the agent conducts the adoption
+    Then it proposes requirements and scenarios for one document and asks for confirmation before the next one
 
   @SMD-REQ-030 @SMD-SCN-133
-  Cenário: Divergência entre documentação e código
-    Dado um cenário confirmado que nunca passou e falha porque o código, que o agente não mudou, faz outra coisa
-    Quando o agente recebe a falha
-    Então o feedback orienta a perguntar ao dev qual dos dois vale, sem corrigir sozinho
+  Scenario: Divergence between documentation and code
+    Given a confirmed scenario that never passed and fails because the code, which the agent did not change, does something else
+    When the agent receives the failure
+    Then the feedback guides the agent to ask the developer which of the two holds, without fixing it alone
 
   @SMD-REQ-030 @SMD-SCN-138
-  Cenário: Cenário existente quebrado pela mudança do agente não é divergência
-    Dado um cenário que já existia e nunca rodou
-    Quando o agente muda o código que ele executa e o cenário falha
-    Então o feedback não sugere divergência
-    E orienta a atualizar o cenário se o dev confirmou a nova regra, ou a ajustar o código
+  Scenario: An existing scenario broken by the agent's change is not a divergence
+    Given a scenario that already existed and never ran
+    When the agent changes the code it executes and the scenario fails
+    Then the feedback does not suggest a divergence
+    And it guides the agent to update the scenario if the developer confirmed the new rule, or to adjust the code
 ```
 
 ## SMD-REQ-031 — Markdown with Gherkin (`.feature.md`)
 
-Arquivos `*.feature.md` são lidos no formato oficial Markdown with Gherkin (MDG) do Cucumber: palavras-chave como títulos Markdown, passos como itens de lista, tabelas GFM indentadas de 2 a 5 espaços, tags entre crases na linha acima da palavra-chave e prosa livre entre eles. O SpecMD converte o arquivo em Gherkin em memória, linha a linha, e os motores executam sem arquivo `.feature`. Num `.feature.md`, um bloco cercado logo após um passo é o texto (Doc String) do passo; os demais Markdown continuam com blocos cercados `gherkin`. O MDG não tem `# language:`: o idioma vem de `gherkin_language` no `specmd.toml`, e um arquivo cujas palavras-chave não estão no idioma configurado gera um aviso dizendo isso. Títulos com ID de requisito ligam os cenários abaixo deles, inclusive o da `Regra` (`## Regra: PAG-REQ-001 — Estorno`). Origem: [D-026](decisions.md), confirmado pelo usuário em 24/10/2026.
+`*.feature.md` files are read in Cucumber's official Markdown with Gherkin (MDG) format: keywords as Markdown headings, steps as list items, GFM tables indented by 2 to 5 spaces, tags in backticks on the line above the keyword, and free prose between them. SpecMD converts the file into Gherkin in memory, line by line, and the engines run it without a `.feature` file. In a `.feature.md`, a fenced block right after a step is the step's text (Doc String); the other Markdown files keep using fenced `gherkin` blocks. MDG has no `# language:`: the language comes from `gherkin_language` in `specmd.toml`, and a file whose keywords are not in the configured language produces a warning that says so. Headings with a requirement ID link the scenarios below them, including the heading of a `Rule` (`## Rule: PAY-REQ-001 — Refund`). Origin: [D-026](decisions.md), confirmed by the user on 24/10/2026.
 
 ```gherkin
-# language: pt
-Funcionalidade: Markdown with Gherkin
+Feature: Markdown with Gherkin
 
   @SMD-REQ-031 @SMD-SCN-134
-  Cenário: Documento MDG executado com origem no Markdown
-    Dado um arquivo .feature.md com prosa, títulos de cenário e passos em lista
-    E gherkin_language definido no specmd.toml
-    Quando os cenários são executados
-    Então cada resultado aponta a linha do cenário no arquivo .feature.md
-    E nenhum arquivo .feature é criado
+  Scenario: MDG document run with its origin in the Markdown
+    Given a .feature.md file with prose, scenario headings and steps as list items
+    And gherkin_language set in specmd.toml
+    When the scenarios are run
+    Then each result points to the line of the scenario in the .feature.md file
+    And no .feature file is created
 
   @SMD-REQ-031 @SMD-SCN-135
-  Cenário: Regra com ID vira requisito
-    Dado um título "## Regra: PAG-REQ-001 — Estorno" num arquivo .feature.md
-    Quando a documentação é analisada
-    Então os cenários da regra ficam ligados a PAG-REQ-001
+  Scenario: A Rule with an ID becomes a requirement
+    Given a heading "## Rule: PAY-REQ-001 — Refund" in a .feature.md file
+    When the documentation is analyzed
+    Then the rule's scenarios are linked to PAY-REQ-001
 
   @SMD-REQ-031 @SMD-SCN-136
-  Cenário: Bloco cercado é argumento de passo
-    Dado um passo seguido de um bloco cercado num arquivo .feature.md
-    Quando o cenário é executado
-    Então o passo recebe o conteúdo do bloco como texto
+  Scenario: A fenced block is a step argument
+    Given a step followed by a fenced block in a .feature.md file
+    When the scenario is run
+    Then the step receives the content of the block as text
 
   @SMD-REQ-031 @SMD-SCN-137
-  Cenário: Idioma ausente é apontado
-    Dado um arquivo .feature.md em português sem gherkin_language configurado
-    Quando a documentação é analisada
-    Então o agente é avisado de que em MDG o idioma vem do specmd.toml
+  Scenario: A missing language is pointed out
+    Given a .feature.md file in Portuguese without gherkin_language configured
+    When the documentation is analyzed
+    Then the agent is notified that in MDG the language comes from specmd.toml
 ```
 
-## SMD-REQ-024 — Feedback que não trava a sessão
+## SMD-REQ-024 — Feedback that does not lock up the session
 
-O plugin nunca encerra a sessão do agente. O mesmo feedback repetido sem mudança, ou o limite de quatro devoluções seguidas, deixa o agente concluir; a contagem recomeça a cada mensagem do dev. Erros internos do plugin viram aviso.
+The plugin never ends the agent's session. The same feedback repeated without change, or the limit of four consecutive blocks, lets the agent finish; the count restarts with each developer message. Internal plugin errors become warnings.
 
 ```gherkin
-# language: pt
-Funcionalidade: Feedback limitado
+Feature: Bounded feedback
 
   @SMD-REQ-024 @SMD-SCN-111
-  Cenário: Mesma falha não prende o agente
-    Dado que o agente recebeu uma falha ao concluir
-    Quando ele tenta concluir de novo com a mesma falha
-    Então ele pode concluir e o dev vê um resumo
+  Scenario: The same failure does not hold the agent back
+    Given the agent received a failure on finishing
+    When it tries to finish again with the same failure
+    Then it can finish and the developer sees a summary
 
   @SMD-REQ-024 @SMD-SCN-112
-  Cenário: Erro interno vira aviso
-    Dado que a verificação falha por um erro interno
-    Quando qualquer hook é executado
-    Então a sessão continua e um aviso é exibido
+  Scenario: An internal error becomes a warning
+    Given the check fails because of an internal error
+    When any hook runs
+    Then the session continues and a warning is shown
 ```
 
-## SMD-REQ-025 — Contexto no início da sessão
+## SMD-REQ-025 — Context at session start
 
-Ao abrir uma sessão, o agente recebe um resumo da documentação canônica (documentos com cenários, pendências, última execução) e as convenções de trabalho: onde escrever requisitos e cenários, quando pedir confirmação ao dev, o que fazer com documentos que não descrevem comportamento e que, quando o código existente contradiz a documentação, o agente não corrige nenhum dos dois sozinho e pergunta ao dev qual vale (aprovado pelo usuário em 25/10/2026, depois da segunda rodada do [piloto](../research/pilot/README.md)).
+When a session opens, the agent receives a summary of the canonical documentation (documents with scenarios, gaps, last run) and the working conventions: where to write requirements and scenarios, when to ask the developer for confirmation, what to do with documents that do not describe behavior, and that, when the existing code contradicts the documentation, the agent does not fix either of the two alone and asks the developer which one holds (approved by the user on 25/10/2026, after the second round of the [pilot](../research/pilot/README.md)).
 
 ```gherkin
-# language: pt
-Funcionalidade: Contexto inicial
+Feature: Initial context
 
   @SMD-REQ-025 @SMD-SCN-113
-  Cenário: Resumo ao abrir a sessão
-    Dado um projeto com documentação e cenários
-    Quando uma sessão do agente começa
-    Então o agente recebe a quantidade de documentos e cenários
-    E as convenções de trabalho do SpecMD
+  Scenario: Summary when the session opens
+    Given a project with documentation and scenarios
+    When an agent session starts
+    Then the agent receives the number of documents and scenarios
+    And the SpecMD working conventions
 
   @SMD-REQ-025 @SMD-SCN-139
-  Cenário: Divergência com o código existente vira pergunta ao dev
-    Dado um projeto com o SpecMD ativo
-    Quando uma sessão do agente começa
-    Então as convenções orientam a não corrigir sozinho o código ou a documentação quando um contradiz o outro
-    E a perguntar ao dev qual vale
+  Scenario: A divergence from the existing code becomes a question to the developer
+    Given a project with SpecMD active
+    When an agent session starts
+    Then the conventions guide the agent not to fix the code or the documentation alone when one contradicts the other
+    And to ask the developer which one holds
 ```
 
-## SMD-REQ-015 — Estado local reconstruível
+## SMD-REQ-032 — Message language
 
-O plugin guarda apenas observações locais em `.specmd/local/`: a última execução, os cenários vistos pelo dev, a contagem de devoluções e um cache da análise dos documentos. Apagar esse estado é seguro; ele é reconstruído na próxima sessão.
+SpecMD's messages to the agent and to the developer (hooks, CLI and errors) are in English by default. A project that sets `language = "pt"` in `specmd.toml` gets them in Portuguese. This setting does not change the Gherkin language, which comes from `# language:` or from `gherkin_language` (decided on 27/10/2026, [D-029](decisions.md)).
 
 ```gherkin
-# language: pt
-Funcionalidade: Estado local
+Feature: Message language
+
+  @SMD-REQ-032 @SMD-SCN-141
+  Scenario: English by default
+    Given a project with SpecMD active and no language in specmd.toml
+    When an agent session starts
+    Then the summary and the conventions are in English
+
+  @SMD-REQ-032 @SMD-SCN-142
+  Scenario: Portuguese on request
+    Given a specmd.toml with language = "pt"
+    When an agent session starts and a code change makes a scenario fail
+    Then the summary, the conventions and the failure feedback are in Portuguese
+```
+
+## SMD-REQ-015 — Rebuildable local state
+
+The plugin keeps only local observations in `.specmd/local/`: the last run, the scenarios seen by the developer, the count of blocks and a cache of the document analysis. Deleting this state is safe; it is rebuilt in the next session.
+
+```gherkin
+Feature: Local state
 
   @SMD-REQ-015 @SMD-SCN-114
-  Cenário: Estado corrompido é ignorado
-    Dado um arquivo de estado local inválido
-    Quando a documentação é analisada
-    Então a análise funciona como em um projeto sem estado
+  Scenario: Corrupted state is ignored
+    Given an invalid local state file
+    When the documentation is analyzed
+    Then the analysis works as in a project without state
 ```
 
-## SMD-REQ-026 — Instalação por repositório
+## SMD-REQ-026 — Per-repository installation
 
-Instalar o plugin no escopo do projeto ou local já ativa o SpecMD no repositório, com os padrões; `specmd.toml` e `.specmdignore` são opcionais. `specmd init` (ou `/specmd:init`) declara o marketplace do SpecMD e habilita o plugin na configuração compartilhada do projeto, para que cada pessoa do time só precise aceitar a confiança da pasta. No Codex, onde o plugin é instalado por usuário, o mesmo comando habilita o plugin no `.codex/config.toml` do projeto, e o SpecMD fica ativo nos projetos confiáveis que o habilitam ali, sem `specmd.toml` (aprovado pelo usuário em 27/10/2026). As dependências vêm com o plugin; a máquina precisa de Python 3.11 ou superior.
+Installing the plugin at project or local scope already activates SpecMD in the repository, with the defaults; `specmd.toml` and `.specmdignore` are optional. `specmd init` (or `/specmd:init`) declares the SpecMD marketplace and enables the plugin in the project's shared configuration, so that each person on the team only needs to accept trust for the folder. In Codex, where the plugin is installed per user, the same command enables the plugin in the project's `.codex/config.toml`, and SpecMD is active in the trusted projects that enable it there, without `specmd.toml` (approved by the user on 27/10/2026). The dependencies come with the plugin; the machine needs Python 3.11 or later.
 
 ```gherkin
-# language: pt
-Funcionalidade: Instalação por repositório
+Feature: Per-repository installation
 
   @SMD-REQ-026 @SMD-SCN-115
-  Cenário: Plugin carregado ao abrir o repositório
-    Dado um repositório preparado pelo comando de início
-    Quando um dev abre o agente na pasta e confia nela
-    Então o plugin SpecMD é carregado sem instalação manual
+  Scenario: Plugin loaded when the repository is opened
+    Given a repository prepared by the init command
+    When a developer opens the agent in the folder and trusts it
+    Then the SpecMD plugin is loaded without manual installation
 
   @SMD-REQ-026 @SMD-SCN-140
-  Cenário: Projeto habilita o SpecMD no Codex
-    Dado um repositório preparado pelo comando de início, sem specmd.toml
-    E o plugin SpecMD instalado no Codex do dev
-    Quando o dev abre o Codex na pasta confiável
-    Então o SpecMD está ativo no projeto
+  Scenario: The project enables SpecMD in Codex
+    Given a repository prepared by the init command, without specmd.toml
+    And the SpecMD plugin installed in the developer's Codex
+    When the developer opens Codex in the trusted folder
+    Then SpecMD is active in the project
 ```
 
-## SMD-REQ-020 — Execução em Java, Python e Go
+## SMD-REQ-020 — Runs in Java, Python and Go
 
-Os cenários executam com motores existentes: Behave em Python, Cucumber-JVM em Java e Godog em Go, cada um recebendo o Gherkin em memória com a origem no Markdown. Cada bridge declara o subconjunto de Gherkin que suporta.
+The scenarios run with existing engines: Behave in Python, Cucumber-JVM in Java and Godog in Go, each one receiving the Gherkin in memory with its origin in the Markdown. Each bridge declares the Gherkin subset it supports.
 
 ```gherkin
-# language: pt
-Funcionalidade: Motores por linguagem
+Feature: Engines per language
 
   @SMD-REQ-020 @SMD-SCN-116
-  Cenário: Bridge executa cenário com origem no Markdown
-    Dado um projeto Go com o bridge Godog configurado
-    Quando os cenários são executados
-    Então cada resultado aponta o caminho e a linha do cenário no Markdown
+  Scenario: A bridge runs a scenario with its origin in the Markdown
+    Given a Go project with the Godog bridge configured
+    When the scenarios are run
+    Then each result points to the path and the line of the scenario in the Markdown
 ```

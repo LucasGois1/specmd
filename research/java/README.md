@@ -1,83 +1,83 @@
-# Pesquisa executada: Cucumber-JVM a partir de Markdown
+# Research run: Cucumber-JVM from Markdown
 
-Experimento local de viabilidade do SpecMD, realizado em 22/10/2026 no contexto do usuário (`America/Sao_Paulo`). Os artefatos de execução registram seu instante em UTC, que já corresponde a 23/10. Não é uma implementação do produto, de aceite humano ou de bloqueio protegido.
+Local SpecMD feasibility experiment, carried out on 22/10/2026 in the user's context (`America/Sao_Paulo`). The run artifacts record their instant in UTC, which already corresponds to 23/10. It is not an implementation of the product, of human acceptance or of protected blocking.
 
-## Resultado
+## Result
 
-**Foi possível executar passos Cucumber-JVM reais, sobre código de aplicação real, fornecendo cenários extraídos de Markdown em memória, sem criar arquivos `.feature`.** O caminho usa APIs do core e exige um adaptador; a CLI padrão não recebe o texto Gherkin como argumento nem o executa a partir de stdin nos modos ensaiados.
+**It was possible to run real Cucumber-JVM steps, over real application code, supplying scenarios extracted from Markdown in memory, without creating `.feature` files.** The path uses core APIs and requires an adapter; the standard CLI neither receives the Gherkin text as an argument nor runs it from stdin in the modes tried.
 
-O ensaio usa Cucumber-JVM **8.0.4**, release oficial de 02/10/2026, commit [`8a14d94caae7b51f79d60a4a738f69147ad6dbfe`](https://github.com/cucumber/cucumber-jvm/tree/8a14d94caae7b51f79d60a4a738f69147ad6dbfe). Usa CommonMark Java **0.24.0** para identificar os blocos fenced e OpenJDK **21.0.12.1** para compilar e executar. O Maven **3.9.9** resolve as dependências; Gherkin **42.0.1** e Messages **34.2.1** são transitivas dessa versão do Cucumber. Os 24 jars resolvidos têm seus SHA-256 em [dependency-checksums.json](evidence/dependency-checksums.json).
+The trial uses Cucumber-JVM **8.0.4**, official release of 02/10/2026, commit [`8a14d94caae7b51f79d60a4a738f69147ad6dbfe`](https://github.com/cucumber/cucumber-jvm/tree/8a14d94caae7b51f79d60a4a738f69147ad6dbfe). It uses CommonMark Java **0.24.0** to identify the fenced blocks and OpenJDK **21.0.12.1** to compile and run. Maven **3.9.9** resolves the dependencies; Gherkin **42.0.1** and Messages **34.2.1** are transitive dependencies of this Cucumber version. The 24 resolved jars have their SHA-256 in [dependency-checksums.json](evidence/dependency-checksums.json).
 
-## Evidência obtida
+## Evidence obtained
 
-Resultados de uma execução real de `bash run.sh`:
+Results of a real run of `bash run.sh`:
 
-| Caso | Exit code Cucumber | Cenários finalizados | Chamadas à aplicação | Decisão do gate de pesquisa |
+| Case | Cucumber exit code | Scenarios finished | Calls to the application | Research gate decision |
 | --- | --- | --- | --- | --- |
-| Dois cenários em português, em dois blocos do mesmo `.md` | 0 | 2 | 2 | Elegível. |
-| Asserção deliberadamente errada: esperar `6` para `2 + 3` | 1 | 1, `FAILED` | 1 | Recusado. |
-| Passo sem definição | 1 | 1, `UNDEFINED` | 0 | Recusado. |
-| Filtro que remove todos os cenários obrigatórios | 0 | 0 | 0 | Recusado. |
-| Dry-run | 0 | 2, agregados como `PASSED` | 0 | Recusado: modo dry-run, sem execução da aplicação, apesar de eventos `PASSED`. |
+| Two scenarios in Portuguese, in two blocks of the same `.md` | 0 | 2 | 2 | Eligible. |
+| Deliberately wrong assertion: expect `6` for `2 + 3` | 1 | 1, `FAILED` | 1 | Rejected. |
+| Step without definition | 1 | 1, `UNDEFINED` | 0 | Rejected. |
+| Filter that removes all required scenarios | 0 | 0 | 0 | Rejected. |
+| Dry-run | 0 | 2, aggregated as `PASSED` | 0 | Rejected: dry-run mode, without running the application, despite `PASSED` events. |
 
-O dry-run demonstrou uma particularidade importante: nesta versão os eventos agregados do cenário **e dos passos** foram `PASSED`, embora a aplicação não tenha sido chamada. O probe coleta `TestStepFinished`, além de `TestCaseFinished`, confere o conjunto esperado e finalizado, e recusa a configuração dry-run. Exit code zero e eventos `PASSED`, isoladamente, não comprovam execução. No caso de passo indefinido, os eventos reais foram `PASSED`, `UNDEFINED` e `SKIPPED`.
+The dry-run showed an important peculiarity: in this version the aggregated events of the scenario **and of the steps** were `PASSED`, even though the application was not called. The probe collects `TestStepFinished`, in addition to `TestCaseFinished`, checks the expected and finished set, and rejects the dry-run configuration. Exit code zero and `PASSED` events, in isolation, do not prove execution. In the undefined step case, the real events were `PASSED`, `UNDEFINED` and `SKIPPED`.
 
-Isso é compatível com a fonte oficial: [TestCase seleciona o modo DRY_RUN](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-core/src/main/java/io/cucumber/core/runner/TestCase.java#L51-L59), [ExecutionMode retorna PASSED](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-core/src/main/java/io/cucumber/core/runner/ExecutionMode.java#L15-L19) e [dryRunStep não executa o passo](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-core/src/main/java/io/cucumber/core/runner/PickleStepDefinitionMatch.java#L71-L74).
+This is consistent with the official source: [TestCase selects the DRY_RUN mode](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-core/src/main/java/io/cucumber/core/runner/TestCase.java#L51-L59), [ExecutionMode returns PASSED](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-core/src/main/java/io/cucumber/core/runner/ExecutionMode.java#L15-L19) and [dryRunStep does not run the step](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-core/src/main/java/io/cucumber/core/runner/PickleStepDefinitionMatch.java#L71-L74).
 
-O **exit code do harness foi 0 porque os resultados positivos e negativos corresponderam às expectativas do experimento**. Isso não transforma falhas deliberadas em conformidade: cada caso preserva o exit code do runner e a decisão separada do gate. O predicado do gate é específico destes fixtures e observa também uma chamada esperada à aplicação por cenário; não é uma prova geral de qualidade dos testes.
+The **harness exit code was 0 because the positive and negative results matched the experiment's expectations**. That does not turn deliberate failures into conformance: each case preserves the runner's exit code and the separate gate decision. The gate predicate is specific to these fixtures and also checks for one expected call to the application per scenario; it is not a general proof of test quality.
 
-O inventário físico desta pasta continha **zero arquivos `.feature` antes e depois**. O adaptador não grava essa extensão nem temporariamente. Os cenários são parseados a partir de `ByteArrayInputStream`.
+The physical inventory of this folder contained **zero `.feature` files before and after**. The adapter does not write that extension, not even temporarily. The scenarios are parsed from `ByteArrayInputStream`.
 
-Artefatos:
+Artifacts:
 
-- [results.json](evidence/results.json): versões, instante UTC, hashes dos fixtures, cenários esperados, cenários e passos observados, URIs, linhas, resultados da CLI e decisões separadas.
-- [run.log](evidence/run.log): resumo efetivamente emitido pelo harness.
-- [dependency-checksums.json](evidence/dependency-checksums.json): identidade dos jars utilizados.
+- [results.json](evidence/results.json): versions, UTC instant, fixture hashes, expected scenarios, observed scenarios and steps, URIs, lines, CLI results and separate decisions.
+- [run.log](evidence/run.log): summary actually emitted by the harness.
+- [dependency-checksums.json](evidence/dependency-checksums.json): identity of the jars used.
 
-## Como o adaptador funciona
+## How the adapter works
 
-1. CommonMark identifica apenas os blocos fenced cujo info string é exatamente `gherkin`.
-2. Cada bloco recebe uma URI como `specmd:///fixtures/passing.md#block-1`. O fragmento diferencia blocos da mesma documentação e evita tratá-los como uma única fonte em mapas baseados em URI.
-3. Linhas vazias são antepostas ao texto do bloco para preservar as linhas do documento original.
-4. Um `Resource` fornece essa URI e um `ByteArrayInputStream` ao `FeatureParser.parseResource`.
-5. `Runtime.builder().withFeatureSupplier(...)` recebe a lista de features já parseadas, substituindo a descoberta usual por caminhos.
-6. O backend Java encontra os passos em [Steps.java](src/main/java/specmd/research/Steps.java), que chamam [Application.add](src/main/java/specmd/research/Application.java) e verificam o resultado com uma asserção real.
-7. Eventos do runner preservam identidade, URI e linha do cenário. O probe compara os IDs obrigatórios, os eventos e as chamadas observadas.
+1. CommonMark identifies only the fenced blocks whose info string is exactly `gherkin`.
+2. Each block receives a URI such as `specmd:///fixtures/passing.md#block-1`. The fragment distinguishes blocks of the same documentation and avoids treating them as a single source in URI-based maps.
+3. Empty lines are prepended to the block's text to preserve the lines of the original document.
+4. A `Resource` supplies that URI and a `ByteArrayInputStream` to `FeatureParser.parseResource`.
+5. `Runtime.builder().withFeatureSupplier(...)` receives the list of already parsed features, replacing the usual discovery by paths.
+6. The Java backend finds the steps in [Steps.java](src/main/java/specmd/research/Steps.java), which call [Application.add](src/main/java/specmd/research/Application.java) and check the result with a real assertion.
+7. Runner events preserve the scenario's identity, URI and line. The probe compares the required IDs, the events and the observed calls.
 
-Os cenários positivos foram reportados nas linhas **13 e 28** de [passing.md](fixtures/passing.md), pertencentes aos blocos 1 e 2. Os casos de falha e passo indefinido foram reportados na linha **8** de seus respectivos Markdown. O harness também confere que cada posição reportada corresponde à linha com o nome do cenário no arquivo original.
+The positive scenarios were reported at lines **13 and 28** of [passing.md](fixtures/passing.md), belonging to blocks 1 and 2. The failure and undefined step cases were reported at line **8** of their respective Markdown files. The harness also checks that each reported position corresponds to the line with the scenario name in the original file.
 
-O código completo está em [Probe.java](src/main/java/specmd/research/Probe.java). A documentação Markdown continua sendo o artefato editável que contém o comportamento; não existe cópia `.feature` para manter em sincronia.
+The complete code is in [Probe.java](src/main/java/specmd/research/Probe.java). The Markdown documentation remains the editable artifact that contains the behavior; there is no `.feature` copy to keep in sync.
 
-## CLI: testes realmente realizados
+## CLI: tests actually performed
 
-O probe lançou processos separados de `io.cucumber.core.cli.Main`, com os passos e um listener reais no classpath. Forneceu o mesmo texto Gherkin de soma como:
+The probe launched separate `io.cucumber.core.cli.Main` processes, with the real steps and a listener on the classpath. It supplied the same addition Gherkin text as:
 
-| Entrada ensaiada | Observação |
+| Input tried | Observation |
 | --- | --- |
-| Um argumento posicional contendo o texto inteiro | Exit 1; o texto foi interpretado como um caminho inexistente (`path must exist`). |
-| stdin, com argumento `-` | Exit 1; `Unknown option: -`. |
-| stdin, sem caminho | Exit 0; zero cenários finalizados e zero chamadas à aplicação. |
-| Caminho `fixtures/passing.md` | Exit 0; zero cenários finalizados e zero chamadas à aplicação. |
+| One positional argument containing the whole text | Exit 1; the text was interpreted as a nonexistent path (`path must exist`). |
+| stdin, with the `-` argument | Exit 1; `Unknown option: -`. |
+| stdin, without a path | Exit 0; zero scenarios finished and zero calls to the application. |
+| Path `fixtures/passing.md` | Exit 0; zero scenarios finished and zero calls to the application. |
 
-Os argumentos, stdin utilizado, saídas e códigos observados estão no JSON. Um contador em [CliCounter.java](src/main/java/specmd/research/CliCounter.java) registra os eventos reais quando o runtime chega a ser inicializado. Ausência desse contador nas duas falhas de parsing da CLI não é contabilizada como execução de cenário.
+The arguments, stdin used, outputs and observed codes are in the JSON. A counter in [CliCounter.java](src/main/java/specmd/research/CliCounter.java) records the real events when the runtime does get initialized. The absence of that counter in the two CLI parsing failures is not counted as a scenario run.
 
-Essas observações correspondem à CLI e versão fixadas. Não significam que nenhum adaptador, engine JUnit ou integração de terceiros possa oferecer outra entrada.
+These observations correspond to the pinned CLI and version. They do not mean that no adapter, JUnit engine or third-party integration can offer another input.
 
-## APIs públicas em Java e estabilidade
+## Public APIs in Java and stability
 
-Os pontos usados têm visibilidade `public` no Java: `Runtime.Builder.withFeatureSupplier`, `FeatureSupplier`, `FeatureParser.parseResource` e `Resource`. Isso torna a integração possível sem reflexão ou modificação dos jars. **Visibilidade pública não equivale a uma extensão estável prometida para este uso.** São classes do core; seu [README oficial](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-core/README.md#L4-L7) desencoraja a dependência direta usual.
+The points used have `public` visibility in Java: `Runtime.Builder.withFeatureSupplier`, `FeatureSupplier`, `FeatureParser.parseResource` and `Resource`. That makes the integration possible without reflection or modification of the jars. **Public visibility is not the same as a stable extension promised for this use.** They are core classes; its [official README](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-core/README.md#L4-L7) discourages the usual direct dependency.
 
-O adaptador deverá fixar versões, testar a atualização do core e assumir o custo de manutenção. O overload que recebe `String` em `GherkinMessagesFeatureParser` está depreciado; o probe prefere o caminho `Resource`/`InputStream`.
+The adapter will have to pin versions, test core upgrades and take on the maintenance cost. The overload that takes a `String` in `GherkinMessagesFeatureParser` is deprecated; the probe prefers the `Resource`/`InputStream` path.
 
-## Markdown with Gherkin não é este formato
+## Markdown with Gherkin is not this format
 
-A proposta oficial [Markdown with Gherkin](https://github.com/cucumber/gherkin/blob/v42.0.1/MARKDOWN_WITH_GHERKIN.md) usa uma gramática Markdown específica, com cabeçalhos e listas. Ela não significa que qualquer Markdown com blocos fenced seja executável pela CLI.
+The official proposal [Markdown with Gherkin](https://github.com/cucumber/gherkin/blob/v42.0.1/MARKDOWN_WITH_GHERKIN.md) uses a specific Markdown grammar, with headings and lists. It does not mean that any Markdown with fenced blocks is executable by the CLI.
 
-No parser Java da versão **42.0.1**, a [fonte oficial](https://github.com/cucumber/gherkin/blob/v42.0.1/java/src/main/java/io/cucumber/gherkin/GherkinParser.java#L64-L80) diz explicitamente que `.feature.md` não é suportado e usa `TEXT_X_CUCUMBER_GHERKIN_PLAIN`. A nota do documento MDG dessa versão limita o suporte anunciado a JavaScript. Por isso, este ensaio extrai Gherkin padrão dos blocos e fornece o texto em memória. A URI terminar em `.md` não faz o parser interpretar Markdown automaticamente.
+In the Java parser of version **42.0.1**, the [official source](https://github.com/cucumber/gherkin/blob/v42.0.1/java/src/main/java/io/cucumber/gherkin/GherkinParser.java#L64-L80) says explicitly that `.feature.md` is not supported and uses `TEXT_X_CUCUMBER_GHERKIN_PLAIN`. The note in that version's MDG document limits the announced support to JavaScript. That is why this trial extracts standard Gherkin from the blocks and supplies the text in memory. A URI ending in `.md` does not make the parser interpret Markdown automatically.
 
-## Reprodução
+## Reproduction
 
-Requisitos: Linux/POSIX shell, Java com o módulo `jdk.compiler` disponível, Python 3, curl e tar. O ensaio registrado usou Java 21. Não exige instalação global nem `sudo`.
+Requirements: Linux/POSIX shell, Java with the `jdk.compiler` module available, Python 3, curl and tar. The recorded trial used Java 21. It requires neither a global installation nor `sudo`.
 
 ```sh
 cd research/java
@@ -85,31 +85,31 @@ bash prepare-dependencies.sh
 bash run.sh
 ```
 
-O primeiro comando precisa de rede para Maven Central. Se Maven não estiver instalado, baixa Maven 3.9.9 por HTTPS para `.work/tools` (ou `SPECMD_JAVA_CACHE`), verifica o SHA-512 publicado e configura o proxy de sessão quando presente. Não escreve nem imprime credenciais. O Maven configura timeouts de conexão/leitura; em ambientes restritos, a autorização de rede deve ser concedida pelo mecanismo do ambiente antes da execução.
+The first command needs network access to Maven Central. If Maven is not installed, it downloads Maven 3.9.9 over HTTPS to `.work/tools` (or `SPECMD_JAVA_CACHE`), verifies the published SHA-512 and configures the session proxy when present. It neither writes nor prints credentials. Maven configures connection/read timeouts; in restricted environments, network authorization must be granted through the environment's mechanism before the run.
 
-Depois de preparados os jars, `run.sh` compila e executa sem baixar dependências. Usa `java -m jdk.compiler/com.sun.tools.javac.Main` porque o ambiente observado contém o módulo de compilação, mas não o binário `javac` no `PATH`. Os arquivos `.work/` e os caches estão ignorados no Git. O script atualiza as evidências sanitizadas desta pasta.
+Once the jars are prepared, `run.sh` compiles and runs without downloading dependencies. It uses `java -m jdk.compiler/com.sun.tools.javac.Main` because the observed environment contains the compiler module, but not the `javac` binary on the `PATH`. The `.work/` files and the caches are ignored in Git. The script updates the sanitized evidence in this folder.
 
-## Fontes oficiais consultadas
+## Official sources consulted
 
-| Fonte fixada | Informação utilizada |
+| Pinned source | Information used |
 | --- | --- |
-| [Release 8.0.4](https://github.com/cucumber/cucumber-jvm/releases/tag/v8.0.4) | Versão e release pesquisadas. |
-| [Runtime.Builder](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-core/src/main/java/io/cucumber/core/runtime/Runtime.java#L175-L178) e [seleção do fornecedor](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-core/src/main/java/io/cucumber/core/runtime/Runtime.java#L262-L267) | Injetar features já parseadas e evitar descoberta por paths. |
-| [FeatureSupplier](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-core/src/main/java/io/cucumber/core/runtime/FeatureSupplier.java#L7-L9) | Fornecedor de `List<Feature>`. |
-| [FeatureParser](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-core/src/main/java/io/cucumber/core/feature/FeatureParser.java#L31-L46) e [Resource](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-core/src/main/java/io/cucumber/core/resource/Resource.java#L10-L24) | URI e stream de conteúdo em memória. |
-| [USAGE da CLI](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-core/src/main/resources/io/cucumber/core/options/USAGE.txt#L1) e [parser de argumentos](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-core/src/main/java/io/cucumber/core/options/CommandlineOptionsParser.java#L197-L205) | Entrada por path/URI, e não pelo texto de cenário ou `-`. |
-| [FeatureIdentifier](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-core/src/main/java/io/cucumber/core/feature/FeatureIdentifier.java#L42-L43) | Descoberta normal restringe extensão a `.feature`. |
-| [ExitStatus](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-core/src/main/java/io/cucumber/core/runtime/ExitStatus.java#L49-L62) | Zero resultados pode gerar sucesso; status `SKIPPED` não força falha. |
-| [BOM](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-bom/pom.xml) | Gherkin e Messages transitivos fixados. |
-| [Gherkin Java 42.0.1](https://github.com/cucumber/gherkin/blob/v42.0.1/java/src/main/java/io/cucumber/gherkin/GherkinParser.java#L64-L80) | MDG não é suportado por esse parser Java. |
-| [CommonMark Java 0.24.0](https://github.com/commonmark/commonmark-java/tree/commonmark-parent-0.24.0) | Parser Markdown e suporte a source spans usados no adaptador. |
+| [Release 8.0.4](https://github.com/cucumber/cucumber-jvm/releases/tag/v8.0.4) | Version and release researched. |
+| [Runtime.Builder](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-core/src/main/java/io/cucumber/core/runtime/Runtime.java#L175-L178) and [supplier selection](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-core/src/main/java/io/cucumber/core/runtime/Runtime.java#L262-L267) | Inject already parsed features and avoid discovery by paths. |
+| [FeatureSupplier](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-core/src/main/java/io/cucumber/core/runtime/FeatureSupplier.java#L7-L9) | Supplier of `List<Feature>`. |
+| [FeatureParser](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-core/src/main/java/io/cucumber/core/feature/FeatureParser.java#L31-L46) and [Resource](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-core/src/main/java/io/cucumber/core/resource/Resource.java#L10-L24) | URI and in-memory content stream. |
+| [CLI USAGE](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-core/src/main/resources/io/cucumber/core/options/USAGE.txt#L1) and [argument parser](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-core/src/main/java/io/cucumber/core/options/CommandlineOptionsParser.java#L197-L205) | Input by path/URI, and not by scenario text or `-`. |
+| [FeatureIdentifier](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-core/src/main/java/io/cucumber/core/feature/FeatureIdentifier.java#L42-L43) | Normal discovery restricts the extension to `.feature`. |
+| [ExitStatus](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-core/src/main/java/io/cucumber/core/runtime/ExitStatus.java#L49-L62) | Zero results can produce success; `SKIPPED` status does not force failure. |
+| [BOM](https://github.com/cucumber/cucumber-jvm/blob/8a14d94caae7b51f79d60a4a738f69147ad6dbfe/cucumber-bom/pom.xml) | Pinned transitive Gherkin and Messages. |
+| [Gherkin Java 42.0.1](https://github.com/cucumber/gherkin/blob/v42.0.1/java/src/main/java/io/cucumber/gherkin/GherkinParser.java#L64-L80) | MDG is not supported by this Java parser. |
+| [CommonMark Java 0.24.0](https://github.com/commonmark/commonmark-java/tree/commonmark-parent-0.24.0) | Markdown parser and source span support used in the adapter. |
 
-## Limites demonstrados e próximos testes
+## Demonstrated limits and next tests
 
-- A prova cobre estes fixtures, esta stack e estas versões; não suporte universal a Cucumber.
-- Não implementa classificação aceita, autoridade humana, assinatura, política protegida ou gate de integração.
-- O gate de pesquisa recusa os casos negativos conhecidos; não prova que qualquer asserção é suficiente ou que toda intenção foi especificada.
-- URI sintética com fragmento e linhas preservadas funcionou nos eventos coletados. Compatibilidade com todos os formatters, IDEs e links de arquivos não foi testada.
-- O extrator aceita apenas blocos com info string exata `gherkin`. Marcação de exemplos não executáveis, seções mistas e os metadados finais do SpecMD ainda precisam de desenho.
-- Scenario Outline, Background, tabelas, doc strings, hooks de aplicação, paralelismo, erro de sintaxe e deduplicação avançada não foram exercitados neste mínimo. O suporte do parser a um recurso não substitui sua validação ponta a ponta no adaptador.
-- Nenhum cenário deste experimento representa aceite humano do produto. As evidências mostram execução e limites técnicos, não autorização para alterar contratos.
+- The proof covers these fixtures, this stack and these versions; not universal Cucumber support.
+- It does not implement accepted classification, human authority, signing, protected policy or an integration gate.
+- The research gate rejects the known negative cases; it does not prove that any assertion is sufficient or that all intent was specified.
+- A synthetic URI with a fragment and preserved lines worked in the collected events. Compatibility with all formatters, IDEs and file links was not tested.
+- The extractor accepts only blocks with the exact info string `gherkin`. Marking non-executable examples, mixed sections and SpecMD's final metadata still need design.
+- Scenario Outline, Background, tables, doc strings, application hooks, parallelism, syntax errors and advanced deduplication were not exercised in this minimum. The parser's support for a feature does not replace its end-to-end validation in the adapter.
+- No scenario in this experiment represents human acceptance of the product. The evidence shows execution and technical limits, not authorization to change contracts.

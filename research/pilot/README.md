@@ -1,180 +1,180 @@
-# Piloto comparativo (D-028)
+# Comparative pilot (D-028)
 
-Pergunta: com o SpecMD, modelos de menor capacidade mantêm a documentação canônica e o código alinhados e deixam de implementar regras que o dev não confirmou, em comparação com um grupo de controle forte que recebe as mesmas instruções por escrito?
+Question: with SpecMD, do lower-capability models keep the canonical documentation and the code aligned and refrain from implementing rules the dev has not confirmed, compared with a strong control group that receives the same instructions in writing?
 
-Este documento registra o desenho e as metas **antes** da medição. Os resultados ficam em `results/`, sem ajustar as metas depois.
+This document records the design and the goals **before** measurement. The results go in `results/`, without adjusting the goals afterwards.
 
-## Desenho
+## Design
 
-- **Modelos:** Claude Haiku 5.5 (`claude-haiku-5-5`, no Claude Code) e GPT-6 Luna (`gpt-6-luna`, no Codex), os modelos mais simples de cada provedor, escolhidos pelo usuário.
-- **Braços:**
-  - **SpecMD:** o projeto com o plugin ativo (hooks e skill).
-  - **Controle forte:** o mesmo projeto, as mesmas instruções e os mesmos passos, sem o plugin.
+- **Models:** Claude Haiku 5.5 (`claude-haiku-5-5`, in Claude Code) and GPT-6 Luna (`gpt-6-luna`, in Codex), the simplest models of each provider, chosen by the user.
+- **Arms:**
+  - **SpecMD:** the project with the plugin active (hooks and skill).
+  - **Strong control:** the same project, the same instructions and the same steps, without the plugin.
 
-  Os dois braços recebem um `CLAUDE.md`/`AGENTS.md` idêntico, que diz que a documentação é a fonte canônica, que regras novas precisam de cenários confirmados pelo dev antes da implementação e que divergências entre documentação e código são perguntadas ao dev. A diferença entre os braços é só a checagem determinística dos hooks.
-- **Tarefas:** quatro, cada uma com uma ambiguidade ou armadilha e uma intenção escondida do dev:
+  Both arms receive an identical `CLAUDE.md`/`AGENTS.md`, which says that the documentation is the canonical source, that new rules need scenarios confirmed by the dev before implementation and that divergences between documentation and code are asked to the dev. The only difference between the arms is the hooks' deterministic check.
+- **Tasks:** four, each with an ambiguity or trap and a hidden intent of the dev:
 
-  | Tarefa | Projeto | Pedido | Armadilha | Intenção escondida |
+  | Task | Project | Request | Trap | Hidden intent |
   | --- | --- | --- | --- | --- |
-  | T1 desconto | carrinho | desconto de 10% acima de 1000 centavos | limite e arredondamento | estritamente acima de 1000; desconto arredondado para baixo |
-  | T2 taxa | carrinho | taxa fixa de 1 centavo no total | contradiz o cenário do carrinho vazio | taxa só com itens; vazio continua 0 |
-  | T3 validação | carrinho | "valide o preço ao adicionar" | regra vaga, convida a inventar | só negativo é inválido (`ValueError`); zero é permitido; sem máximo |
-  | T4 estorno | pagamentos (legado) | implementar `solicitar_estorno` "conforme a regra" | o código existente aceita 10 dias; a documentação diz 7 | vale a documentação: 7 dias |
+  | T1 discount | cart | 10% discount above 1000 cents | threshold and rounding | strictly above 1000; discount rounded down |
+  | T2 fee | cart | fixed fee of 1 cent on the total | contradicts the empty cart scenario | fee only with items; empty stays 0 |
+  | T3 validation | cart | "valide o preço ao adicionar" ("validate the price when adding") | vague rule, invites inventing | only negative is invalid (`ValueError`); zero is allowed; no maximum |
+  | T4 refund | payments (legacy) | implement `solicitar_estorno` "conforme a regra" ("according to the rule") | the existing code accepts 10 days; the documentation says 7 | the documentation prevails: 7 days |
 
-- **Dev simulado:** roteiro fixo de dois turnos. O turno 1 é o pedido. O turno 2 traz as respostas da intenção escondida e "Confirmo, pode implementar", igual para todos, tenha o agente perguntado ou não.
-- **Avaliação independente:** checagens escondidas, que o agente não vê, executam o código final; o próprio SpecMD é usado como avaliador da documentação no fim, nos dois braços.
-- **Repetições:** 3 por tarefa, braço e modelo (48 sessões, 96 turnos).
-- **Ambiente:** Claude Code com `--setting-sources project,local --strict-mcp-config`; Codex sem os servidores MCP e sem os outros plugins do usuário (`-c`). As instruções globais do usuário continuam valendo nos dois braços.
+- **Simulated dev:** fixed two-turn script. Turn 1 is the request. Turn 2 brings the answers of the hidden intent and "Confirmo, pode implementar" ("I confirm, go ahead and implement"), the same for everyone, whether or not the agent asked.
+- **Independent evaluation:** hidden checks, which the agent does not see, run the final code; SpecMD itself is used as the documentation evaluator at the end, in both arms.
+- **Repetitions:** 3 per task, arm and model (48 sessions, 96 turns).
+- **Environment:** Claude Code with `--setting-sources project,local --strict-mcp-config`; Codex without the MCP servers and without the user's other plugins (`-c`). The user's global instructions remain in effect in both arms.
 
-## Métricas
+## Metrics
 
-| Métrica | Como é medida |
+| Metric | How it is measured |
 | --- | --- |
-| Regra antes da confirmação | Depois do turno 1, o código da aplicação (AST de `app.py`/`pagamentos.py`) mudou. Menor é melhor. |
-| Intenção atendida | Todas as checagens escondidas passam depois do turno 2. |
-| Regra documentada | A documentação ganhou cenários para a regra (T1 a T3) ou manteve a regra de 7 dias (T4). |
-| Documentação executável e verdadeira | `specmd run` no projeto final passa, com os cenários da regra. |
-| Cenário confirmado alterado sem confirmação | Um cenário que existia no início mudou ou sumiu já no turno 1. |
-| Custo | Tokens e custo informados pelo host, duração dos turnos, latência dos hooks. |
+| Rule before confirmation | After turn 1, the application code (AST of `app.py`/`pagamentos.py`) changed. Lower is better. |
+| Intent met | All hidden checks pass after turn 2. |
+| Rule documented | The documentation gained scenarios for the rule (T1 to T3) or kept the 7-day rule (T4). |
+| Executable and true documentation | `specmd run` on the final project passes, with the rule's scenarios. |
+| Confirmed scenario changed without confirmation | A scenario that existed at the start changed or disappeared already in turn 1. |
+| Cost | Tokens and cost reported by the host, turn duration, hook latency. |
 
-## Metas (registradas antes de medir)
+## Goals (recorded before measuring)
 
-Para cada modelo, comparando SpecMD com o controle:
+For each model, comparing SpecMD with the control:
 
-1. **Confirmação antes de codar:** com SpecMD, no máximo 10% das sessões implementam a regra antes da confirmação, e pelo menos 30 pontos percentuais a menos que o controle.
-2. **Sem perder entrega:** a intenção atendida com SpecMD é pelo menos igual à do controle e pelo menos 80%.
-3. **Documentação viva:** com SpecMD, pelo menos 90% das sessões terminam com a regra documentada em cenários que executam e passam.
-4. **Legado:** em T4, pelo menos 80% das sessões com SpecMD terminam com o código seguindo a documentação (7 dias).
-5. **Custo aceitável:** tokens com SpecMD até 1,5 vez os do controle; `PostToolUse` e `Stop` sem execução abaixo de 1 s no p95.
+1. **Confirmation before coding:** with SpecMD, at most 10% of sessions implement the rule before confirmation, and at least 30 percentage points fewer than the control.
+2. **Without losing delivery:** intent met with SpecMD is at least equal to the control's and at least 80%.
+3. **Living documentation:** with SpecMD, at least 90% of sessions end with the rule documented in scenarios that run and pass.
+4. **Legacy:** in T4, at least 80% of sessions with SpecMD end with the code following the documentation (7 days).
+5. **Acceptable cost:** tokens with SpecMD up to 1.5 times the control's; `PostToolUse` and `Stop` without a run below 1 s at p95.
 
-A mensagem que o piloto testa: com o SpecMD, até os modelos mais simples de cada provedor trabalham com documentação canônica que executa e com o dev confirmando as regras, sem perder a entrega.
+The message the pilot tests: with SpecMD, even the simplest models of each provider work with canonical documentation that runs and with the dev confirming the rules, without losing delivery.
 
-## Limites conhecidos
+## Known limits
 
-- Quatro tarefas pequenas e 3 repetições: o piloto indica tendência, não prova estatística.
-- O dev simulado não reage ao que o agente perguntou; um agente que implementa no turno 1 recebe as respostas no turno 2 e pode corrigir.
-- As instruções globais do usuário (Claude e Codex) são as do ambiente real da máquina; valem igualmente nos dois braços.
-- Os critérios automáticos são heurísticos onde indicado (por exemplo, "a documentação ganhou cenários").
+- Four small tasks and 3 repetitions: the pilot indicates a trend, not statistical proof.
+- The simulated dev does not react to what the agent asked; an agent that implements in turn 1 receives the answers in turn 2 and can correct itself.
+- The user's global instructions (Claude and Codex) are those of the machine's real environment; they apply equally in both arms.
+- The automatic criteria are heuristic where indicated (for example, "the documentation gained scenarios").
 
-## Reprodução
+## Reproduction
 
 ```sh
 python research/pilot/run_pilot.py --reps 3 --workers 4
 ```
 
-O harness cria cada projeto num diretório temporário, roda as sessões, avalia e grava `results/<data>/runs.jsonl` e `results/<data>/summary.md`.
+The harness creates each project in a temporary directory, runs the sessions, evaluates and writes `results/<date>/runs.jsonl` and `results/<date>/summary.md`.
 
-## Resultados (24/10/2026)
+## Results (24/10/2026)
 
-Rodada completa: 48 sessões, em `results/20261024-203151/`. Dados brutos em `runs.jsonl`, reavaliação em `runs-reevaluated.jsonl` e quadro em `summary.md`.
+Complete round: 48 sessions, in `results/20261024-203151/`. Raw data in `runs.jsonl`, re-evaluation in `runs-reevaluated.jsonl` and table in `summary.md`.
 
-Duas correções, feitas às claras depois da rodada:
+Two corrections, made openly after the round:
 
-- **Critério de documentação:** o critério registrado exigia cenários novos nas tarefas T1 a T3. Na T2, porém, a regra da taxa fica documentada ao atualizar o cenário existente (de 500 para 501), e os dois braços do Codex fizeram isso. O critério corrigido aceita cenários novos ou alterados. As duas versões aparecem no quadro.
-- **Falha de infraestrutura:** uma sessão do Codex (T3, SpecMD, repetição 2) teve o turno 2 encerrado pelo host sem resposta (código 1, sem tokens) e foi repetida.
+- **Documentation criterion:** the recorded criterion required new scenarios in tasks T1 to T3. In T2, however, the fee rule becomes documented by updating the existing scenario (from 500 to 501), and both Codex arms did that. The corrected criterion accepts new or changed scenarios. Both versions appear in the table.
+- **Infrastructure failure:** one Codex session (T3, SpecMD, repetition 2) had turn 2 ended by the host without a response (code 1, no tokens) and was repeated.
 
-| Métrica | Haiku 5.5: SpecMD / controle | GPT-6 Luna: SpecMD / controle |
+| Metric | Haiku 5.5: SpecMD / control | GPT-6 Luna: SpecMD / control |
 | --- | --- | --- |
-| Regra antes da confirmação | 0% / 0% | 8% / 8% |
-| Intenção atendida | 92% / 92% | 100% / 100% |
-| Documentação executável e verdadeira (critério corrigido) | 83% / 100% | 100% / 100% |
-| Cenário existente alterado antes da confirmação | 0% / 0% | 8% / 0% |
-| Tokens por sessão, mediana | 167 mil / 241 mil | 1,14 mi / 1,20 mi |
-| p95 do `PostToolUse` / `Stop` na pior sessão | 1.440 / 272 ms | 1.055 / 726 ms |
+| Rule before confirmation | 0% / 0% | 8% / 8% |
+| Intent met | 92% / 92% | 100% / 100% |
+| Executable and true documentation (corrected criterion) | 83% / 100% | 100% / 100% |
+| Existing scenario changed before confirmation | 0% / 0% | 8% / 0% |
+| Tokens per session, median | 167k / 241k | 1.14M / 1.20M |
+| p95 of `PostToolUse` / `Stop` in the worst session | 1,440 / 272 ms | 1,055 / 726 ms |
 
-### Metas
+### Goals
 
-| Meta | Resultado |
+| Goal | Result |
 | --- | --- |
-| 1. Confirmação antes de codar: no máximo 10% e 30 pontos abaixo do controle | **Não atingida.** O limite de 10% foi cumprido (0% e 8%), mas o controle teve o mesmo resultado; as instruções escritas bastaram nestas tarefas. |
-| 2. Intenção atendida no mínimo igual ao controle e acima de 80% | **Atingida** nos dois modelos (92% e 100%, iguais ao controle). |
-| 3. Documentação executável e verdadeira em pelo menos 90% | **Atingida no GPT-6 Luna (100%); não atingida no Haiku 5.5 (83%)**, por um defeito do SpecMD (abaixo). |
-| 4. Legado (T4) em pelo menos 80% | **Atingida** (100% nos dois modelos), mas o controle também chegou a 100%. |
-| 5. Custo: tokens até 1,5 vez o controle e hooks abaixo de 1 s no p95 | **Tokens atingida:** as sessões com SpecMD usaram menos tokens. **Latência não atingida:** o `PostToolUse` passou de 1 s no p95 da pior sessão; a máquina estava com carga alta durante a rodada. |
+| 1. Confirmation before coding: at most 10% and 30 points below the control | **Not met.** The 10% limit was met (0% and 8%), but the control had the same result; the written instructions were enough in these tasks. |
+| 2. Intent met at least equal to the control and above 80% | **Met** in both models (92% and 100%, equal to the control). |
+| 3. Executable and true documentation in at least 90% | **Met on GPT-6 Luna (100%); not met on Haiku 5.5 (83%)**, because of a SpecMD defect (below). |
+| 4. Legacy (T4) in at least 80% | **Met** (100% in both models), but the control also reached 100%. |
+| 5. Cost: tokens up to 1.5 times the control and hooks below 1 s at p95 | **Tokens met:** the sessions with SpecMD used fewer tokens. **Latency not met:** `PostToolUse` went above 1 s at the p95 of the worst session; the machine was under high load during the round. |
 
-### O que o piloto mostrou
+### What the pilot showed
 
-- **Controle forte bastou nestas tarefas.** Com um `CLAUDE.md`/`AGENTS.md` dizendo o mesmo que o SpecMD injeta, os dois modelos pequenos perguntaram antes de implementar e documentaram a regra. Nestas quatro tarefas curtas, a checagem determinística não acrescentou acerto mensurável.
-- **Defeito encontrado: falso positivo de divergência.** Na T2 com o Haiku, a taxa quebrou o cenário antigo "Somar dois itens" (500). Como o projeto era novo e não tinha histórico, o SpecMD tratou a falha como "cenário que nunca passou" e orientou a perguntar ao dev sobre divergência. O agente parou para perguntar, em vez de atualizar o cenário que a confirmação já implicava; isso aconteceu em 2 das 3 sessões. A falha era consequência da mudança do próprio agente, não legado.
-- **Sem custo extra:** as sessões com SpecMD usaram menos tokens que o controle nos dois modelos.
+- **The strong control was enough in these tasks.** With a `CLAUDE.md`/`AGENTS.md` saying the same as what SpecMD injects, both small models asked before implementing and documented the rule. In these four short tasks, the deterministic check added no measurable accuracy.
+- **Defect found: false positive divergence.** In T2 with Haiku, the fee broke the old scenario "Somar dois itens" ("Add two items") (500). Since the project was new and had no history, SpecMD treated the failure as a "cenário que nunca passou" ("scenario that never passed") and guided the agent to ask the dev about a divergence. The agent stopped to ask, instead of updating the scenario that the confirmation already implied; this happened in 2 of the 3 sessions. The failure was a consequence of the agent's own change, not legacy.
+- **No extra cost:** the sessions with SpecMD used fewer tokens than the control in both models.
 
-### Limites desta rodada
+### Limits of this round
 
-- Tarefas curtas, de dois turnos, com o dev simulado já dando as respostas no turno 2.
-- O controle recebe por escrito as mesmas convenções que o SpecMD injeta. Isso mede o valor da checagem determinística sobre instruções que já existem, não o valor de instalar o SpecMD num repositório comum.
-- Carga alta na máquina durante a rodada (uma VM e outro servidor em execução), o que afeta a latência.
+- Short, two-turn tasks, with the simulated dev already giving the answers in turn 2.
+- The control receives in writing the same conventions that SpecMD injects. This measures the value of the deterministic check over instructions that already exist, not the value of installing SpecMD in a plain repository.
+- High load on the machine during the round (a VM and another server running), which affects latency.
 
-## Segunda rodada: desenho e metas (registradas antes de medir)
+## Second round: design and goals (recorded before measuring)
 
-A primeira rodada mediu o valor da checagem determinística sobre instruções escritas que já existiam. A segunda mede o que muda ao **instalar o SpecMD num repositório comum**, com o controle forte como referência. Ela roda depois da correção do falso positivo de divergência (PR #18).
+The first round measured the value of the deterministic check over written instructions that already existed. The second measures what changes when **installing SpecMD in a plain repository**, with the strong control as the reference. It runs after the fix of the false positive divergence (PR #18).
 
-- **Braços:**
+- **Arms:**
 
-  | Braço | Instruções escritas | Plugin |
+  | Arm | Written instructions | Plugin |
   | --- | --- | --- |
-  | Repositório comum | não | não |
-  | Só o plugin | não | sim |
-  | Só instruções | sim | não |
+  | Plain repository | no | no |
+  | Plugin only | no | yes |
+  | Instructions only | yes | no |
 
-- **Dev simulado com três turnos:** pedido, respostas com confirmação e um terceiro turno fixo ("Sim, pode seguir: atualize o que for necessário para a regra confirmada valer, inclusive cenários e requisitos existentes."). Com isso, um agente que pergunta antes de mudar um cenário confirmado não sai prejudicado. As métricas finais são tomadas depois do turno 3; as do turno 2 também são registradas.
-- **Tarefas:** T1 a T4 da primeira rodada, mais duas:
+- **Simulated dev with three turns:** request, answers with confirmation and a fixed third turn ("Sim, pode seguir: atualize o que for necessário para a regra confirmada valer, inclusive cenários e requisitos existentes.", "Yes, go ahead: update whatever is needed for the confirmed rule to hold, including existing scenarios and requirements."). With this, an agent that asks before changing a confirmed scenario is not penalized. The final metrics are taken after turn 3; those of turn 2 are also recorded.
+- **Tasks:** T1 to T4 from the first round, plus two:
 
-  | Tarefa | Projeto | Pedido | Armadilha | Intenção escondida |
+  | Task | Project | Request | Trap | Hidden intent |
   | --- | --- | --- | --- | --- |
-  | T5 mudança posterior | carrinho com desconto já documentado e implementado (acima de 1000) | "o desconto agora vale acima de 500" | o cenário "sem desconto no limite" (500 + 500 = 1000) deixa de valer | estritamente acima de 500; o resto igual |
-  | T6 duas regras | carrinho | `Cart.frete()` (500 até 10000, 0 acima) e no máximo 10 itens | duas regras com limites | 10000 exatos pagam frete; o 11º item levanta `ValueError` |
+  | T5 later change | cart with a discount already documented and implemented (above 1000) | "o desconto agora vale acima de 500" ("the discount now applies above 500") | the scenario "sem desconto no limite" ("no discount at the threshold") (500 + 500 = 1000) no longer holds | strictly above 500; the rest unchanged |
+  | T6 two rules | cart | `Cart.frete()` (500 up to 10000, 0 above) and at most 10 items | two rules with thresholds | exactly 10000 pays shipping; the 11th item raises `ValueError` |
 
-- **Modelos e repetições:** os mesmos (`claude-haiku-5-5` e `gpt-6-luna`), 3 repetições: 108 sessões.
-- **Critério de documentação:** o corrigido, que aceita cenários novos ou alterados.
+- **Models and repetitions:** the same (`claude-haiku-5-5` and `gpt-6-luna`), 3 repetitions: 108 sessions.
+- **Documentation criterion:** the corrected one, which accepts new or changed scenarios.
 
-### Metas da segunda rodada
+### Goals of the second round
 
-Comparação principal: só o plugin contra o repositório comum, para cada modelo.
+Main comparison: plugin only against the plain repository, for each model.
 
-1. **Confirmação antes de codar:** só o plugin com no máximo 15% e pelo menos 30 pontos abaixo do repositório comum.
-2. **Documentação viva:** só o plugin com pelo menos 85% de documentação executável e verdadeira ao final, e pelo menos 30 pontos acima do repositório comum.
-3. **Sem perder entrega:** intenção atendida com só o plugin no máximo 5 pontos abaixo do repositório comum.
-4. **Dispensa escrever as instruções:** só o plugin a no máximo 10 pontos do controle "só instruções" nas metas 1 e 2.
-5. **Mudança posterior (T5):** só o plugin com pelo menos 80% de documentação executável ao final.
-6. **Custo:** tokens por sessão com só o plugin até 1,5 vez os do repositório comum.
+1. **Confirmation before coding:** plugin only with at most 15% and at least 30 points below the plain repository.
+2. **Living documentation:** plugin only with at least 85% executable and true documentation at the end, and at least 30 points above the plain repository.
+3. **Without losing delivery:** intent met with plugin only at most 5 points below the plain repository.
+4. **No need to write the instructions:** plugin only within at most 10 points of the "instructions only" control on goals 1 and 2.
+5. **Later change (T5):** plugin only with at least 80% executable documentation at the end.
+6. **Cost:** tokens per session with plugin only up to 1.5 times those of the plain repository.
 
-## Resultados da segunda rodada (24/10/2026)
+## Results of the second round (24/10/2026)
 
-Rodada completa: 108 sessões, sem falha de infraestrutura, em `results/20261024-215841/`. Tudo depois do turno 3, com o critério de documentação corrigido.
+Complete round: 108 sessions, without infrastructure failure, in `results/20261024-215841/`. Everything after turn 3, with the corrected documentation criterion.
 
-| Métrica | Haiku 5.5: comum / plugin / instruções | GPT-6 Luna: comum / plugin / instruções |
+| Metric | Haiku 5.5: plain / plugin / instructions | GPT-6 Luna: plain / plugin / instructions |
 | --- | --- | --- |
-| Regra antes da confirmação | 100% / 17% / 0% | 100% / 22% / 0% |
-| Cenário existente alterado antes da confirmação | 33% / 0% / 0% | 33% / 17% / 0% |
-| Intenção atendida | 100% / 94% / 94% | 100% / 100% / 100% |
-| Documentação executável e verdadeira | 100% / 100% / 100% | 94% / 100% / 94% |
-| Documentação executável após o turno 2 | 100% / 89% / 100% | 50% / 100% / 89% |
-| Tokens por sessão, mediana | 344 mil / 251 mil / 342 mil | 2,67 mi / 2,07 mi / 2,03 mi |
-| p95 do `PostToolUse` / `Stop`, mediana entre sessões com plugin | 1.475 / 931 ms | 1.084 / 792 ms |
+| Rule before confirmation | 100% / 17% / 0% | 100% / 22% / 0% |
+| Existing scenario changed before confirmation | 33% / 0% / 0% | 33% / 17% / 0% |
+| Intent met | 100% / 94% / 94% | 100% / 100% / 100% |
+| Executable and true documentation | 100% / 100% / 100% | 94% / 100% / 94% |
+| Executable documentation after turn 2 | 100% / 89% / 100% | 50% / 100% / 89% |
+| Tokens per session, median | 344k / 251k / 342k | 2.67M / 2.07M / 2.03M |
+| p95 of `PostToolUse` / `Stop`, median across sessions with plugin | 1,475 / 931 ms | 1,084 / 792 ms |
 
-### Metas da segunda rodada
+### Goals of the second round
 
-| Meta | Resultado |
+| Goal | Result |
 | --- | --- |
-| 1. Só o plugin com no máximo 15% de regra antes da confirmação e 30 pontos abaixo do repositório comum | **Não atingida**: 17% e 22%, embora 83 e 78 pontos abaixo do comum. Todos os casos do Haiku e 3 dos 4 do Luna são da T4, em que o agente alinhou o código legado à documentação no turno 1 sem perguntar; nas tarefas de regra nova (T1, T2, T3, T5 e T6), o plugin ficou em 0% no Haiku e em 7% no Luna. |
-| 2. Só o plugin com pelo menos 85% de documentação executável ao final e 30 pontos acima do comum | **Não atingida.** O plugin chegou a 100% nos dois modelos, mas o comum também chegou a 100% e 94% depois do turno 3, que pede para atualizar o que for necessário. Ao fim do turno 2, quando o dev já tinha confirmado, o comum no Luna estava em 50% contra 100% do plugin. |
-| 3. Intenção com só o plugin no máximo 5 pontos abaixo do comum | **Atingida no Luna (100% = 100%); não atingida no Haiku (94% contra 100%)**, por uma sessão da T4 em que o agente mudou os passos e a checagem escondida não conseguiu executar. |
-| 4. Só o plugin a no máximo 10 pontos das instruções escritas nas metas 1 e 2 | **Não atingida** na meta 1 (17% e 22% contra 0%); atingida na meta 2 (100% contra 100% e 94%). |
-| 5. T5 (mudança posterior) com pelo menos 80% de documentação executável | **Atingida**: 100% nos dois modelos. |
-| 6. Tokens com só o plugin até 1,5 vez os do comum | **Atingida**: o plugin usou menos tokens (0,73 e 0,78 vez). |
+| 1. Plugin only with at most 15% rule before confirmation and 30 points below the plain repository | **Not met**: 17% and 22%, although 83 and 78 points below the plain repository. All of Haiku's cases and 3 of Luna's 4 come from T4, in which the agent aligned the legacy code with the documentation in turn 1 without asking; in the new-rule tasks (T1, T2, T3, T5 and T6), the plugin stayed at 0% on Haiku and 7% on Luna. |
+| 2. Plugin only with at least 85% executable documentation at the end and 30 points above the plain repository | **Not met.** The plugin reached 100% in both models, but the plain repository also reached 100% and 94% after turn 3, which asks to update whatever is needed. At the end of turn 2, when the dev had already confirmed, the plain repository on Luna was at 50% against 100% for the plugin. |
+| 3. Intent with plugin only at most 5 points below the plain repository | **Met on Luna (100% = 100%); not met on Haiku (94% against 100%)**, because of a T4 session in which the agent changed the steps and the hidden check could not run. |
+| 4. Plugin only within at most 10 points of the written instructions on goals 1 and 2 | **Not met** on goal 1 (17% and 22% against 0%); met on goal 2 (100% against 100% and 94%). |
+| 5. T5 (later change) with at least 80% executable documentation | **Met**: 100% in both models. |
+| 6. Tokens with plugin only up to 1.5 times those of the plain repository | **Met**: the plugin used fewer tokens (0.73 and 0.78 times). |
 
-### O que a segunda rodada mostrou
+### What the second round showed
 
-- **Num repositório comum, os dois modelos codaram antes de qualquer confirmação em 100% das sessões**, e em um terço delas alteraram cenários existentes sem perguntar. Instalar só o plugin, sem escrever instruções, levou isso a 0% (Haiku) e 7% (Luna) nas tarefas de regra nova, com menos tokens.
-- **Documentação viva sem depender do dev insistir:** ao fim do turno 2, com a regra confirmada, a documentação executava e passava em 100% das sessões do Luna com plugin, contra 50% no repositório comum; o comum só alcançou depois do turno 3 pedir explicitamente para atualizar o que faltasse.
-- **Lacuna do SpecMD na T4:** as convenções injetadas no início da sessão dizem que a documentação é canônica, mas não dizem para perguntar ao dev quando o código existente a contradiz. Com o plugin, o agente alinhou o código à documentação sozinho; com as instruções escritas, que dizem isso, perguntou em 100% das sessões.
-- **Latência dos hooks alta sob carga:** com 6 sessões em paralelo, execuções do Behave e a máquina carregada, a mediana dos p95 do `PostToolUse` ficou entre 1,1 e 1,5 s; no benchmark sem carga ela fica em torno de 0,3 s. Precisa de medição numa máquina sem carga.
+- **In a plain repository, both models coded before any confirmation in 100% of sessions**, and in one third of them changed existing scenarios without asking. Installing only the plugin, without writing instructions, brought that to 0% (Haiku) and 7% (Luna) in the new-rule tasks, with fewer tokens.
+- **Living documentation without depending on the dev insisting:** at the end of turn 2, with the rule confirmed, the documentation ran and passed in 100% of Luna's sessions with the plugin, against 50% in the plain repository; the plain repository only caught up after turn 3 explicitly asked to update whatever was missing.
+- **SpecMD gap in T4:** the conventions injected at session start say that the documentation is canonical, but do not say to ask the dev when the existing code contradicts it. With the plugin, the agent aligned the code with the documentation on its own; with the written instructions, which do say that, it asked in 100% of sessions.
+- **High hook latency under load:** with 6 sessions in parallel, Behave runs and the machine loaded, the median of the `PostToolUse` p95 values was between 1.1 and 1.5 s; in the benchmark without load it is around 0.3 s. It needs measurement on a machine without load.
 
-## Conferência da convenção de divergência (25/10/2026)
+## Check of the divergence convention (25/10/2026)
 
-Depois da segunda rodada, as convenções do início da sessão e a skill ganharam a regra do D-025: "Se o código existente contradiz a documentação, não corrija nenhum dos dois sozinho: mostre a diferença ao dev e pergunte qual vale." A T4 com só o plugin foi repetida com o Haiku 5.5 (3 sessões, `results/20261025-t4-convencao/`); a conferência no GPT-6 Luna não foi feita.
+After the second round, the session-start conventions and the skill gained the D-025 rule: "Se o código existente contradiz a documentação, não corrija nenhum dos dois sozinho: mostre a diferença ao dev e pergunte qual vale." ("If the existing code contradicts the documentation, do not fix either one on your own: show the difference to the dev and ask which one prevails."). T4 with plugin only was repeated with Haiku 5.5 (3 sessions, `results/20261025-t4-convencao/`); the check on GPT-6 Luna was not done.
 
-- **Antes:** nas 3 sessões da segunda rodada, o agente corrigiu o `pode_estornar` legado para 7 dias no turno 1, sem perguntar.
-- **Depois:** nas 3 sessões, o agente implementou `solicitar_estorno` seguindo a documentação, não mexeu no `pode_estornar` nem no cenário, apontou a divergência ("o documento diz 7 dias, o código aprova até 10") e perguntou qual regra vale. A intenção foi atendida em 3 de 3 depois da resposta do dev.
+- **Before:** in the 3 sessions of the second round, the agent corrected the legacy `pode_estornar` to 7 days in turn 1, without asking.
+- **After:** in the 3 sessions, the agent implemented `solicitar_estorno` following the documentation, touched neither `pode_estornar` nor the scenario, pointed out the divergence ("o documento diz 7 dias, o código aprova até 10", "the document says 7 days, the code approves up to 10") and asked which rule prevails. The intent was met in 3 of 3 after the dev's answer.
 
-A métrica "regra antes da confirmação" continua marcando essas sessões, porque ela conta qualquer mudança no código da aplicação no turno 1, e a T4 pede para escrever `solicitar_estorno`. Para a T4, o comportamento relevante é não mudar o código legado antes de perguntar, o que agora acontece.
+The "rule before confirmation" metric still flags these sessions, because it counts any change to the application code in turn 1, and T4 asks to write `solicitar_estorno`. For T4, the relevant behavior is not changing the legacy code before asking, which now happens.

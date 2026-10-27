@@ -1,155 +1,155 @@
-# Inventário e análise incremental
+# Inventory and incremental analysis
 
-> **Histórico, anterior à [D-021](decisions.md).** Este documento descreve o desenho com aceite assinado, autoridade, trust e bloqueio de implementação, removido em 23/10/2026. Para o produto atual, veja [produto](product.md) e [estado da implementação](implementation-status.md).
+> **Historical, predating [D-021](decisions.md).** This document describes the design with signed acceptance, authority, trust and implementation blocking, removed on 23/10/2026. For the current product, see [product](product.md) and [implementation status](implementation-status.md).
 
-> Estado: inventário determinístico e snapshots locais implementados experimentalmente. O cache é consultivo e a fonte sempre é reanalisada. Reutilização confiável de parsing, análise semântica incremental e ganhos de desempenho ainda não foram demonstrados. Consulte o [estado de implementação](implementation-status.md).
+> Status: deterministic inventory and local snapshots implemented experimentally. The cache is advisory and the source is always reanalysed. Trustworthy parsing reuse, incremental semantic analysis and performance gains have not been demonstrated yet. See the [implementation status](implementation-status.md).
 
-O SpecMD descobre os documentos do projeto e produz um inventário de caminhos, conteúdo e relações declaradas. A evolução pretendida é evitar reinterpretações desnecessárias; o incremento atual prioriza reconstrução e conferência da fonte antes de qualquer decisão.
+SpecMD discovers the project's documents and produces an inventory of paths, content and declared relations. The intended evolution is to avoid unnecessary reinterpretation; the current increment prioritizes rebuilding and checking the source before any decision.
 
-O objetivo é economizar leitura, parsing, chamadas a modelos e execução de verificações, preservando a detecção de novos documentos e mudanças que exigem revisão.
+The goal is to save reading, parsing, model calls and check runs, while preserving the detection of new documents and of changes that require review.
 
-## Três responsabilidades separadas
+## Three separate responsibilities
 
-| Responsabilidade | Conteúdo | Autoridade |
+| Responsibility | Content | Authority |
 | --- | --- | --- |
-| Inventário | Caminhos, conteúdo observado, classificação declarada e relações conhecidas. | Descreve o estado encontrado; pode ser reconstruído. |
-| Aceite | Identidade autenticada, escopo e versão exata aprovados pelo humano. | Vem do mecanismo protegido de aprovação. |
-| Cache de análise | Atualmente, snapshots dos documentos extraídos e diagnósticos com identidade de fonte/parser. | Consultivo: não é usado para omitir a validação da fonte nem para conceder aceite. |
+| Inventory | Paths, observed content, declared classification and known relations. | Describes the state found; can be rebuilt. |
+| Acceptance | Authenticated identity, scope and exact version approved by the human. | Comes from the protected approval mechanism. |
+| Analysis cache | Currently, snapshots of the extracted documents and diagnostics with source/parser identity. | Advisory: not used to skip validating the source nor to grant acceptance. |
 
-Um documento analisado pode continuar sem aprovação. Um documento aprovado pode precisar de nova análise porque uma dependência ou política mudou. Apagar ou editar o índice local não pode transformar uma pendência em aprovação.
+An analysed document may remain unapproved. An approved document may need a new analysis because a dependency or policy changed. Deleting or editing the local index cannot turn a gap into an approval.
 
-Os contratos de confiança são detalhados em Aceite e confiança (removido por [D-021](decisions.md)); a composição geral está em [Arquitetura](architecture.md).
+The trust contracts are detailed in Acceptance and trust (removed by [D-021](decisions.md)); the overall composition is in [Architecture](architecture.md).
 
-## Descoberta e escopo
+## Discovery and scope
 
-O scanner só é ativado quando existe `specmd.toml` na raiz. A configuração schema 1 preserva o preflight simples e aceita somente `schema = 1`. A configuração schema 2 exige `project_id`, aceita `repository_id` opcional e acrescenta runners, rastreabilidade e política de evidências. O frontmatter de cada documento permanece `specmd.schema: 1`; são esquemas distintos, descritos em [Formato documental](format.md).
+The scanner is only activated when a `specmd.toml` exists at the root. The schema 1 configuration preserves the simple preflight and accepts only `schema = 1`. The schema 2 configuration requires `project_id`, accepts an optional `repository_id` and adds runners, traceability and evidence policy. Each document's front matter remains `specmd.schema: 1`; these are distinct schemas, described in [Documentation format](format.md).
 
-No incremento atual, a descoberta usa `os.walk` ordenado, considera `.md` e `.markdown` sem distinguir caixa na extensão e inclui arquivos locais ainda não adicionados ao Git. Não existem exclusões configuráveis pelo agente. São podados os diretórios de nomes fixos:
+In the current increment, discovery uses a sorted `os.walk`, considers `.md` and `.markdown` with a case-insensitive extension and includes local files not yet added to Git. There are no exclusions configurable by the agent. Directories with fixed names are pruned:
 
 ```text
 .git .hg .svn .venv venv node_modules target __pycache__ .specmd
 .pytest_cache .mypy_cache .ruff_cache build dist
 ```
 
-Links simbólicos de documentos e diretórios dentro do escopo são recusados e não seguidos. Essas podas fazem parte da implementação e precisam entrar na revisão do verificador; não são uma política dinâmica de exclusões já aprovada por um humano.
+Symbolic links to documents and directories within the scope are refused and not followed. These prunings are part of the implementation and must be included in the verifier's review; they are not a dynamic exclusion policy already approved by a human.
 
-O inventário deve considerar:
+The inventory must consider:
 
-- Documentos versionados no Git.
-- Novos documentos locais, inclusive antes de serem adicionados ao Git.
-- Alterações staged e unstaged durante a sessão.
-- Remoções e renomeações.
-- Mudanças na política de descoberta e nas exclusões.
+- Documents versioned in Git.
+- New local documents, including before they are added to Git.
+- Staged and unstaged changes during the session.
+- Removals and renames.
+- Changes to the discovery policy and to the exclusions.
 
-Uma política configurável de exclusões com caminho, justificativa, versionamento e aceite é uma evolução de desenho. Ela não está disponível como mecanismo para retirar arquivos da análise neste incremento.
+A configurable exclusion policy with path, justification, versioning and acceptance is a design evolution. It is not available as a mechanism to remove files from analysis in this increment.
 
-O `.gitignore` serve ao fluxo do Git e não substitui a descoberta do SpecMD. Markdown próprio em diretórios não podados é encontrado mesmo quando não está versionado ou foi ignorado pelo Git. Ignorar um documento no Git não concede dispensa contratual.
+`.gitignore` serves the Git flow and does not replace SpecMD's discovery. The project's own Markdown in non-pruned directories is found even when it is not versioned or has been ignored by Git. Ignoring a document in Git does not grant a contractual exemption.
 
-Os caminhos do manifesto são relativos e usam separador `/`. O caminho participa do digest: remover ou renomear um documento muda a identidade do conjunto, mesmo se seus bytes permanecerem iguais. Não há uma promessa de equivalência entre caminhos que diferem apenas em caixa em sistemas de arquivos distintos.
+The manifest paths are relative and use the `/` separator. The path takes part in the digest: removing or renaming a document changes the identity of the set, even if its bytes stay the same. There is no promise of equivalence between paths that differ only in case on different file systems.
 
-## Classificação e custo de análise
+## Classification and analysis cost
 
-| Situação | Monitoramento | Análise necessária |
+| Situation | Monitoring | Analysis required |
 | --- | --- | --- |
-| Comportamental, aceito e inalterado | Conferir identidade e relações relevantes. | O scanner atual refaz o parsing; reutilização confiável é uma evolução. |
-| Comportamental alterado | Registrar a nova versão e invalidar o aceite aplicável. | Reanalisar obrigações, cenários e relações afetadas. |
-| Informativo com dispensa aceita, inalterado | Continuar verificando a identidade do conteúdo. | Não exige Gherkin; o scanner ainda confere metadados e conteúdo explícito. Não há análise semântica por IA implementada. |
-| Informativo alterado | Tornar a nova versão pendente. | Reavaliar classificação e justificativa; o texto pode ter adquirido regras de comportamento. |
-| Novo ou sem classificação | Adicionar ao inventário como pendente. | Propor classificação e submeter a decisão ao usuário. |
-| Fora do escopo pelas podas fixas atuais | A política está na versão do verificador. | Não percorrer o conteúdo podado. Exclusões configuráveis aceitas ainda são desenho futuro. |
+| Behavioural, accepted and unchanged | Check identity and relevant relations. | The current scanner redoes the parsing; trustworthy reuse is an evolution. |
+| Behavioural, changed | Record the new version and invalidate the applicable acceptance. | Reanalyse the affected obligations, scenarios and relations. |
+| Informational with accepted exemption, unchanged | Keep verifying the content identity. | Does not require Gherkin; the scanner still checks metadata and explicit content. No AI semantic analysis is implemented. |
+| Informational, changed | Make the new version pending. | Reassess classification and justification; the text may have acquired behaviour rules. |
+| New or unclassified | Add to the inventory as pending. | Propose a classification and submit the decision to the user. |
+| Out of scope by the current fixed prunings | The policy is in the verifier's version. | Do not traverse the pruned content. Accepted configurable exclusions are still future design. |
 
-A dispensa de Gherkin não equivale à exclusão do inventário. Um guia informativo aceito continua monitorado, pois uma edição futura pode introduzir uma regra de negócio.
+The Gherkin exemption is not the same as exclusion from the inventory. An accepted informational guide remains monitored, because a future edit may introduce a business rule.
 
-Documentos mistos exigem vínculos para suas partes comportamentais. A classificação do arquivo inteiro não pode esconder uma obrigação contida em uma seção. O formato dessas declarações é proposto em [Formato documental](format.md).
+Mixed documents require links for their behavioural parts. The classification of the whole file cannot hide an obligation contained in a section. The format of these declarations is proposed in [Documentation format](format.md).
 
-Um documento `reference` com cabeçalho explícito de requisito ou cerca Gherkin produz conflito de classificação e bloqueio estrutural. O aceite da dispensa integra o fluxo versionado de revisão e assinatura, não uma propriedade autoatribuída no índice.
+A `reference` document with an explicit requirement heading or a Gherkin fence produces a classification conflict and a structural block. Acceptance of the exemption is part of the versioned review and signing flow, not a self-assigned property in the index.
 
-## Entrada de inventário
+## Inventory entry
 
-Uma entrada implementada pelo scanner contém caminho, SHA-256, ID, classificação, requisitos com linhas e cenários com IDs, blocos, linhas, vínculos e contagem de passos. Essa contagem não indica execução. No schema 2, Outline gera instâncias `<base_id>:row:<exemplo>:<linha de dados>`; cada uma mantém sua identidade-base e a linha da declaração, além da linha concreta da tabela. Requisitos herdados por Rule e Examples continuam explícitos nos registros.
+An entry implemented by the scanner contains path, SHA-256, ID, classification, requirements with lines and scenarios with IDs, blocks, lines, links and step count. That count does not indicate a run. In schema 2, an Outline generates instances `<base_id>:row:<example>:<data line>`; each one keeps its base identity and the declaration line, plus the concrete table line. Requirements inherited through Rule and Examples remain explicit in the records.
 
-O lifecycle associa separadamente aceites e evidências. A evolução do inventário pretende permitir recuperar também:
+The lifecycle associates acceptances and evidence separately. The evolution of the inventory aims to also make it possible to retrieve:
 
-- Identificador estável do documento e caminho observado.
-- Hash do conteúdo observado e referência ao snapshot de origem.
-- Classificação declarada, versão aceita e situação de revisão.
-- Identificadores dos requisitos e cenários encontrados.
-- Referências a outros documentos, regras compartilhadas e componentes conhecidos.
-- Versões de política, parser e analisadores usadas nos resultados derivados.
-- Diagnósticos e evidências relacionados, com suas entradas de validade.
+- Stable document identifier and observed path.
+- Hash of the observed content and reference to the source snapshot.
+- Declared classification, accepted version and review status.
+- Identifiers of the requirements and scenarios found.
+- References to other documents, shared rules and known components.
+- Versions of policy, parser and analysers used in the derived results.
+- Related diagnostics and evidence, with their validity inputs.
 
-Referências a aceites são resolvidas no mecanismo confiável; um campo local como `approved: true` não é prova. Uma relação inferida por IA deve ser distinguida de uma relação declarada ou confirmada. A ausência de uma relação no índice não demonstra ausência de impacto.
+References to acceptances are resolved in the trusted mechanism; a local field such as `approved: true` is not proof. A relation inferred by AI must be distinguished from a declared or confirmed relation. The absence of a relation in the index does not demonstrate absence of impact.
 
-## Identidade do conteúdo
+## Content identity
 
-A identidade contratual segue a regra descrita em Aceite e confiança (removido por [D-021](decisions.md)). A implementação calcula SHA-256 dos bytes efetivamente lidos do checkout, sem normalizar finais de linha ou reinterpretar o significado do Markdown. O manifesto do scanner tem `schema: 1`, `config_sha256` e a lista ordenada de pares `path`/`sha256`, serializada como JSON UTF-8 com chaves ordenadas e separadores compactos.
+The contractual identity follows the rule described in Acceptance and trust (removed by [D-021](decisions.md)). The implementation computes SHA-256 of the bytes actually read from the checkout, without normalizing line endings or reinterpreting the meaning of the Markdown. The scanner manifest has `schema: 1`, `config_sha256` and the sorted list of `path`/`sha256` pairs, serialized as UTF-8 JSON with sorted keys and compact separators.
 
-No schema 2, o workflow inclui ainda `traceability_sha256`, vinculado ao mapa por padrão em `.specmd/traceability.json`. A pasta `.specmd` fica fora da descoberta de Markdown, mas esse mapa é lido explicitamente pelo lifecycle: sua alteração muda a versão contratual e invalida as evidências correspondentes. O caminho pode ser definido em `traceability.map`; a política estrita exige vínculos de código/testes com requisitos e cenários conhecidos.
+In schema 2, the workflow also includes `traceability_sha256`, bound to the map at `.specmd/traceability.json` by default. The `.specmd` folder is outside Markdown discovery, but that map is read explicitly by the lifecycle: changing it changes the contractual version and invalidates the corresponding evidence. The path can be set in `traceability.map`; the strict policy requires code/test links to known requirements and scenarios.
 
-`repository_id` permite vincular os recibos a uma identidade lógica estável entre checkouts, sem usar o caminho absoluto como identidade principal. Esse campo não comprova propriedade do repositório nem torna um cache confiável.
+`repository_id` makes it possible to bind receipts to a logical identity that is stable across checkouts, without using the absolute path as the main identity. This field does not prove ownership of the repository nor make a cache trustworthy.
 
-Data de modificação, tamanho do arquivo e eventos do sistema podem reduzir trabalho durante uma sessão, mas são indícios. O gate protegido precisa conferir identidades de conteúdo sobre o snapshot efetivo, sem depender exclusivamente desses metadados.
+Modification date, file size and system events can reduce work during a session, but they are hints. The protected gate needs to check content identities on the effective snapshot, without relying exclusively on that metadata.
 
-Uma renomeação altera caminho e possivelmente escopo. Mesmo uma futura reutilização de parsing por conteúdo não poderá reutilizar automaticamente o aceite.
+A rename changes the path and possibly the scope. Even a future content-based parsing reuse will not be able to reuse the acceptance automatically.
 
-## Cache implementado e seus limites
+## Implemented cache and its limits
 
-`inspect_project(root)` não escreve cache. A opção explícita `use_cache=True` permite snapshots em `.specmd/cache`. A chave atual inclui SHA-256 do documento, caminho, schema da configuração e fingerprint da versão do scanner/Behave/MarkdownIt/PyYAML.
+`inspect_project(root)` does not write a cache. The explicit option `use_cache=True` enables snapshots in `.specmd/cache`. The current key includes the document's SHA-256, path, configuration schema and a fingerprint of the scanner/Behave/MarkdownIt/PyYAML version.
 
-Esses arquivos são editáveis localmente pelo agente. Por isso, o scanner **sempre lê e reanalisa a fonte** antes de decidir. Conteúdo adulterado ou JSON inválido no cache não remove diagnósticos, não concede aprovação e não marca cenários como executados. O snapshot é atualizado quando difere da análise reconstruída; falhas de cache não mudam o resultado da inspeção. Diretórios de cache simbólicos não são usados para escrita.
+These files can be edited locally by the agent. For that reason, the scanner **always reads and reanalyses the source** before deciding. Tampered content or invalid JSON in the cache does not remove diagnostics, does not grant approval and does not mark scenarios as run. The snapshot is updated when it differs from the rebuilt analysis; cache failures do not change the inspection result. Symbolic cache directories are not used for writing.
 
-Esse mecanismo fornece registros derivados para evolução incremental, mas **não entrega ainda o ganho de evitar parsing**. Não há cache semântico por IA, dependências inferidas, watcher persistente ou limpeza automática de entradas antigas implementados como otimização.
+This mechanism provides derived records for incremental evolution, but **does not yet deliver the gain of avoiding parsing**. No AI semantic cache, inferred dependencies, persistent watcher or automatic cleanup of old entries is implemented as an optimization.
 
-## Invalidação planejada para reutilização confiável
+## Planned invalidation for trustworthy reuse
 
-Cada tipo de análise deve declarar suas entradas. Uma chave conceitual pode incluir:
+Each type of analysis must declare its inputs. A conceptual key may include:
 
 ```text
-conteúdo + contexto relevante + política + analisador + dependências
+content + relevant context + policy + analyser + dependencies
 ```
 
-Isso não fixa um esquema de serialização. A implementação deve documentar quais entradas cada cache usa e produzir resultados reproduzíveis para as verificações determinísticas.
+This does not fix a serialization schema. The implementation must document which inputs each cache uses and produce reproducible results for the deterministic checks.
 
-| Mudança | Resultados a invalidar |
+| Change | Results to invalidate |
 | --- | --- |
-| Texto do documento | Parsing e análises dependentes do conteúdo; aceite da nova versão fica pendente. |
-| Caminho ou escopo | Seleção e análises sensíveis ao contexto; reavaliar vínculo de aceite. |
-| Documento referenciado | Análises que utilizaram aquela referência. |
-| Classificação ou exclusão | Decisões de aplicabilidade e resultados afetados. |
-| Política ou versão de analisador | Resultados calculados sob a versão anterior, conforme suas entradas. |
-| Código, steps, fixtures ou configuração de execução | Evidências de teste afetadas, mesmo que os documentos estejam intactos. |
+| Document text | Parsing and content-dependent analyses; acceptance of the new version becomes pending. |
+| Path or scope | Selection and context-sensitive analyses; reassess the acceptance binding. |
+| Referenced document | Analyses that used that reference. |
+| Classification or exclusion | Applicability decisions and affected results. |
+| Policy or analyser version | Results computed under the previous version, according to their inputs. |
+| Code, steps, fixtures or run configuration | Affected test evidence, even if the documents are intact. |
 
-Quando houver reutilização confiável, invalidar todo o cache semântico após uma mudança de política é uma escolha conservadora aceitável. Otimizações posteriores precisam preservar a mesma decisão do processamento completo; a versão atual evita esse risco reanalisando a fonte.
+When trustworthy reuse exists, invalidating the whole semantic cache after a policy change is an acceptable conservative choice. Later optimizations need to preserve the same decision as full processing; the current version avoids this risk by reanalysing the source.
 
-O cache de parsing documental e o cache de execução de testes são distintos. Um documento inalterado não torna atual um resultado de teste executado contra outra versão do código, ambiente ou runner.
+The document parsing cache and the test run cache are distinct. An unchanged document does not make current a test result run against another version of the code, environment or runner.
 
-## Ciclo incremental pretendido
+## Intended incremental cycle
 
-O fluxo abaixo descreve a evolução desejada, não uma otimização já demonstrada:
+The flow below describes the desired evolution, not an optimization already demonstrated:
 
-1. Descobrir diferenças desde o último estado observado.
-2. Atualizar inventário, removendo entradas obsoletas e adicionando arquivos novos.
-3. Recalcular as identidades necessárias.
-4. Localizar resultados afetados por conteúdo, contexto ou dependências.
-5. Reutilizar somente resultados cujas entradas continuem válidas.
-6. Executar análises novas e apresentar pendências ao adaptador do agente.
+1. Discover differences since the last observed state.
+2. Update the inventory, removing obsolete entries and adding new files.
+3. Recompute the necessary identities.
+4. Locate results affected by content, context or dependencies.
+5. Reuse only results whose inputs remain valid.
+6. Run new analyses and present gaps to the agent adapter.
 
-Watchers são gatilhos úteis, mas eventos podem ser perdidos. Uma escrita por shell, outra ferramenta ou outro agente também pode modificar o projeto. Por isso, inicialização, fechamento da tarefa e CI exigem reconciliação com o estado real do escopo.
+Watchers are useful triggers, but events can be lost. A write by a shell, another tool or another agent can also modify the project. For that reason, startup, task closing and CI require reconciliation with the real state of the scope.
 
-A implementação atual reconcilia o inventário e refaz o parsing estrutural. Antes da extração para execução, `extract_features` confere uma inspeção fresca, rejeita um manifesto anterior que ficou desatualizado e entrega os blocos em memória com linhas preenchidas para preservar a origem no `.md`.
+The current implementation reconciles the inventory and redoes the structural parsing. Before extraction for running, `extract_features` checks a fresh inspection, rejects an earlier manifest that has become outdated and delivers the blocks in memory with padded lines to preserve the origin in the `.md`.
 
-## Determinismo e assistência por IA
+## Determinism and AI assistance
 
-São verificações determinísticas: descobrir arquivos pela política, comparar hashes, validar referências e IDs, conferir sintaxe Gherkin e relacionar evidências aos snapshots declarados.
+These are deterministic checks: discovering files by policy, comparing hashes, validating references and IDs, checking Gherkin syntax and relating evidence to the declared snapshots.
 
-São análises heurísticas planejadas: sugerir classificação, encontrar possíveis requisitos em prosa, apontar lacunas entre texto e cenários e sugerir relações de impacto. O scanner atual não executa um modelo para realizar essas inferências. Quando disponíveis, tais sugestões apoiarão a revisão, sem estabelecer automaticamente a completude do contrato ou conceder dispensa.
+These are planned heuristic analyses: suggesting a classification, finding possible requirements in prose, pointing out gaps between text and scenarios and suggesting impact relations. The current scanner does not run a model to make these inferences. When available, such suggestions will support the review, without automatically establishing the completeness of the contract or granting an exemption.
 
-Markdown permanece a fonte canônica. Parsing e indexação não devem exigir arquivos `.feature`, inclusive como etapa temporária obrigatória da execução. O índice pode guardar uma representação derivada dos blocos Gherkin em memória ou cache reconstruível, mantendo a origem no `.md`.
+Markdown remains the canonical source. Parsing and indexing must not require `.feature` files, including as a mandatory temporary step of the run. The index may keep a derived representation of the Gherkin blocks in memory or in a rebuildable cache, keeping the origin in the `.md`.
 
-## Medição e evolução
+## Measurement and evolution
 
-Uma otimização futura deve comparar processamento completo e incremental sobre os mesmos snapshots. A decisão de aprovação/bloqueio precisa ser equivalente para as verificações determinísticas. Os testes atuais verificam que o cache adulterado não muda a decisão e que conteúdo novo, alterado, removido ou renomeado muda o inventário quando aplicável; não constituem um benchmark de performance.
+A future optimization must compare full and incremental processing over the same snapshots. The approve/block decision needs to be equivalent for the deterministic checks. The current tests verify that a tampered cache does not change the decision and that new, changed, removed or renamed content changes the inventory when applicable; they do not constitute a performance benchmark.
 
-Medir tempo de descoberta, leitura e parsing, taxa de reutilização, chamadas a modelos evitadas, duração de reconciliação e divergências entre as duas formas de processamento. Casos de teste e experimentos estão em [Plano de validação](validation-plan.md).
+Measure discovery, reading and parsing time, reuse rate, avoided model calls, reconciliation duration and divergences between the two forms of processing. Test cases and experiments are in the [Validation plan](validation-plan.md).
 
-O formato de uma reutilização confiável e a necessidade de banco local devem ser escolhidos após observar volume, concorrência e custo de reconstrução. São dados derivados; a história contratual e os aceites precisam continuar recuperáveis sem esse cache. O [estado de implementação](implementation-status.md) registra os limites operacionais do lifecycle e dos verificadores atuais.
+The format of a trustworthy reuse and the need for a local database must be chosen after observing volume, concurrency and rebuild cost. They are derived data; the contractual history and the acceptances need to remain retrievable without this cache. The [implementation status](implementation-status.md) records the operational limits of the lifecycle and of the current verifiers.

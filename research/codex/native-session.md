@@ -1,31 +1,31 @@
-# Sessões nativas no Codex com LLM real (24/10/2026)
+# Native sessions in Codex with a real LLM (24/10/2026)
 
-Validação da [D-027](../../docs/decisions.md): o plugin SpecMD instalado no Codex CLI real, com modelo real, nos quatro eventos de hook.
+Validation of [D-027](../../docs/decisions.md): the SpecMD plugin installed in the real Codex CLI, with a real model, on the four hook events.
 
-## Ambiente
+## Environment
 
-- Codex CLI `0.163.0`, autenticado com ChatGPT, feature `hooks` habilitada.
-- Modelo `gpt-6-luna`.
-- Plugin instalado pelo marketplace local do repositório: `codex plugin marketplace add <repo>` e `codex plugin add specmd@specmd-local`. O bundle vem de `scripts/build_codex_plugin.py`.
-- Confiança nos quatro handlers dada pelo usuário no `/hooks`, sem o bypass de confiança.
-- Execução com `codex exec --json`, retomando o turno seguinte com `codex exec resume <thread>`. Para reduzir ruído, as execuções desligaram, por `-c`, os servidores MCP do `config.toml` e os outros plugins do usuário. As instruções globais do usuário continuaram valendo.
-- O retorno dos hooks foi observado pelo registro opcional `SPECMD_HOOK_LOG`, porque o JSON do `codex exec` não mostra a saída dos hooks.
+- Codex CLI `0.163.0`, authenticated with ChatGPT, `hooks` feature enabled.
+- Model `gpt-6-luna`.
+- Plugin installed from the repository's local marketplace: `codex plugin marketplace add <repo>` and `codex plugin add specmd@specmd-local`. The bundle comes from `scripts/build_codex_plugin.py`.
+- Trust in the four handlers given by the user in `/hooks`, without the trust bypass.
+- Run with `codex exec --json`, resuming the next turn with `codex exec resume <thread>`. To reduce noise, the runs turned off, through `-c`, the MCP servers of `config.toml` and the user's other plugins. The user's global instructions remained in effect.
+- The hooks' output was observed through the optional `SPECMD_HOOK_LOG` log, because the JSON of `codex exec` does not show the hooks' output.
 
-## O que foi observado
+## What was observed
 
-| Ponto da D-027 | Resultado |
+| D-027 point | Result |
 | --- | --- |
-| Eventos disponíveis | O `/hooks` listou e confiou `SessionStart`, `UserPromptSubmit`, `PostToolUse` e `Stop` do plugin. Os quatro dispararam nas sessões. |
-| `additionalContext` no início | O agente citou as instruções do SpecMD ("preciso confirmar os cenários antes de implementar") no primeiro turno. |
-| `additionalContext` depois de ferramentas | O `PostToolUse` devolveu "documentação alterada … mostre-os e peça confirmação" depois do `apply_patch` em `docs/cart.md`. |
-| `Stop` com `decision: block` | Com um cenário falhando, o `Stop` bloqueou; o Codex devolveu o controle ao agente, que perguntou ao dev qual regra vale (`request_user_input_async`); o `Stop` seguinte deixou concluir com o resumo. |
-| Raiz do projeto sem `CLAUDE_PROJECT_DIR` | O hook usou o diretório da sessão; o estado ficou em `.specmd/local/` do projeto. |
-| Roteiro de quatro turnos | Proposta antes de implementar; após "confirmo", implementação com `Stop` "5 cenários passando" e lembrete de confirmação; pedido contraditório (taxa) virou proposta; documento novo virou proposta de cenários antes da escrita. |
-| Latência | `PostToolUse` de 77 a 248 ms; `Stop` 105 a 141 ms sem execução e 840 ms com execução; `SessionStart` 889 ms no projeto novo. |
+| Available events | `/hooks` listed and trusted the plugin's `SessionStart`, `UserPromptSubmit`, `PostToolUse` and `Stop`. All four fired in the sessions. |
+| `additionalContext` at the start | The agent cited SpecMD's instructions ("preciso confirmar os cenários antes de implementar", "I need to confirm the scenarios before implementing") in the first turn. |
+| `additionalContext` after tools | `PostToolUse` returned "documentação alterada … mostre-os e peça confirmação" ("documentation changed … show them and ask for confirmation") after the `apply_patch` on `docs/cart.md`. |
+| `Stop` with `decision: block` | With a failing scenario, `Stop` blocked; Codex handed control back to the agent, which asked the dev which rule applies (`request_user_input_async`); the next `Stop` let it finish with the summary. |
+| Project root without `CLAUDE_PROJECT_DIR` | The hook used the session's directory; the state stayed in the project's `.specmd/local/`. |
+| Four-turn script | Proposal before implementing; after "confirmo" ("I confirm"), implementation with `Stop` "5 cenários passando" ("5 scenarios passing") and a confirmation reminder; a contradictory request (fee) became a proposal; a new document became a scenario proposal before writing. |
+| Latency | `PostToolUse` from 77 to 248 ms; `Stop` 105 to 141 ms without a run and 840 ms with a run; `SessionStart` 889 ms in the new project. |
 
-## Limites observados
+## Observed limits
 
-- **Ativação:** no Codex, a instalação é por usuário. O SpecMD só age em repositórios com `specmd.toml` ou com o plugin habilitado no `.claude/settings` do projeto. Em 26/10/2026, num projeto confiável, um `.codex/config.toml` local com `[plugins."specmd@specmd-local"] enabled = false` fez o `codex plugin list --json` relatar o plugin como desabilitado dentro do projeto e habilitado fora dele. Isso indica que o Codex aplica a habilitação de plugins por projeto, o equivalente ao `.claude/settings.json`. Não foi verificado se os hooks seguem esse estado em execução, porque os hooks estavam desabilitados no `/hooks` no momento.
-- **Atualização exige nova confiança:** depois de `codex plugin add` com um bundle novo, o Codex deixou de chamar os hooks até o usuário revisá-los de novo no `/hooks`, embora os `trusted_hash` do `config.toml` não tenham mudado e a cópia instalada funcionasse quando chamada à mão. Numa observação posterior (25/10/2026), cada handler em `[hooks.state."specmd@specmd-local:…"]` trazia também um `trusted_content_hash`, que é o hash do conteúdo do plugin e explica a nova revisão a cada atualização, e um `enabled`. Com `enabled = false`, o `/hooks` não mostra nada a confiar e os hooks não rodam até serem reativados ali.
-- **Ambiente do usuário:** as instruções globais do usuário (por exemplo, fazer commit local) aparecem no comportamento do agente; elas valem igualmente com e sem o SpecMD.
-- **Primeira execução:** num projeto sem histórico, a primeira falha de um cenário recebe a orientação de divergência mesmo quando foi o agente que quebrou o código; a orientação manda perguntar ao dev, o que foi o comportamento observado.
+- **Activation:** in Codex, installation is per user. SpecMD only acts in repositories with `specmd.toml` or with the plugin enabled in the project's `.claude/settings`. On 26/10/2026, in a trusted project, a local `.codex/config.toml` with `[plugins."specmd@specmd-local"] enabled = false` made `codex plugin list --json` report the plugin as disabled inside the project and enabled outside it. This indicates that Codex applies plugin enablement per project, the equivalent of `.claude/settings.json`. Whether the hooks follow that state at runtime was not verified, because the hooks were disabled in `/hooks` at the time.
+- **Updating requires new trust:** after `codex plugin add` with a new bundle, Codex stopped calling the hooks until the user reviewed them again in `/hooks`, even though the `trusted_hash` values in `config.toml` had not changed and the installed copy worked when called by hand. In a later observation (25/10/2026), each handler in `[hooks.state."specmd@specmd-local:…"]` also carried a `trusted_content_hash`, which is the hash of the plugin's content and explains the new review on each update, and an `enabled`. With `enabled = false`, `/hooks` shows nothing to trust and the hooks do not run until they are re-enabled there.
+- **User environment:** the user's global instructions (for example, making a local commit) show up in the agent's behavior; they apply equally with and without SpecMD.
+- **First run:** in a project without history, the first failure of a scenario receives the divergence guidance even when it was the agent that broke the code; the guidance says to ask the dev, which was the observed behavior.

@@ -1,32 +1,32 @@
-# SpecMD — produto
+# SpecMD — product
 
-**Estado:** direção definida em [D-021](decisions.md) (23/10/2026). O [estado da implementação](implementation-status.md) separa o que já existe do que está planejado.
+**Status:** direction defined in [D-021](decisions.md) (23/10/2026). The [implementation status](implementation-status.md) separates what already exists from what is planned.
 
-## Problema
+## Problem
 
-No desenvolvimento com agentes de IA, a intenção do dev, a documentação, o código e os testes divergem com facilidade. O agente esquece uma condição, interpreta uma regra de outro jeito ou inventa uma regra que ninguém pediu e escreve testes que a protegem. Quando os testes ficam em arquivos `.feature` separados, a divergência ganha mais um lugar para acontecer: o `.feature` muda e a documentação não, ou o requisito muda e os cenários ficam para trás.
+In development with AI agents, the developer's intent, the documentation, the code and the tests diverge easily. The agent forgets a condition, interprets a rule differently or invents a rule nobody asked for and writes tests that protect it. When the tests live in separate `.feature` files, the divergence gets one more place to happen: the `.feature` changes and the documentation does not, or the requirement changes and the scenarios fall behind.
 
-## Proposta
+## Proposal
 
-O SpecMD é um plugin para agentes de programação (Claude Code e Codex), instalado no repositório, que mantém a documentação canônica e o software alinhados por meio da colaboração entre o agente e o dev.
+SpecMD is a plugin for coding agents (Claude Code and Codex), installed in the repository, that keeps the canonical documentation and the software aligned through collaboration between the agent and the developer.
 
-- A documentação Markdown, com cenários Gherkin embutidos, é a fonte canônica das regras de negócio. Requisito e teste de aceitação ficam no mesmo arquivo.
-- O plugin faz checagens determinísticas em momentos-chave e devolve feedback objetivo ao agente, estimulando-o a iterar e conferir antes de seguir.
-- Quem define o que é certo é o dev, pela documentação que confirmou na conversa. O plugin não aprova nem audita; ele verifica se documentação e código concordam.
+- The Markdown documentation, with embedded Gherkin scenarios, is the canonical source of the business rules. Requirement and acceptance test live in the same file.
+- The plugin runs deterministic checks at key moments and sends objective feedback back to the agent, encouraging it to iterate and check before moving on.
+- The one who defines what is right is the developer, through the documentation they confirmed in the conversation. The plugin neither approves nor audits; it verifies whether documentation and code agree.
 
-## Fluxo
+## Flow
 
-1. O dev conversa com o agente, e o agente escreve a documentação no repositório.
-2. Qualquer trabalho em Markdown dispara a análise. Documento sem cenários volta ao agente, que confirma os requisitos com o dev e escreve os cenários, adiciona o documento ao `.specmdignore` quando ele não descreve comportamento, ou pergunta ao dev em caso de dúvida.
-3. O agente mostra os cenários e pergunta se está tudo certo. A confirmação é a resposta do dev.
-4. O agente implementa. Ao concluir, os cenários são executados; os que estão sem implementação ou falhando voltam ao agente com o passo e o erro, até ficar tudo verde.
+1. The developer talks to the agent, and the agent writes the documentation in the repository.
+2. Any work on Markdown triggers the analysis. A document without scenarios goes back to the agent, which confirms the requirements with the developer and writes the scenarios, adds the document to `.specmdignore` when it does not describe behavior, or asks the developer when in doubt.
+3. The agent shows the scenarios and asks whether everything is right. The confirmation is the developer's reply.
+4. The agent implements. On finishing, the scenarios are run; the ones without an implementation or failing go back to the agent with the step and the error, until everything is green.
 
-## Limites
+## Limits
 
-- Os cenários verificam o que descrevem. Eles não provam que a documentação cobre toda a intenção do dev nem que as asserções dos passos são fortes; isso continua na revisão humana, normalmente no PR.
-- O plugin ajuda um agente bem-intencionado a não errar; ele não impede um agente determinado a contorná-lo.
-- Hooks não são equivalentes entre hosts; cada integração é verificada por plataforma e versão.
+- The scenarios verify what they describe. They do not prove that the documentation covers the developer's whole intent nor that the assertions of the steps are strong; that remains with human review, usually in the PR.
+- The plugin helps a well-intentioned agent avoid mistakes; it does not stop an agent determined to get around it.
+- Hooks are not equivalent across hosts; each integration is verified per platform and version.
 
-## Antecedentes
+## Prior art
 
-Documentação executável, rastreabilidade e gates já existem em outras ferramentas ([pesquisa](positioning.md)). O valor a demonstrar é a experiência integrada: a documentação como fonte única e o feedback no momento certo durante o trabalho do agente.
+Executable documentation, traceability and gates already exist in other tools ([research](positioning.md)). The value to demonstrate is the integrated experience: the documentation as the single source and feedback at the right moment during the agent's work.

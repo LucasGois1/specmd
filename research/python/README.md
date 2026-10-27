@@ -1,56 +1,56 @@
-# Python: Gherkin em memória com Behave
+# Python: in-memory Gherkin with Behave
 
-Pesquisa experimental, não implementação de produção. **Behave é um executor BDD para Python; não é o Cucumber oficial.** Compartilhar Gherkin e depender de pacotes com nome `cucumber-*` não torna esses executores equivalentes.
+Experimental research, not a production implementation. **Behave is a BDD runner for Python; it is not official Cucumber.** Sharing Gherkin and depending on packages named `cucumber-*` does not make these runners equivalent.
 
-O experimento usa **Behave 1.3.3**, Python 3.12.14 e **markdown-it-py 4.0.0**. As versões transitivas efetivamente observadas estão em [requirements.lock](requirements.lock). Esse arquivo fixa versões, mas não contém hashes das distribuições e não deve ser apresentado como uma verificação de supply chain.
+The experiment uses **Behave 1.3.3**, Python 3.12.14 and **markdown-it-py 4.0.0**. The transitive versions actually observed are in [requirements.lock](requirements.lock). That file pins versions, but contains no hashes of the distributions and must not be presented as a supply chain check.
 
-## Markdown real: resultado ampliado
+## Real Markdown: extended result
 
-O [probe_markdown.py](probe_markdown.py) foi executado contra o arquivo canônico [addition.md](addition.md), usando o parser real `MarkdownIt` para localizar cercas Gherkin. Cada bloco selecionado foi parseado como string pelo Behave, com linhas vazias de prefixo para preservar os números de linha do Markdown. A execução usou modelos em memória e implementações reais dos passos, sem gravar `.feature`.
+[probe_markdown.py](probe_markdown.py) was run against the canonical file [addition.md](addition.md), using the real `MarkdownIt` parser to locate Gherkin fences. Each selected block was parsed as a string by Behave, with prefixed empty lines to preserve the Markdown line numbers. The run used in-memory models and real step implementations, without writing `.feature`.
 
-| Caso | Resultado observado | `engine_failed` | Gate experimental |
+| Case | Observed result | `engine_failed` | Experimental gate |
 | --- | --- | --- | --- |
-| Dois blocos em português | Dois cenários `passed`, duas chamadas à função de soma | `false` | Permite |
-| Esperado 99 para soma 2 + 3 | Cenário `failed`, asserção falha | `true` | Recusa |
-| Passo sem implementação | Cenário `error`; passos `passed`, `undefined`, `skipped` | `true` | Recusa |
-| Filtro que exclui todos os cenários | Dois cenários `skipped`, nenhuma chamada à função de soma | `false` | Recusa |
+| Two blocks in Portuguese | Two scenarios `passed`, two calls to the addition function | `false` | Allows |
+| Expected 99 for the sum 2 + 3 | Scenario `failed`, assertion fails | `true` | Rejects |
+| Step without implementation | Scenario `error`; steps `passed`, `undefined`, `skipped` | `true` | Rejects |
+| Filter that excludes all scenarios | Two scenarios `skipped`, no call to the addition function | `false` | Rejects |
 
-As [evidências completas](evidence/results.json) contêm hash SHA-256 do Markdown, hashes dos scripts, IDs esperados e observados, resultados por passo, chamadas da implementação e origem `addition.md#block-N`. Os cenários positivos apontam para as linhas **9 e 21** do documento; os negativos para **33 e 43**. A correspondência com linhas `Cenário:` no arquivo foi conferida no probe.
+The [complete evidence](evidence/results.json) contains the SHA-256 hash of the Markdown, hashes of the scripts, expected and observed IDs, per-step results, calls to the implementation and origin `addition.md#block-N`. The positive scenarios point to lines **9 and 21** of the document; the negative ones to **33 and 43**. The match with `Cenário:` (Scenario) lines in the file was checked in the probe.
 
-O caso filtrado é uma evidência importante: o booleano de falha do engine pode ser `false` sem que nenhum comportamento tenha sido executado. O gate experimental também exige o conjunto esperado de IDs aprovados e as chamadas esperadas da implementação. Esses IDs foram fornecidos pelo experimento; não foram inferidos automaticamente da prosa nem aprovados por um mecanismo de aceite humano.
+The filtered case is important evidence: the engine's failure boolean can be `false` without any behavior having been run. The experimental gate also requires the expected set of passed IDs and the expected calls to the implementation. These IDs were supplied by the experiment; they were neither inferred automatically from the prose nor approved by a human acceptance mechanism.
 
-O harness terminou com código **zero**, pois os quatro casos produziram os resultados esperados, incluindo as três recusas. Esse código não significa que os cenários negativos passaram. A evidência não encontrou arquivos `.feature` na árvore pesquisada. O script não contém etapa que escreva esse tipo de arquivo; o levantamento posterior de arquivos não é um monitor completo de todos os syscalls do processo.
+The harness finished with code **zero**, since the four cases produced the expected results, including the three rejections. That code does not mean that the negative scenarios passed. The evidence found no `.feature` files in the researched tree. The script contains no step that writes that type of file; the later file survey is not a complete monitor of all the process's syscalls.
 
-## Probe mínimo de string
+## Minimal string probe
 
-O [probe mínimo](probe_minimal.py) passou texto Gherkin em português a `behave.parser.parse_feature(text, filename="probe.md")`, registrou implementações reais de passos e executou o modelo com `ModelRunner.run_model()`. A implementação exercitada foi a função real `add(a, b)`. As [evidências mínimas](evidence/minimal.json) preservam os resultados e o hash do script.
+The [minimal probe](probe_minimal.py) passed Gherkin text in Portuguese to `behave.parser.parse_feature(text, filename="probe.md")`, registered real step implementations and ran the model with `ModelRunner.run_model()`. The implementation exercised was the real function `add(a, b)`. The [minimal evidence](evidence/minimal.json) preserves the results and the script's hash.
 
-| Caso | Resultado do cenário | Retorno `engine_failed` |
+| Case | Scenario result | `engine_failed` return |
 | --- | --- | --- |
-| Soma 2 + 3, esperado 5 | `passed` | `false` |
-| Soma 2 + 3, esperado 99 | `failed` | `true` |
+| Sum 2 + 3, expected 5 | `passed` | `false` |
+| Sum 2 + 3, expected 99 | `failed` | `true` |
 
-Nenhum arquivo `.feature` foi necessário nesse caminho. O nome `probe.md` é uma identificação de origem fornecida ao parser; o probe mínimo trabalha com uma string e não demonstra, sozinho, extração de um documento Markdown real.
+No `.feature` file was needed on that path. The name `probe.md` is an origin identifier supplied to the parser; the minimal probe works with a string and does not, by itself, demonstrate extraction from a real Markdown document.
 
-`run_model()` retorna um **booleano de falha**, não um exit status de processo. O processo do probe pode terminar com código zero enquanto exibe uma falha esperada. Isso significa que o programa diagnóstico executou, não que o cenário negativo passou nem que um gate de produto deveria liberá-lo.
+`run_model()` returns a **failure boolean**, not a process exit status. The probe process can finish with code zero while showing an expected failure. That means the diagnostic program ran, not that the negative scenario passed nor that a product gate should let it through.
 
-## CLI convencional: tentativas efetivamente executadas
+## Conventional CLI: attempts actually run
 
-O [cli_probe.py](cli_probe.py) executa o módulo Behave em um diretório temporário vazio, fornecendo o mesmo texto de três maneiras:
+[cli_probe.py](cli_probe.py) runs the Behave module in an empty temporary directory, supplying the same text in three ways:
 
-| Tentativa | Exit status da CLI observado | Comportamento observado |
+| Attempt | Observed CLI exit status | Observed behavior |
 | --- | --- | --- |
-| Texto completo como argumento posicional | `1` | Interpretado como caminho; `ConfigError` procurando diretório de passos. |
-| Texto por stdin, sem argumento posicional | `1` | Procura o diretório convencional `features`; não executa o texto fornecido. |
-| Texto por stdin, argumento `-` | `1` | Procura o caminho `-`; não executa o texto fornecido. |
+| Complete text as a positional argument | `1` | Interpreted as a path; `ConfigError` looking for the steps directory. |
+| Text through stdin, without a positional argument | `1` | Looks for the conventional `features` directory; does not run the supplied text. |
+| Text through stdin, `-` argument | `1` | Looks for the path `-`; does not run the supplied text. |
 
-Essas observações documentam os comandos testados, no contexto descrito. Não provam a impossibilidade de um runner customizado ou de outra configuração de CLI. O caminho bem-sucedido deste experimento foi a API de modelo em memória, não um suporte nativo da CLI a Markdown.
+These observations document the commands tested, in the context described. They do not prove that a custom runner or another CLI configuration is impossible. The successful path in this experiment was the in-memory model API, not native CLI support for Markdown.
 
-As [evidências da CLI](evidence/cli.json) distinguem o exit status real do engine e o exit status do harness. O harness termina com zero quando observa as três rejeições esperadas e nenhum `.feature` no diretório temporário. Caminhos temporários foram substituídos por `<TMPDIR>`; nenhuma credencial é coletada.
+The [CLI evidence](evidence/cli.json) distinguishes the engine's real exit status from the harness's exit status. The harness finishes with zero when it observes the three expected rejections and no `.feature` in the temporary directory. Temporary paths were replaced by `<TMPDIR>`; no credential is collected.
 
-## Reprodução
+## Reproduction
 
-Em um ambiente com acesso ao índice de pacotes, a instalação reproduzível por versões pode ser feita com:
+In an environment with access to the package index, the version-reproducible installation can be done with:
 
 ```sh
 uv venv .venv
@@ -60,7 +60,7 @@ uv pip install --python .venv/bin/python -r requirements.lock
 .venv/bin/python cli_probe.py --output evidence/cli.json
 ```
 
-Neste ambiente, o executor principal provisionou as dependências fora do repositório em `/tmp/specmd-python-probe`. Os comandos realmente executados para os probes foram:
+In this environment, the main executor provisioned the dependencies outside the repository in `/tmp/specmd-python-probe`. The commands actually run for the probes were:
 
 ```sh
 PYTHONPATH=/tmp/specmd-python-probe python3 probe_minimal.py
@@ -68,30 +68,30 @@ PYTHONPATH=/tmp/specmd-python-probe python3 probe_markdown.py
 PYTHONPATH=/tmp/specmd-python-probe python3 cli_probe.py --output evidence/cli.json
 ```
 
-O diretório `.venv`, bytecode e caches estão ignorados. Não é necessário publicar o ambiente de execução nem arquivos temporários.
+The `.venv` directory, bytecode and caches are ignored. There is no need to publish the run environment nor temporary files.
 
-## Superfícies de integração e fragilidade
+## Integration surfaces and fragility
 
-- `parse_feature()` aceita texto Unicode e um nome de origem. Isso está confirmado no código da versão fixada e no probe executado.
-- `ModelRunner` executa objetos de modelo já construídos. A classe e `run_model()` estão disponíveis no módulo `behave.runner`, sem prefixo privado; isso não constitui uma promessa de estabilidade do acoplamento usado aqui entre versões.
-- `StepRegistry.add_step_definition()` permite registrar passos para esse modelo sem criar uma árvore convencional de arquivos de features. O probe usa um registro isolado por caso.
-- A configuração, os modelos, seus estados e os hooks continuam pertencendo à implementação do Behave. Um adaptador de produção precisa de testes de compatibilidade e versões suportadas explícitas.
-- A classe `Runner` convencional inclui descoberta de caminhos, carregamento de passos e parsing de arquivos. O experimento usa `ModelRunner` para não depender dessa descoberta.
-- Um parser Gherkin oficial produz representações do documento; ele não equivale, por si só, a um executor de passos. Nenhum parser oficial substituiu o engine Behave neste probe.
+- `parse_feature()` accepts Unicode text and an origin name. This is confirmed in the code of the pinned version and in the probe run.
+- `ModelRunner` runs already built model objects. The class and `run_model()` are available in the `behave.runner` module, without a private prefix; that does not constitute a promise of stability, across versions, of the coupling used here.
+- `StepRegistry.add_step_definition()` allows registering steps for that model without creating a conventional tree of feature files. The probe uses an isolated registry per case.
+- The configuration, the models, their states and the hooks still belong to Behave's implementation. A production adapter needs compatibility tests and explicit supported versions.
+- The conventional `Runner` class includes path discovery, step loading and file parsing. The experiment uses `ModelRunner` so as not to depend on that discovery.
+- An official Gherkin parser produces representations of the document; it is not, by itself, equivalent to a step runner. No official parser replaced the Behave engine in this probe.
 
-O suporte Markdown with Gherkin descrito pelo projeto Cucumber é uma proposta de sintaxe diferente das cercas Gherkin discutidas no SpecMD. A existência dessa documentação não demonstra suporte Markdown no Behave.
+The Markdown with Gherkin support described by the Cucumber project is a syntax proposal different from the Gherkin fences discussed in SpecMD. The existence of that documentation does not demonstrate Markdown support in Behave.
 
-## Fontes primárias
+## Primary sources
 
-As fontes de Behave abaixo foram consultadas no tag **v1.3.3**, correspondente à versão executada:
+The Behave sources below were consulted at tag **v1.3.3**, corresponding to the version run:
 
 1. [Parser: `parse_feature(text, language=None, filename=None)`](https://github.com/behave/behave/blob/v1.3.3/behave/parser.py#L77).
-2. [Modelo de execução: `ModelRunner`](https://github.com/behave/behave/blob/v1.3.3/behave/runner.py#L657).
-3. [Execução de modelos e cálculo do booleano de falha: `run_model`](https://github.com/behave/behave/blob/v1.3.3/behave/runner.py#L915).
-4. [Runner convencional e descoberta de caminhos](https://github.com/behave/behave/blob/v1.3.3/behave/runner.py#L996).
-5. [Projeto oficial markdown-it-py, tag v4.0.0](https://github.com/executablebooks/markdown-it-py/tree/v4.0.0). O tag consultado aponta para o commit `c62983f1554124391b47170180e6c62df4d476ca`.
-6. [Markdown with Gherkin, no repositório oficial Cucumber](https://github.com/cucumber/gherkin/blob/main/MARKDOWN_WITH_GHERKIN.md). Essa referência em `main` é contextual e não uma dependência fixada do experimento.
+2. [Execution model: `ModelRunner`](https://github.com/behave/behave/blob/v1.3.3/behave/runner.py#L657).
+3. [Running models and computing the failure boolean: `run_model`](https://github.com/behave/behave/blob/v1.3.3/behave/runner.py#L915).
+4. [Conventional runner and path discovery](https://github.com/behave/behave/blob/v1.3.3/behave/runner.py#L996).
+5. [Official markdown-it-py project, tag v4.0.0](https://github.com/executablebooks/markdown-it-py/tree/v4.0.0). The tag consulted points to commit `c62983f1554124391b47170180e6c62df4d476ca`.
+6. [Markdown with Gherkin, in the official Cucumber repository](https://github.com/cucumber/gherkin/blob/main/MARKDOWN_WITH_GHERKIN.md). This reference on `main` is contextual and not a pinned dependency of the experiment.
 
-## Alcance
+## Scope
 
-Os probes confirmam a viabilidade limitada de extrair blocos de Markdown real e executar modelos Behave em memória, incluindo asserção falha, passo indefinido e recusa de uma execução totalmente filtrada, sem `.feature`. Não estabelecem compatibilidade universal com Cucumber, suporte estável a todas as construções Gherkin, aceite humano autenticado ou suficiência das verificações de um produto real. Regras, backgrounds, scenario outlines, um documento sem cenários e hooks que marcam cenários como ignorados não foram exercitados nesta matriz Python. A seleção de cenários, os filtros e os estados não executados precisam continuar explícitos em qualquer adaptador posterior.
+The probes confirm the limited feasibility of extracting blocks from real Markdown and running Behave models in memory, including a failing assertion, an undefined step and the rejection of a fully filtered run, without `.feature`. They do not establish universal compatibility with Cucumber, stable support for all Gherkin constructs, authenticated human acceptance or the sufficiency of a real product's checks. Rules, backgrounds, scenario outlines, a document without scenarios and hooks that mark scenarios as skipped were not exercised in this Python matrix. Scenario selection, filters and non-run states must remain explicit in any later adapter.

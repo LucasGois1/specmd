@@ -85,7 +85,7 @@ def main():
     if args.java_runner:
         commands.append(("java", ["bash", str(args.java_runner.resolve(strict=True)), "--glue", "specmd.example"]))
     if not commands:
-        parser.error("Informe ao menos um executável real já compilado.")
+        parser.error("Provide at least one real, already compiled executable.")
     cases = []
     with tempfile.TemporaryDirectory(prefix="specmd-native-bridge-") as temporary:
         root = Path(temporary)

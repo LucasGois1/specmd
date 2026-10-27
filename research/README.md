@@ -1,56 +1,56 @@
-# Pesquisa de viabilidade dos runners
+# Runner feasibility research
 
-Esta investigação responde à exigência de executar cenários canônicos em Markdown em projetos Java, Python e Go, sem exigir arquivos `.feature`. Os protótipos são experimentos reproduzíveis, não o produto implementado, nem evidências de aceite humano dos contratos deste repositório.
+This investigation addresses the requirement to run canonical scenarios in Markdown in Java, Python and Go projects without requiring `.feature` files. The prototypes are reproducible experiments, not the implemented product, nor evidence of human acceptance of this repository's contracts.
 
-## Perguntas a testar
+## Questions to test
 
-1. A CLI do runner aceita conteúdo Gherkin como argumento ou entrada padrão, ou interpreta os argumentos como caminhos?
-2. Existe API que aceite texto, modelos ou conteúdo em memória sem precisar materializar `.feature`?
-3. Essa API é pública/documentada, ou depende de componentes internos sujeitos a mudança?
-4. Passos reais executam código da linguagem e produzem resultados distintos para sucesso, falha e passo indefinido?
-5. Como cenários filtrados, ignorados ou inexistentes afetam o exit code? É necessário um gate adicional?
-6. É possível preservar a origem em `.md`, os IDs e a posição do bloco?
-7. Qual formato e mecanismo devem ser reaproveitados em vez de reinventados?
+1. Does the runner's CLI accept Gherkin content as an argument or standard input, or does it interpret the arguments as paths?
+2. Is there an API that accepts text, models or in-memory content without having to materialize `.feature`?
+3. Is that API public/documented, or does it depend on internal components subject to change?
+4. Do real steps run code of the language and produce distinct results for success, failure and undefined step?
+5. How do filtered, ignored or nonexistent scenarios affect the exit code? Is an additional gate needed?
+6. Is it possible to preserve the origin in `.md`, the IDs and the position of the block?
+7. Which format and mechanism should be reused instead of reinvented?
 
-## Experimentos por ecossistema
+## Experiments by ecosystem
 
-| Diretório | Hipótese investigada | Resultado obtido |
+| Directory | Hypothesis investigated | Result obtained |
 | --- | --- | --- |
-| [java](java/) | Cucumber-JVM com fornecedor de cenários em memória. | Executado com 8.0.4; positivos e negativos corresponderam às expectativas. |
-| [python](python/) | Behave com parsing de texto e modelo executável em memória. | Executado com 1.3.3 e markdown-it-py; Behave não é Cucumber oficial. |
-| [go](go/) | Godog com conteúdo de features fornecido por API. | Executado com 0.16.0, incluindo filtros, stdin do adaptador e filesystem virtual. |
-| [javascript-mdg](javascript-mdg/) | Baseline do Markdown with Gherkin oficial em Cucumber.js. | MDG nativo confirmado em 13.3.0; blocos fenced não executaram cenários. |
+| [java](java/) | Cucumber-JVM with an in-memory scenario supplier. | Run with 8.0.4; positives and negatives matched expectations. |
+| [python](python/) | Behave with text parsing and an in-memory executable model. | Run with 1.3.3 and markdown-it-py; Behave is not official Cucumber. |
+| [go](go/) | Godog with feature content supplied by API. | Run with 0.16.0, including filters, adapter stdin and virtual filesystem. |
+| [javascript-mdg](javascript-mdg/) | Baseline of the official Markdown with Gherkin in Cucumber.js. | Native MDG confirmed in 13.3.0; fenced blocks did not run scenarios. |
 
-O [estudo consolidado](../docs/runner-feasibility.md) distingue resultados, APIs, riscos de manutenção e limites do que foi demonstrado. Os protótipos não constituem suporte produtivo nem implementam aceite humano.
+The [consolidated study](../docs/runner-feasibility.md) distinguishes results, APIs, maintenance risks and the limits of what was demonstrated. The prototypes do not constitute production support nor implement human acceptance.
 
-## Preparação de testes com agentes
+## Preparing tests with agents
 
-A [investigação local do Codex](codex/README.md) registra o CLI 0.163.0 já disponível, as interfaces de instalação por marketplace e a leitura de fontes oficiais de hooks e trust. Foram executados comandos de ajuda e versão; instalação do SpecMD, disparo de hooks e bloqueio em uma sessão real continuam pendentes.
+The [local Codex investigation](codex/README.md) records the CLI 0.163.0 already available, the marketplace installation interfaces and the reading of official sources on hooks and trust. Help and version commands were run; installing SpecMD, firing hooks and blocking in a real session remain pending.
 
-O [dispatch nativo no Claude Code](claude/README.md) registra sessões headless com modelo real, o plugin carregado por `--plugin-dir` e o bloqueio de código antes do aceite. Diálogo de trust, UX interativa e instalação por marketplace não foram exercitados.
+The [native dispatch in Claude Code](claude/README.md) records headless sessions with a real model, the plugin loaded through `--plugin-dir` and the blocking of code before acceptance. The trust dialog, interactive UX and marketplace installation were not exercised.
 
-## Critério de evidência
+## Evidence criterion
 
-O caso positivo deve executar implementações reais dos passos e código da linguagem. Parsing isolado ou simulação de runner não é suficiente. Os casos negativos precisam registrar o resultado real da engine e a decisão do gate; o harness pode terminar com sucesso por ter observado corretamente uma falha esperada.
+The positive case must run real step implementations and code of the language. Isolated parsing or runner simulation is not enough. The negative cases need to record the engine's real result and the gate's decision; the harness may finish successfully because it correctly observed an expected failure.
 
-Para receber OK, não basta `exit code 0`: o conjunto de cenários exigidos precisa estar efetivamente executado com resultado aprovado. Ausência de cenários ou filtragem não pode virar sucesso silencioso.
+To get OK, `exit code 0` is not enough: the set of required scenarios must have actually been run with a passing result. Absence of scenarios or filtering cannot become silent success.
 
-As versões, comandos, entradas e limitações precisam permanecer reproduzíveis. Dependências, SDKs e caches baixados não são parte da fonte canônica nem devem ser publicados junto aos resultados.
+Versions, commands, inputs and limitations must remain reproducible. Downloaded dependencies, SDKs and caches are not part of the canonical source and must not be published together with the results.
 
-## Antecedente oficial já identificado
+## Official precedent already identified
 
-[Markdown with Gherkin](https://github.com/cucumber/gherkin/blob/0c50fc12112d9400892a760ee7302b232a466cb8/MARKDOWN_WITH_GHERKIN.md) define um dialeto Markdown com cabeçalhos, listas e arquivos `.feature.md`. A documentação consultada indica suporte na implementação JavaScript do parser. Isso não estabelece suporte nativo equivalente em todo runner ou linguagem.
+[Markdown with Gherkin](https://github.com/cucumber/gherkin/blob/0c50fc12112d9400892a760ee7302b232a466cb8/MARKDOWN_WITH_GHERKIN.md) defines a Markdown dialect with headings, lists and `.feature.md` files. The documentation consulted indicates support in the JavaScript implementation of the parser. That does not establish equivalent native support in every runner or language.
 
-Sua sintaxe difere de blocos Gherkin em cercas de código. Um `.feature.md` é um Markdown e pode continuar sendo a fonte canônica; não é uma cópia `.feature` paralela. A comparação precisa avaliar compatibilidade e reaproveitamento, sem inventar uma distinção de produto baseada apenas no nome do arquivo.
+Its syntax differs from Gherkin blocks in code fences. A `.feature.md` is Markdown and can remain the canonical source; it is not a parallel `.feature` copy. The comparison must assess compatibility and reuse, without inventing a product distinction based only on the file name.
 
-O parser produz estruturas de cenários; a engine ainda precisa ligá-las às implementações dos passos e executá-las. A passagem de mensagens ou ASTs entre ecossistemas não é presumida como uma interface universal.
+The parser produces scenario structures; the engine still needs to bind them to step implementations and run them. Passing messages or ASTs between ecosystems is not presumed to be a universal interface.
 
-## Relação com o projeto
+## Relation to the project
 
-- [Requisitos](../docs/requirements.md)
-- [Formato proposto](../docs/format.md)
-- [Arquitetura](../docs/architecture.md)
-- [Plano de validação](../docs/validation-plan.md)
-- [Posicionamento e antecedentes](../docs/positioning.md)
+- [Requirements](../docs/requirements.md)
+- [Proposed format](../docs/format.md)
+- [Architecture](../docs/architecture.md)
+- [Validation plan](../docs/validation-plan.md)
+- [Positioning and precedents](../docs/positioning.md)
 
-Os resultados desta investigação devem atualizar o roadmap e as hipóteses de produto. Nenhuma documentação de antecedente, sozinha, demonstra a qualidade de sua implementação ou a vantagem do SpecMD.
+The results of this investigation should update the roadmap and the product hypotheses. No precedent documentation, by itself, demonstrates the quality of its implementation or SpecMD's advantage.
