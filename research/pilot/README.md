@@ -251,3 +251,42 @@ In the plain repository, T4 is the only task without "rule before confirmation" 
 - One model (Haiku 5.5), 6 short tasks and 5 repetitions per task and arm: a trend with 30 sessions per arm, not statistical proof.
 - The simulated dev follows a fixed script and does not react to what the agent asked.
 - The machine was under load during the round, which affects latency (recorded in `environment.json`).
+
+## Fourth round: evolution with a reactive developer (recorded before measuring)
+
+The third round showed large differences in how the agent works (asking before coding, not touching confirmed scenarios) but none in the outcome: every arm ended with the intent met and executable documentation. The design explains why: in turn 2 the simulated dev gave every hidden answer, asked or not, and turn 3 asked to update everything, so a process mistake never became a wrong result. The tasks were also small and isolated, with no earlier rule to break. The fourth round removes that ceiling.
+
+- **Harness:** [`evolution.py`](evolution.py), with the hidden checks in [`evolution_checks.py`](evolution_checks.py).
+- **Project:** a shop cart that starts with four documented rules, each with scenarios: subtotal and empty cart, a 10% discount above 1000 cents, shipping of 500 cents free above 10000 cents, and loyalty points above 5000 cents. It also has **one legacy divergence**: the code gives loyalty points at exactly 5000 cents, while the documentation says it earns none (the scenario fails from the start).
+- **Five requests in sequence, each in a new agent session**, on the same repository (the harness commits after each one):
+  1. a service fee of 100 cents in `Cart.total()` (trap: the shipping limit and the loyalty points use `total()`, and the fee must not count for them);
+  2. the discount now applies from 1000 cents (a documented rule changes);
+  3. "validate the item prices" (vague: only negative prices are invalid, zero is allowed, no maximum);
+  4. `Cart.summary()` with total, shipping and points (uses every rule, including the legacy points);
+  5. free shipping above 8000 cents (the decision of request 1 must survive).
+- **Reactive developer:** `claude-sonnet-5-5` plays the developer with the hidden rules of each stage. It sees only the agent's messages, answers only what the agent asks, never volunteers a rule, checks the scenarios or plans the agent shows, and says when the work is done. Up to 4 agent turns per request.
+- **Agent and arms:** `claude-haiku-5-5`; plain repository, plugin only and instructions only (the same `CLAUDE.md`/`AGENTS.md` as before); 5 runs per arm, 15 runs and 75 sessions.
+- **Metrics:**
+
+  | Metric | How it is measured |
+  | --- | --- |
+  | Hidden checks at the end | Share of the 18 hidden checks of the final behavior that pass, and runs where all pass. |
+  | Regressions | A check that passed and then failed after a request that did not change its rule; "left at the end" when it never passed again. |
+  | Legacy bug fixed | At the end, exactly 5000 cents earns no points. |
+  | Nothing invented | At the end, a zero price is accepted and there is no maximum. |
+  | Executable and true documentation | `specmd run` on a clean copy of the final project passes. |
+  | Mutation score | Boundary (`>` and `>=`) and constant (+1) mutants of the final code that change the hidden behavior; share caught by the documented scenarios. |
+  | Developer effort and cost | Agent turns, developer corrections, agent tokens and cost, simulated developer cost. |
+
+### Goals of the fourth round
+
+Main comparison: plugin only against the plain repository.
+
+1. **Correct behavior at the end:** plugin only with at least 90% of the hidden checks passing on average, and at least 10 points above the plain repository.
+2. **No regressions left:** plugin only with at most 0.2 regressions left at the end per run, and fewer than the plain repository.
+3. **Legacy bug:** plugin only fixes the loyalty divergence in at least 80% of the runs, at least 40 points above the plain repository.
+4. **Nothing invented:** plugin only with no invented price rule in at least 80% of the runs.
+5. **Living documentation:** plugin only with executable and true documentation at the end in at least 80% of the runs, at least 40 points above the plain repository.
+6. **Documentation that protects the rules:** mutation score with plugin only at least 15 points above the plain repository.
+7. **No need to write the instructions:** plugin only no worse than "instructions only" on goals 1 to 3 (at most 5 points or one run below).
+8. **Cost:** agent tokens and agent turns per run with plugin only up to 1.5 times those of the plain repository.
