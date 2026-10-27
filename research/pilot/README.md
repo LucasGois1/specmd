@@ -205,3 +205,49 @@ Main comparison: plugin only against the plain repository.
 6. **No need to write the instructions:** plugin only within at most 10 points of "instructions only" on goals 1 and 2.
 7. **Cost:** tokens per session with plugin only up to 1.5 times those of the plain repository.
 8. **Latency:** the median across sessions of the `PostToolUse` p95 and of the `Stop` p95 below 1 s.
+
+## Results of the third round (27/10/2026)
+
+Complete round: 90 sessions with `claude-haiku-5-5`, without infrastructure failure, in `results/20261027-102818-round3/` (`runs.jsonl`, `summary.md` and `environment.json`). Everything after turn 3. Total cost reported by Claude Code: US$ 1.67.
+
+| Metric | Plain repository | Plugin only | Instructions only |
+| --- | --- | --- | --- |
+| Rule before confirmation | 83% | **0%** | 0% |
+| Application code changed in turn 1 (any change) | 100% | 17% | 0% |
+| Existing scenario changed before confirmation | 33% | **0%** | 0% |
+| Intent met | 100% | **100%** | 77% |
+| Executable and true documentation (corrected criterion) | 100% | 100% | 100% |
+| Executable and true documentation (registered criterion) | 80% | 83% | 97% |
+| Tokens per session, median | 329k | **241k** | 289k |
+| Cost per session, median | US$ 0.0191 | US$ 0.0157 | US$ 0.0180 |
+| Seconds per session, median | 131 | 100 | 120 |
+| p95 of `PostToolUse` / `Stop`, median across sessions with plugin | — | 646 / 487 ms | — |
+
+In the plain repository, T4 is the only task without "rule before confirmation" (0 of 5): the agent wrote `request_refund` and left the legacy `can_refund` alone. In the other five tasks it coded the rule before any confirmation in 25 of 25 sessions. The 17% of "application code changed in turn 1" with the plugin are the 5 T4 sessions, in which turn 1 asks for `request_refund` and the agent wrote it without touching `can_refund`.
+
+### Goals of the third round
+
+| Goal | Result |
+| --- | --- |
+| 1. Rule before confirmation: plugin only at most 10% and 50 points below the plain repository | **Met**: 0% against 83%. |
+| 2. Confirmed scenarios intact: plugin only at most 5% and below the plain repository | **Met**: 0% against 33%. |
+| 3. Legacy divergence (T4): `can_refund` unchanged after turn 1 in at least 80% with plugin only | **Met**: 5 of 5. In the second round, 0 of 3. |
+| 4. Intent with plugin only at most 5 points below the plain repository | **Met**: 100% against 100%. |
+| 5. Plugin only with at least 90% executable and true documentation | **Met with the corrected criterion of the second round** (100%). With the registered criterion of the first round, which only counts new scenarios, 83%: in T2 the fee is documented by updating the scenario "Add two items" to 501. |
+| 6. Plugin only within 10 points of "instructions only" on goals 1 and 2 | **Met**: 0% and 0% in both arms. |
+| 7. Tokens with plugin only up to 1.5 times the plain repository | **Met**: 0.73 times. |
+| 8. Median of the `PostToolUse` and `Stop` p95 below 1 s | **Met**: 646 and 487 ms. The worst session reached 2.8 s and 1.9 s; the machine's load average went from 9–13 at the start to 28–43 at the end, on 11 CPUs. |
+
+### What the third round showed
+
+- **Installing the plugin is enough.** Without any written instruction, Haiku went from coding before confirmation in every new-rule session (25 of 25) to never doing it (0 of 30), and from changing existing scenarios without asking in 10 of 30 sessions to 0 of 30, with the same delivery (100% intent) and 27% fewer tokens.
+- **The divergence convention works.** In T4, with the plugin, the agent pointed out that the documentation says 7 days and the code 10, asked which rule holds and delivered the 7 days in 5 of 5 sessions. In the second round, with the plugin and before the convention, it changed the legacy code without asking in 3 of 3.
+- **Written instructions alone are less safe in delivery.** "Instructions only" also asked before coding, but met the intent in 77%: in T4 the agent deleted the legacy `can_refund` in 5 of 5 sessions (the hidden check requires it to keep working, now with 7 days), and in T1 it rounded the discount differently in 2 of 5.
+- **Observed after the run, not a registered metric:** to run the scenarios without SpecMD, the agent copied them into a `.feature` file in 4 of 30 sessions with "instructions only" and in 1 of 30 in the plain repository, a second copy that can drift from the documentation. With the plugin, 0 of 30.
+- **First round in English:** plugin messages, conventions, prompts and projects in English; the Portuguese rounds remain as recorded.
+
+### Limits of this round
+
+- One model (Haiku 5.5), 6 short tasks and 5 repetitions per task and arm: a trend with 30 sessions per arm, not statistical proof.
+- The simulated dev follows a fixed script and does not react to what the agent asked.
+- The machine was under load during the round, which affects latency (recorded in `environment.json`).
