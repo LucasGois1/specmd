@@ -21,6 +21,7 @@ from pathlib import Path
 import shlex
 import sys
 import time
+import tomllib
 from typing import Any
 
 from . import protection
@@ -61,24 +62,41 @@ GAP_GUIDANCE = (
 )
 
 
-def plugin_enabled(directory: Path) -> bool:
-    """True when the project's own Claude Code settings enable the specmd plugin.
+def _specmd_entries(plugins: Any) -> list[Any]:
+    if not isinstance(plugins, dict):
+        return []
+    return [value for key, value in plugins.items() if isinstance(key, str) and key.split("@")[0] == "specmd"]
 
-    Local settings take precedence over the shared project file, as in Claude
-    Code. A user-scope installation alone does not activate a repository.
-    """
+
+def _claude_enabled(directory: Path) -> bool:
+    """Local settings take precedence over the shared project file, as in Claude Code."""
     for name in ("settings.local.json", "settings.json"):
         try:
             settings = json.loads((directory / ".claude" / name).read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
-        plugins = settings.get("enabledPlugins") if isinstance(settings, dict) else None
-        if not isinstance(plugins, dict):
-            continue
-        values = [value for key, value in plugins.items() if isinstance(key, str) and key.split("@")[0] == "specmd"]
+        values = _specmd_entries(settings.get("enabledPlugins") if isinstance(settings, dict) else None)
         if values:
             return values[0] is True
     return False
+
+
+def _codex_enabled(directory: Path) -> bool:
+    """A trusted Codex project enables plugins in its own .codex/config.toml."""
+    try:
+        config = tomllib.loads((directory / ".codex" / "config.toml").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    values = [value for value in _specmd_entries(config.get("plugins")) if isinstance(value, dict)]
+    return bool(values) and values[0].get("enabled", True) is True
+
+
+def plugin_enabled(directory: Path) -> bool:
+    """True when the project's own settings enable the specmd plugin, in Claude Code or in Codex.
+
+    A user-scope installation alone does not activate a repository.
+    """
+    return _claude_enabled(directory) or _codex_enabled(directory)
 
 
 def find_root() -> Path | None:
