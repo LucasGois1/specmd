@@ -121,8 +121,9 @@ TASKS = {
         "Answers: exactly 10000 cents pays shipping; shipping uses the cart total; adding the 11th item raises "
         "ValueError. Confirmed, go ahead and implement."]},
     # "7 calendar days" does not contain "7 days", hence both spellings (the Portuguese "7 dias corridos" did).
-    "T4": {"project": "payments", "app": "payments.py", "terms": [["7 days", "7 calendar days"]], "new_scenarios": False,
-           "turns": [
+    # T4 asks for new code in turn 1; what must wait for the developer is the legacy can_refund (round 3).
+    "T4": {"project": "payments", "app": "payments.py", "guard": "can_refund", "terms": [["7 days", "7 calendar days"]],
+           "new_scenarios": False, "turns": [
         "Implement in payments.py the function request_refund(days_since_purchase), which returns 'approved' or "
         "'refused' according to the refund rule.",
         "Answers: what the documentation says holds, 7 calendar days; fix whatever differs. "
@@ -266,11 +267,16 @@ def codex_turn(project, prompt, thread, arm, log):
                     "message": (messages[-1] if messages else completed.stderr)[-1500:]}
 
 
-def code_ast(project, relative):
+def code_ast(project, relative, function=None):
+    """The module's AST, or only one top-level function's (`<missing>` when it is gone)."""
     try:
-        return ast.dump(ast.parse((project / relative).read_text(encoding="utf-8")))
+        tree = ast.parse((project / relative).read_text(encoding="utf-8"))
     except (OSError, SyntaxError) as error:
         return f"<{type(error).__name__}>"
+    if function is None:
+        return ast.dump(tree)
+    found = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == function]
+    return ast.dump(found[0]) if found else "<missing>"
 
 
 def scenarios(inspection):
@@ -331,8 +337,8 @@ def one_run(task, agent, arm, rep, workspace, follow_up=False):
     base.mkdir(parents=True)
     build_project(task, project, ARMS[arm]["instructions"])
     initial = scenarios(inventory(project))
-    app = TASKS[task]["app"]
-    base_ast = code_ast(project, app)
+    app, guard = TASKS[task]["app"], TASKS[task].get("guard")
+    base_ast, base_guard = code_ast(project, app), code_ast(project, app, guard)
     session, turns, after_first, after_second = (str(uuid.uuid4()) if agent == "claude" else None), [], {}, {}
     prompts = TASKS[task]["turns"] + ([FOLLOW_UP] if follow_up else [])
     for index, prompt in enumerate(prompts):
@@ -344,6 +350,7 @@ def one_run(task, agent, arm, rep, workspace, follow_up=False):
         if index == 0:
             now = scenarios(inventory(project))
             after_first = {"code_changed": code_ast(project, app) != base_ast,
+                           "guarded_changed": code_ast(project, app, guard) != base_guard,
                            "base_scenario_changed": any(now.get(key) != value for key, value in initial.items()),
                            "intent": hidden_checks(task, project)["passed"]}
         if index == 1 and follow_up:
@@ -352,7 +359,8 @@ def one_run(task, agent, arm, rep, workspace, follow_up=False):
     checks = hidden_checks(task, project)
     docs = documentation(task, project, len(initial), initial.values())
     row = {"task": task, "agent": agent, "model": MODELS[agent], "arm": arm, "rep": rep, "project": str(project),
-           "turns": turns, "metrics": {"implemented_before_confirmation": after_first.get("code_changed"),
+           "turns": turns, "metrics": {"implemented_before_confirmation": after_first.get("guarded_changed"),
+                                       "app_changed_turn1": after_first.get("code_changed"),
                                        "base_scenario_changed_turn1": after_first.get("base_scenario_changed"),
                                        "intent_turn1": after_first.get("intent"), "intent": checks["passed"],
                                        **after_second, **docs}, "checks": checks["checks"], "hooks": hook_stats(log),
@@ -373,6 +381,7 @@ ARM_ORDER = ["comum", "plugin", "instrucoes", "specmd", "control"]
 ARM_LABELS = {"comum": "Common repository", "plugin": "Plugin only", "instrucoes": "Instructions only",
               "specmd": "Instructions + plugin", "control": "Instructions only"}
 METRICS = [("implemented_before_confirmation", "Rule before confirmation (lower is better)"),
+           ("app_changed_turn1", "Application code changed in turn 1 (any change)"),
            ("intent", "Intent met"), ("documented", "Rule documented with scenarios (registered criterion)"),
            ("executable", "Documentation executable and true (registered criterion)"),
            ("documented_corrected", "Rule documented with scenarios (corrected criterion)"),
@@ -477,6 +486,18 @@ def reevaluate(path, replacements):
     print("Reevaluated:", output)
 
 
+def environment_record(args):
+    """What the run depended on: versions, commit and machine load, which affects hook latency."""
+    def output(command):
+        completed = run(command, REPO)
+        return completed.stdout.strip() or completed.stderr.strip()
+
+    return {"started": datetime.now(timezone.utc).isoformat(), "load_average": os.getloadavg(), "cpus": os.cpu_count(),
+            "commit": output(["git", "rev-parse", "HEAD"]), "claude": output(["claude", "--version"]),
+            "agents": args.agents, "arms": args.arms, "tasks": args.tasks, "reps": args.reps, "workers": args.workers,
+            "follow_up": args.follow_up}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--reevaluate", type=Path, help="reevaluate the projects of an existing runs.jsonl")
@@ -497,6 +518,7 @@ def main():
     if not (BUNDLE / "hooks/hooks.json").is_file():
         raise SystemExit("Build the bundle first: python scripts/build_codex_plugin.py")
     args.output.mkdir(parents=True, exist_ok=True)
+    record = environment_record(args)
     workspace = Path(tempfile.mkdtemp(prefix="specmd-pilot-"))
     jobs = [(task, agent, arm, rep) for rep in range(1, args.reps + 1) for task in args.tasks.split(",")
             for agent in args.agents.split(",") for arm in args.arms.split(",")]
@@ -517,6 +539,8 @@ def main():
 
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
         list(pool.map(work, jobs))
+    record.update(finished=datetime.now(timezone.utc).isoformat(), load_average_end=os.getloadavg())
+    (args.output / "environment.json").write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
     summarize([row for row in rows if "metrics" in row], args.output / "summary.md")
     print("Results:", args.output, "Projects:", workspace)
 

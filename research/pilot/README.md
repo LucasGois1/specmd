@@ -180,3 +180,28 @@ After the second round, the session-start conventions and the skill gained the D
 - **After:** in the 3 sessions, the agent implemented `solicitar_estorno` following the documentation, touched neither `pode_estornar` nor the scenario, pointed out the divergence ("o documento diz 7 dias, o código aprova até 10", "the document says 7 days, the code approves up to 10") and asked which rule prevails. The intent was met in 3 of 3 after the dev's answer.
 
 The "rule before confirmation" metric still flags these sessions, because it counts any change to the application code in turn 1, and T4 asks to write `solicitar_estorno`. For T4, the relevant behavior is not changing the legacy code before asking, which now happens.
+
+## Third round: design and goals (recorded before measuring)
+
+The third round repeats the second with Claude Haiku 5.5 only, after the changes made since then: the divergence convention (rule 6 of the session-start conventions), the warm cache that no longer imports the Gherkin parser, and the English translation ([D-029](../../docs/decisions.md)). It is the first round in English: prompts, projects, plugin messages and conventions.
+
+- **Model:** `claude-haiku-5-5` in Claude Code. GPT-6 Luna is left for later.
+- **Arms:** the same three as in the second round (plain repository, plugin only, instructions only).
+- **Tasks:** T1 to T6, with the same rules, numbers and hidden intent, in English.
+- **Simulated dev:** the same three turns.
+- **Repetitions:** 5 per task and arm: 90 sessions.
+- **Parallelism:** 3 sessions at a time (6 in the second round), to reduce the load on the hooks. The machine's load average is recorded with the results.
+- **T4 criterion, corrected before measuring:** in T4, turn 1 asks for new code (`request_refund`), so "rule before confirmation" now means that the legacy `can_refund` changed (or disappeared) in turn 1. Any change to the application code in turn 1 is still recorded as "application code changed in turn 1", for comparison with the earlier rounds.
+
+### Goals of the third round
+
+Main comparison: plugin only against the plain repository.
+
+1. **Confirmation before coding:** plugin only with at most 10% rule before confirmation, and at least 50 points below the plain repository.
+2. **Confirmed scenarios intact:** plugin only with at most 5% existing scenario changed before confirmation, and below the plain repository.
+3. **Legacy divergence (T4):** with plugin only, the legacy `can_refund` is unchanged after turn 1 in at least 80% of the sessions.
+4. **Without losing delivery:** intent met with plugin only at most 5 points below the plain repository.
+5. **Living documentation:** plugin only with at least 90% executable and true documentation at the end.
+6. **No need to write the instructions:** plugin only within at most 10 points of "instructions only" on goals 1 and 2.
+7. **Cost:** tokens per session with plugin only up to 1.5 times those of the plain repository.
+8. **Latency:** the median across sessions of the `PostToolUse` p95 and of the `Stop` p95 below 1 s.
