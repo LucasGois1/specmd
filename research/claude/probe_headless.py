@@ -21,7 +21,7 @@ import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
-BUNDLE = ROOT / "dist/codex-plugin"
+BUNDLE = ROOT / "codex-plugin"
 EVIDENCE = ROOT / "research/claude/evidence/headless-dispatch.json"
 LOCAL_REPORT = ROOT / ".specmd/local/claude-headless.json"
 MODEL = "haiku"

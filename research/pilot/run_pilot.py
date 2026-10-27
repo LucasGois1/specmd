@@ -31,8 +31,8 @@ import uuid
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 PYTHON = str(REPO / ".venv/bin/python") if (REPO / ".venv/bin/python").exists() else sys.executable
-BUNDLE = REPO / "dist/codex-plugin"
-CODEX_PLUGIN = "specmd@specmd-local"
+BUNDLE = REPO / "codex-plugin"
+CODEX_PLUGIN = "specmd@specmd"
 MODELS = {"claude": "claude-haiku-5-5", "codex": "gpt-6-luna"}
 CART_APP = "app.py"
 TIMEOUT = 1800

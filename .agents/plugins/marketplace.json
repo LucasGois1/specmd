@@ -1,11 +1,11 @@
 {
-  "name": "specmd-local",
+  "name": "specmd",
   "plugins": [
     {
       "name": "specmd",
       "source": {
         "source": "local",
-        "path": "./dist/codex-plugin"
+        "path": "./codex-plugin"
       },
       "policy": {
         "installation": "AVAILABLE",

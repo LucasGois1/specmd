@@ -1,0 +1,48 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${SPECMD_PYTHON:-python3}\" \"${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/specmd_hook.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${SPECMD_PYTHON:-python3}\" \"${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/specmd_hook.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${SPECMD_PYTHON:-python3}\" \"${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/specmd_hook.py\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${SPECMD_PYTHON:-python3}\" \"${PLUGIN_ROOT:-${CLAUDE_PLUGIN_ROOT}}/scripts/specmd_hook.py\"",
+            "timeout": 300
+          }
+        ]
+      }
+    ]
+  }
+}

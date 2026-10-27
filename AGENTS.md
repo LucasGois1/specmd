@@ -17,7 +17,7 @@ Ao relatar verificações, informe somente o que foi efetivamente executado e se
 - Mudança de código renova a execução dos cenários. Estado local (`.specmd/local/`) é reconstruível e pode ser apagado.
 - Hooks disponíveis devem ser verificados por plataforma e versão. Não invente nomes de eventos ou APIs como se estivessem confirmados.
 - Os dois hosts usam um único `hooks/hooks.json`; o Claude Code o carrega por padrão na raiz do plugin. Não declare um segundo arquivo de hooks.
-- Gere o pacote por `scripts/build_codex_plugin.py` antes de instalar localmente; não empacote o clone inteiro com `.venv`, `.git` ou dados locais.
+- O bundle do plugin fica versionado em `codex-plugin/` e é gerado por `scripts/build_codex_plugin.py`; ao mudar `src/`, `scripts/`, `hooks/`, `commands/`, `skills/`, `vendor/` ou os manifestos, gere de novo e faça commit junto (o CI confere com `--check`). Não edite `codex-plugin/` à mão.
 - As dependências de runtime do plugin ficam em `vendor/`, geradas por `scripts/vendor_deps.py` a partir do `pylock.toml`. Não edite `vendor/` à mão; ao mudar dependências, regenere o lock e o `vendor/`.
 
 ## Trabalho nos documentos
