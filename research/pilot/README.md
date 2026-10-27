@@ -422,3 +422,52 @@ Complete round: 20 runs of 5 requests (100 sessions), without infrastructure fai
 - **Documentation that tells the truth:** with the plugin, the judge found all 9 rules stated correctly in every run. Without it, `Cart.summary()` was never documented (5 of 5 runs in the plain and the traditional repositories), and in the traditional repository the fee's exclusions from shipping and loyalty were missing in 3 of 5 runs.
 - **The goals on the mean of the hidden checks were badly chosen:** one failing check of 18 moves the mean by 5 points, so a bug left in 3 of 5 runs shows as 3 points. The share of runs with every check passing (5/5 against 2/5) shows the same result more clearly; it was reported but was not the registered criterion.
 - **Cost:** the plugin used 15% more tokens than the plain repository and 31% more than the traditional one, because it asks before coding.
+
+## Results of the sixth round (27/10/2026)
+
+Complete round: 30 runs of 10 requests (300 sessions), without infrastructure failure, in `results/20261027-144718-store-realistic/` and `results/20261027-144718-store-hurried/`. Total cost reported (agent, simulated developer and judge): US$ 8.21. The two modes ran at the same time with 10 sessions in parallel; the machine's load average stayed between 60 and 75.
+
+**Correction, made openly after the round:** the registered own check of the Markdown repositories was `specmd run`, which does not run the scenarios while a document has no scenarios. In the plain repository the agent created documents without scenarios, so its own check never ran and its mutation score and tampering criterion were wrong (for example, mutation score 0 in two runs). `run_scenarios.py` runs the existing scenarios even with documentation gaps; `store.py --reevaluate` recomputed the own check after every request from the harness's commits, and the mutation score, for every arm. The rounds 4 and 5 were not affected (their own check always ran). Both versions are in `runs.jsonl`/`summary.md` (registered) and `runs-reevaluated.jsonl`/`summary-reevaluated.md`; the tables below use the reevaluated ones.
+
+| Metric | Plain: realistic / hurried | Plugin only: realistic / hurried | Traditional: realistic / hurried |
+| --- | --- | --- | --- |
+| All hidden checks pass at the end | 3/5 / 3/5 | 4/5 / 4/5 | 5/5 / 5/5 |
+| Hidden checks passing at the end, mean | 99% / 99% | 98% / 99% | 100% / 100% |
+| Regressions left at the end | 0 / 0 | 0 / 0 | 0 / 0 |
+| CI fixed in the code (request 6) | 5/5 / 5/5 | 5/5 / 5/5 | 5/5 / 5/5 |
+| CI made green by changing the documented rule | 0/5 / 0/5 | 0/5 / 0/5 | 0/5 / 0/5 |
+| Rules stated correctly in the documentation (judge), mean | 71% / 43% | **96% / 81%** | 68% / 61% |
+| Outdated rules in the documentation, mean per run | 1.8 / 4.6 | 0.2 / 0 | 0 / 0 |
+| Own check passing at the end | 3/5 / 1/5 | 5/5 / 5/5 | 5/5 / 5/5 |
+| Mutation score of the own check, mean | 77% / 51% | 100% / 93% | 100% / 98% |
+| Requests coded in the first turn | 96% / 98% | 26% / 100% | 100% / 100% |
+| Agent turns per run, mean | 17.0 / 15.6 | 30.2 / 22.0 | 14.0 / 14.8 |
+| Agent tokens per run, median | 3.56M / 2.66M | 3.35M / 3.22M | 2.15M / 2.20M |
+| Agent cost per run, median | US$ 0.146 / 0.098 | US$ 0.250 / 0.199 | US$ 0.087 / 0.086 |
+
+### Goals of the sixth round
+
+| Goal | Realistic | Hurried |
+| --- | --- | --- |
+| 1. Hidden checks at least 90% and 10 points above the plain and the traditional repositories | **Not met**: 98% against 99% and 100% | **Not met**: 99% against 99% and 100% |
+| 2. Regressions left at most 0.2 and fewer than the others | **Not met**: 0 in every arm | **Not met**: 0 in every arm |
+| 3. CI fixed in the code in at least 80%, tampering at most 20% and 30 points below the traditional repository | **Not met**: 5/5 fixed and 0/5 tampered, but no arm tampered | **Not met**: same |
+| 4. Rules stated correctly at least 70%, 20 points above the traditional repository | **Met**: 96% against 68% | **Met**: 81% against 61% (20 points) |
+| 5. Outdated rules at most 1 and fewer than the traditional repository | **Not met**: 0.2 against 0 | **Not met**: 0 against 0 |
+| 6. Mutation score 10 points above the traditional repository | **Not met**: 100% against 100% | **Not met**: 93% against 98% |
+| 7. From realistic to hurried, plugin only loses at most 10 points of hidden checks and less than the others | **Not met**: no arm lost points (98% to 99%, 99% to 99%, 100% to 100%) | |
+| 8. Agent tokens up to 1.5 times the plain and the traditional repositories | **Not met**: 0.94 and 1.56 times | **Met**: 1.21 and 1.47 times |
+
+### What the sixth round showed
+
+- **Larger project, no difference in behavior.** With 10 documents, 7 coupled modules and 10 sessions, Claude Haiku 5.5 introduced no regression that stayed until the end in any arm. The traditional repository, with unit tests, ended every run with every hidden check passing; the remaining failures in the other arms are in the invoice with the coupon or the fee (2 runs of the plain repository and 1 of the plugin in each mode).
+- **No tampering.** In the 30 runs, the agent fixed the colleague's commit in the code; no arm rewrote the documented rule or the test. The premise was not observed with this model.
+- **The difference is the documentation.** With the plugin, the documentation stated 96% (realistic) and 81% (hurried) of the final rules correctly. Without it, the plain repository fell to 71% and 43%, with 1.8 and 4.6 outdated rules per run (values and examples the code no longer follows), and the traditional repository's prose stayed at 68% and 61%, with rules left partial or missing. A hurried developer made the plain repository's documentation drift the most.
+- **The cost.** With the plugin the agent took about twice the turns of the traditional repository (30.2 against 14.0 in the realistic mode) and cost 2.3 to 2.9 times more per run.
+- **Hurried developer:** with the plugin, the agent coded in the first turn in every request, like the other arms; SpecMD still kept the documentation true.
+
+### Limits of this round
+
+- One model, one project and 5 runs per arm and mode.
+- The hidden checks cover behavior, where Haiku without the plugin already does well; the judge, an LLM, is the only measure of the documentation.
+- The machine ran 10 sessions in parallel under high load.

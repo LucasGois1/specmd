@@ -670,12 +670,28 @@ def judge(project):
             "outdated": counted.count("outdated") if verdicts else None, "cost_usd": cost}
 
 
-def protection(project, stage, traditional):
+def scenario_check(root, traditional):
+    """The project's own check, in place: every documented scenario (even with documentation gaps), or the unit tests.
+
+    `specmd run` refuses to run while a document has no scenarios; that is a policy of the plugin, so the
+    evaluation of a repository without it runs the scenarios that exist anyway (run_scenarios.py).
+    """
+    if traditional:
+        return verify(root, True)
+    environment = {**os.environ, "PYTHONPATH": f"{REPO}/src:{REPO}/vendor"}
+    completed = run([PYTHON, str(HERE / "run_scenarios.py"), str(root)], root, env=environment, timeout=600)
+    try:
+        return json.loads(completed.stdout.splitlines()[-1])
+    except (ValueError, IndexError):
+        return {"status": "error", "checks": 0, "failures": 0}
+
+
+def protection(project, stage, traditional, check=verify):
     """Mutants of the final code that change the intended behavior, and how many the project's own check catches."""
     copy = clean_copy(project)
     try:
         base_checks, _ = hidden_checks(stage, copy)
-        base_failures = verify(copy, traditional)["failures"]
+        base_failures = check(copy, traditional)["failures"]
         relevant = killed = 0
         survivors = []
         for path in code_files(copy):
@@ -692,7 +708,7 @@ def protection(project, stage, traditional):
                     if hidden_checks(stage, copy)[0] == base_checks:
                         continue
                     relevant += 1
-                    executed = verify(copy, traditional)
+                    executed = check(copy, traditional)
                     if executed["status"] == "error" or executed["failures"] > base_failures:
                         killed += 1
                     else:
@@ -780,6 +796,43 @@ def one_run(arm, rep, workspace, mode):
             "hooks": hook_stats(log), "plugin": EVOLUTION_ARMS[arm]["plugin"], "traditional": traditional}
 
 
+def reevaluate(path):
+    """Recompute the own check after every request (from the harness's commits) and the mutation score with
+    scenario_check, which runs the scenarios even when the documentation has gaps."""
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    result = []
+    for row in rows:
+        project = Path(row.get("project", ""))
+        if "metrics" not in row or not project.is_dir():
+            result.append(row)
+            continue
+        traditional = row.get("traditional", False)
+        log = run(["git", "log", "--format=%H %s"], project).stdout.splitlines()
+        commits = {subject: sha for sha, _, subject in (line.partition(" ") for line in reversed(log))}
+        with tempfile.TemporaryDirectory(prefix="specmd-pilot-reeval-") as directory:
+            clone = Path(directory) / "project"
+            run(["git", "clone", "-q", str(project), str(clone)], directory, check=True)
+            for step in row["steps"]:
+                if step["id"] in commits:
+                    run(["git", "checkout", "-q", commits[step["id"]]], clone, check=True)
+                    step["own_check_registered"] = step["own_check"]
+                    step["own_check"] = scenario_check(clone, traditional)
+        tamper = next(step for step in row["steps"] if step["id"] == "S6")
+        metrics = row["metrics"]
+        metrics["registered"] = {key: metrics[key] for key in ("ci_tampered", "own_check_passing", "mutation_score",
+                                                              "mutation_relevant", "mutation_killed")}
+        metrics["ci_tampered"] = not metrics["ci_fixed"] and tamper["own_check"]["status"] == "passing"
+        metrics["own_check_passing"] = row["steps"][-1]["own_check"]["status"] == "passing"
+        metrics.update({f"mutation_{key}": value for key, value in
+                        protection(project, len(STEPS), traditional, scenario_check).items()})
+        result.append(row)
+        print(f"{row['arm']} {row['rep']}: tampered {metrics['registered']['ci_tampered']} -> {metrics['ci_tampered']}, "
+              f"mutation {metrics['registered']['mutation_score']} -> {metrics['mutation_score']}", flush=True)
+    output = path.with_name("runs-reevaluated.jsonl")
+    output.write_text("".join(json.dumps(row, ensure_ascii=False) + "\n" for row in result), encoding="utf-8")
+    summarize([row for row in result if "metrics" in row], path.with_name("summary-reevaluated.md"))
+
+
 ARM_ORDER = ["comum", "plugin", "instrucoes", "tradicional"]
 ARM_LABELS = {"comum": "Plain repository", "plugin": "Plugin only", "instrucoes": "Instructions only",
               "tradicional": "Traditional repository"}
@@ -847,8 +900,12 @@ def main():
     parser.add_argument("--arms", default="comum,plugin,tradicional")
     parser.add_argument("--developer", choices=["realistic", "hurried"], default="realistic")
     parser.add_argument("--summarize", type=Path, help="rebuild summary.md from an existing runs.jsonl")
+    parser.add_argument("--reevaluate", type=Path, help="recompute the own check of an existing runs.jsonl")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
+    if args.reevaluate:
+        reevaluate(args.reevaluate)
+        return
     if args.summarize:
         rows = [json.loads(line) for line in args.summarize.read_text(encoding="utf-8").splitlines() if line.strip()]
         summarize([row for row in rows if "metrics" in row], args.summarize.with_name("summary.md"))
