@@ -83,7 +83,7 @@ class HookLifecycleTests(unittest.TestCase):
         (self.root / ".codex/config.toml").write_text('[plugins."specmd@specmd"]\nenabled = false\n')
         self.assertEqual(self.hook("SessionStart"), {})
 
-    def test_messages_follow_the_project_language(self):
+    def test_messages_follow_the_project_language(self):  # SMD-SCN-142
         self.addCleanup(messages.use, "en")
         config = self.root / "specmd.toml"
         config.write_text('language = "pt"\n' + config.read_text())
@@ -113,7 +113,7 @@ class HookLifecycleTests(unittest.TestCase):
                 post(tool, path)
                 find_root.assert_called_once()
 
-    def test_session_start_summarizes_documentation_and_conventions(self):
+    def test_session_start_summarizes_documentation_and_conventions(self):  # SMD-SCN-141
         reply = self.hook("SessionStart")
         context = reply["hookSpecificOutput"]["additionalContext"]
         self.assertIn("1 (2 scenarios)", context)

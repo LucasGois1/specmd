@@ -1,17 +1,17 @@
-# Artefatos locais e cache; os caminhos definitivos da ferramenta ainda serão escolhidos.
+# Local artifacts and cache; the tool's final paths are still to be chosen.
 .DS_Store
 **/.specmd/cache/
 **/.specmd/tmp/
 **/.specmd/local/
 
-# Credenciais locais nunca são parte da documentação do projeto.
+# Local credentials are never part of the project's documentation.
 .env
 .env.*
 !.env.example
 *.pem
 *.key
 
-# Dependências e artefatos dos experimentos locais.
+# Dependencies and artifacts of the local experiments.
 **/.venv/
 **/node_modules/
 **/target/
